@@ -165,7 +165,7 @@ cd equity-watchlist-tracker
 Setup instructions will be added as development progresses.
 
 🤝 Contribution
-
+Bhavya Sharma - bhavya@inboundcy.in
 Contributions, ideas, and feedback are welcome.
 This project is built with clean architecture, scalability, and long-term growth in mind.
 
