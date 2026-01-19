@@ -178,4 +178,4 @@ This project is licensed under the MIT License.
 👤 Author
 
 Lalit Gera
-Software Engineer | Investing & System Design Enthusiast
+Senior Software Engineer | Investing & System Design Enthusiast
