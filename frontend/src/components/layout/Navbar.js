@@ -19,6 +19,9 @@ const Navbar = () => {
           <NavLink to="/market/domestic" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             Domestic
           </NavLink>
+          <NavLink to="/market/fast-movers" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            Fast Movers
+          </NavLink>
         </div>
       </div>
     </nav>
