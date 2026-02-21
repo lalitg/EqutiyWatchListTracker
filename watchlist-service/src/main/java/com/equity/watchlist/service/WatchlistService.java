@@ -3,11 +3,13 @@ package com.equity.watchlist.service;
 import com.equity.watchlist.dto.WatchlistRequest;
 import com.equity.watchlist.dto.WatchlistView;
 import com.equity.watchlist.entity.Watchlist;
+import com.equity.watchlist.repository.CompanyRepository;
 import com.equity.watchlist.repository.WatchlistRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,15 +23,15 @@ public class WatchlistService {
     private static final Long DEFAULT_USER_ID = 1L;
 
     private final WatchlistRepository watchlistRepository;
+    private final CompanyRepository companyRepository;
 
-    public WatchlistService(WatchlistRepository watchlistRepository) {
+    public WatchlistService(WatchlistRepository watchlistRepository, CompanyRepository companyRepository) {
         this.watchlistRepository = watchlistRepository;
+        this.companyRepository = companyRepository;
     }
 
     /**
      * Adds a new company to the watchlist.
-     * @param request the company details
-     * @return the created watchlist view
      */
     public WatchlistView addCompany(WatchlistRequest request) {
         if (request.getCompanyCode() == null || request.getCompanyCode().isBlank()) {
@@ -65,9 +67,6 @@ public class WatchlistService {
 
     /**
      * Updates an existing watchlist entry identified by company code.
-     * @param companyCode the company to update
-     * @param request the new details
-     * @return the updated watchlist view
      */
     public WatchlistView updateCompany(String companyCode, WatchlistRequest request) {
         Watchlist entity = watchlistRepository
@@ -93,7 +92,6 @@ public class WatchlistService {
 
     /**
      * Removes a company from the watchlist.
-     * @param companyCode the company to remove
      */
     @Transactional
     public void removeCompany(String companyCode) {
@@ -110,10 +108,16 @@ public class WatchlistService {
 
     /**
      * Converts a Watchlist entity to a WatchlistView DTO.
+     * Looks up company name from company_master if available.
      */
     private WatchlistView toView(Watchlist entity) {
         WatchlistView view = new WatchlistView();
         view.setCompanyCode(entity.getCompanyCode());
+
+        // Populate company name from company_master
+        companyRepository.findBySymbol(entity.getCompanyCode())
+                .ifPresent(cm -> view.setCompanyName(cm.getCompanyName()));
+
         view.setWeek52Low(entity.getWeek52Low());
         view.setWeek52High(entity.getWeek52High());
         view.setAllTimeLow(entity.getAllTimeLow());

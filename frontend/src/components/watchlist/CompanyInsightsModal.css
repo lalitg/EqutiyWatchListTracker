@@ -1,0 +1,18 @@
+.ci-loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #667eea;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.ci-tab-content {
+  min-height: 200px;
+}
+
+.ci-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+  font-size: 14px;
+}
