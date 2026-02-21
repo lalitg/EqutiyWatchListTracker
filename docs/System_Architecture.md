@@ -55,9 +55,13 @@ v
 |  +-------------------------+   |
 |  | Company Events Module   |   |
 |  +-------------------------+   |
-|  | Sentiment Module        |   |
+|  | Company Coming Events   |   |
+|  | Module                  |   |
 |  +-------------------------+   |
-|  | Trend Module            |   |
+|  | Company Sentiment       |   |
+|  | Module                  |   |
+|  +-------------------------+   |
+|  | Company Trend Module    |   |
 |  +-------------------------+   |
 +-------------------------------+
 |
@@ -72,8 +76,9 @@ v
 Responsibilities
 - User login & OTP verification
 - Watchlist management
-- Viewing company intelligence
+- Viewing company intelligence (news, trends, sentiment, coming events)
 - Subscription upgrade flows
+- Event notifications and calendar views
 
 Supported Clients
 - Web (Must-have)
@@ -103,6 +108,36 @@ Recommended (future):
 - Distinguish cache vs queue usage; prefer a separate queue backend for production-grade jobs.
 - Cache TTLs: 5–30s for watchlist view; 30–300s for news feed; use short TTLs for freshness-sensitive data.
 
+## 6.1 Authentication Module
+- OTP-based login (Email / Phone)
+- JWT & Refresh Token issuance
+- Stateless design
+- OTP-based auth flows, JWT issuance, refresh tokens and revocation logic.
+
+Suggestions / Non-destructive additions:
+- Rate limiting & anti-abuse: per-IP and per-user OTP attempt limits, exponential backoff, temporary account blocks.
+- MFA/2FA: support optional second factor (TOTP) for paid users or admins.
+- Device management: maintain list of trusted devices / sessions and allow revocation.
+- Audit logging for login attempts, token issuance and revocations.
+- Internal auth service API: well-documented endpoints for token introspection and session management (useful if later extracted to microservice).
+
+### 6.2 User & Subscription Module
+- User profiles
+- Roles: Admin, Free, Paid
+- Subscription plans:
+  - Monthly
+  - 3 Months
+  - 6 Months
+  - 1 Year
+- Subscription expiry & access control
+
+Suggestions / Non-destructive additions:
+- Entitlement checks middleware: central helper to validate feature access based on active subscription and role.
+- Billing/webhook handling: idempotent processors for payment provider webhooks (Stripe/PayPal/etc.).
+- Grace period policies and trial handling for new users.
+- Subscription change audit trail (who changed plan, timestamps, invoice ids).
+- Admin console APIs for manual adjustments and debugging user entitlements.
+
 ---
 
 ## 7. Background Workers & Queue
@@ -117,7 +152,62 @@ Recommended:
 ---
 
 ## 8. Backend Application (Core Modules)
-(Details as in HLD; modules are same. Keep Subscription embedded in User Module for Phase 1.)
+Core modules for Phase 1 (Modular Monolith):
+
+- Authentication Module
+  - OTP-based auth flows, JWT issuance, refresh tokens and revocation logic.
+  - Token lifetime policies: short-lived access tokens, refresh token rotation on use.
+  - Token revocation store (redis) for immediate revocations where required.
+  - Endpoints: /auth/otp/request, /auth/otp/verify, /auth/token/refresh, /auth/logout
+
+- User & Subscription Module
+  - User profiles, subscription plans, billing hooks, entitlement checks.
+  - Roles & permissions mapping for feature gating.
+  - Endpoints: /users, /users/{id}/subscriptions, /users/{id}/entitlements
+
+- Watchlist Module
+  - CRUD for watchlists, membership management, caching for fast reads.
+  - Watchlist items store minimal company identifiers (ticker, exchange) and metadata for display.
+  - Support bulk operations (add/remove many tickers) and export/import (CSV).
+  - Read-optimized endpoints and queries; use Redis for hot entries and paginated results.
+  - Webhook/event hooks when watchlists change (for cross-device sync & notifications).
+
+- Company News Module
+  - Ingest news, store metadata, expose search/filter APIs (future full-text via search index).
+  - News deduplication: fingerprinting articles by canonical URL + hash of content.
+  - News metadata: provider, published_at, relevance_score, tickers mentioned, sentiment snapshot.
+  - Endpoints: /companies/{ticker}/news, /news/search
+  - Recommended: full-text search via Elastic/OpenSearch for advanced filtering.
+
+- Company Events Module
+  - Canonical store of corporate events (earnings, dividends, filings); historical and published event records.
+  - Normalize provider feeds into canonical event schema (type, scheduled_at, status, source).
+  - Endpoints: /companies/{ticker}/events, /events/calendar
+
+- Company Coming Events Module
+  - Focused on upcoming/near-term events and calendar integration:
+    - Aggregates and deduplicates upcoming event notices from news, filings, and provider feeds.
+    - Provides APIs for upcoming-event lists, calendar export (iCal), user reminders, and notification hooks.
+    - Supports subscription-based event alerts and entitlement checks.
+    - Worker-driven refresh to ensure freshness and push notifications for imminent events.
+  - Additional points:
+    - Event prioritization rules (earnings > dividends > filings) for notification batching.
+    - Allow user-level snooze and custom reminder offsets (e.g., 1h, 24h).
+
+- Company Sentiment Module
+  - Periodic sentiment scoring from news/social sources, time-series storage for trends.
+  - Data model: {ticker, source, timestamp, sentiment_score, confidence}
+  - Batch recomputation jobs and online incremental updates from new articles.
+  - Endpoints: /companies/{ticker}/sentiment, /sentiment/history
+  - Suggestions: store both raw signals and aggregated, explainable metrics (positive/negative counts).
+
+- Company Trend Module
+  - Computation and storage of trend signals (price momentum, volume, derived indicators).
+  - Inputs: price bars, trade volumes, sentiment signals, news bursts.
+  - Provide both raw indicators (SMA, EMA, RSI) and combined trend signals used by UI.
+  - Endpoints: /companies/{ticker}/trends, /trends/summary
+
+Keep Subscription embedded in User Module for Phase 1; plan to extract as separate service when billing/scale reasons arise.
 
 ---
 
@@ -192,4 +282,4 @@ When to extract a module to its own service (Recommended triggers):
 ---
 
 ## 15. Summary
-This System Architecture document now adds operational guidance, caching and queue strategies, security hardening, observability/SLO recommendations, and clear upgrade paths to microservices. It complements the HLD by providing the engineering-facing details required for implementation and operations.
+This System Architecture document now adds operational guidance, caching and queue strategies, security hardening, observability/SLO recommendations, and clear upgrade paths to microservices. It complements the module-level responsibilities listed above for the Authentication, Watchlist, User & Subscription, Company News, Company Events, Company Coming Events, Company Sentiment, and Company Trend modules.
