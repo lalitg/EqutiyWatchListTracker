@@ -7,10 +7,12 @@ import DomesticMarketPage from './pages/DomesticMarketPage';
 import FastMoversPage from './pages/FastMoversPage';
 import { WatchlistProvider } from './context/WatchlistContext';
 import { MarketProvider } from './context/MarketContext';
+import { CompanyListProvider } from './context/CompanyListContext';
 import './App.css';
 
 function App() {
   return (
+    <CompanyListProvider>
     <WatchlistProvider>
       <MarketProvider>
         <div className="App">
@@ -27,6 +29,7 @@ function App() {
         </div>
       </MarketProvider>
     </WatchlistProvider>
+    </CompanyListProvider>
   );
 }
 

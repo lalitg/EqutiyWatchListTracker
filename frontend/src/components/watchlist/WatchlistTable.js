@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import './WatchlistTable.css';
 
 const TABLE_COLUMNS = [
-  { key: 'companyId', label: 'Company ID', sortable: true },
+  { key: 'companyCode', label: 'Company Code', sortable: true },
   { key: 'companyName', label: 'Company', sortable: true },
   { key: 'week52Low', label: '52 Week Low', sortable: true },
   { key: 'week52High', label: '52 Week High', sortable: true },

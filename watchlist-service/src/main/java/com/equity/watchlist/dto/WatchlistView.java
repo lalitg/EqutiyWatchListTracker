@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 public class WatchlistView {
 
     private String companyCode;
+    private String companyName;
     private BigDecimal week52Low;
     private BigDecimal week52High;
     private BigDecimal allTimeLow;
@@ -17,10 +18,11 @@ public class WatchlistView {
     private BigDecimal peRatio;
     private BigDecimal eps;
 
-    // Getters and Setters
-
     public String getCompanyCode() { return companyCode; }
     public void setCompanyCode(String companyCode) { this.companyCode = companyCode; }
+
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
 
     public BigDecimal getWeek52Low() { return week52Low; }
     public void setWeek52Low(BigDecimal week52Low) { this.week52Low = week52Low; }
