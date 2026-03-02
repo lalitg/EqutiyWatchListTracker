@@ -11,6 +11,8 @@ import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class NseSyncService {
@@ -28,6 +30,10 @@ public class NseSyncService {
             BufferedReader reader = new BufferedReader(
                     new InputStreamReader(new URL(url).openStream()));
 
+            Map<String, CompanyMaster> existingBySymbol = repository.findAll()
+                    .stream()
+                    .collect(Collectors.toMap(CompanyMaster::getSymbol, c -> c));
+
             List<CompanyMaster> batch = new ArrayList<>();
             String line;
             boolean header = true;
@@ -38,7 +44,7 @@ public class NseSyncService {
                 String[] data = line.split(",");
                 String symbol = data[0].trim();
 
-                if (repository.findBySymbol(symbol).isEmpty()) {
+                if (!existingBySymbol.containsKey(symbol)) {
                     CompanyMaster company = new CompanyMaster();
                     company.setSymbol(symbol);
                     company.setCompanyName(data[1].trim());
