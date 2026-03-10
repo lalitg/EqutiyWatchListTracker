@@ -7,8 +7,10 @@ import com.equity.watchlist.repository.CompanyRepository;
 import com.equity.watchlist.repository.WatchlistRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,6 +26,10 @@ public class WatchlistService {
 
     private final WatchlistRepository watchlistRepository;
     private final CompanyRepository companyRepository;
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    @Value("${global.watchlist.service.url:http://localhost:8085}")
+    private String globalWatchlistServiceUrl;
 
     public WatchlistService(WatchlistRepository watchlistRepository, CompanyRepository companyRepository) {
         this.watchlistRepository = watchlistRepository;
@@ -38,9 +44,11 @@ public class WatchlistService {
             throw new IllegalArgumentException("Company code is required");
         }
 
+        String symbol = request.getCompanyCode().toUpperCase().trim();
+
         Watchlist entity = new Watchlist();
         entity.setUserId(DEFAULT_USER_ID);
-        entity.setCompanyCode(request.getCompanyCode().toUpperCase().trim());
+        entity.setCompanyCode(symbol);
         entity.setWeek52Low(request.getWeek52Low());
         entity.setWeek52High(request.getWeek52High());
         entity.setAllTimeLow(request.getAllTimeLow());
@@ -51,6 +59,15 @@ public class WatchlistService {
         entity.setEps(request.getEps());
 
         Watchlist saved = watchlistRepository.save(entity);
+
+        // Notify global-watchlist-service to add this company to the global watchlist
+        try {
+            restTemplate.postForEntity(
+                globalWatchlistServiceUrl + "/global-watchlist/add/" + symbol, null, String.class);
+        } catch (Exception e) {
+            logger.warn("Could not notify global-watchlist-service for {}: {}", symbol, e.getMessage());
+        }
+
         logger.info("Added company '{}' to watchlist", saved.getCompanyCode());
         return toView(saved);
     }
