@@ -1,0 +1,10 @@
+com/watchlist/global/controller/GlobalWatchlistController.class
+com/watchlist/global/repository/GlobalWatchlistRepository.class
+com/watchlist/global/repository/CompanyRepository.class
+com/watchlist/global/entity/CompanyMaster.class
+com/watchlist/global/GlobalWatchlistApplication.class
+com/watchlist/global/seeder/GlobalWatchlistSeeder.class
+com/watchlist/global/entity/GlobalWatchlist.class
+com/watchlist/global/service/GlobalWatchlistService.class
+com/watchlist/global/repository/WatchlistRepository.class
+com/watchlist/global/entity/Watchlist.class
