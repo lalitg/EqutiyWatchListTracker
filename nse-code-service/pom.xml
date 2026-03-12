@@ -54,10 +54,19 @@
     </dependencies>
 
     <build>
+        <sourceDirectory>main/java</sourceDirectory>
+        <resources>
+            <resource>
+                <directory>main/resources</directory>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.companycode.nse.NseEnterpriseSchedulerApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>
