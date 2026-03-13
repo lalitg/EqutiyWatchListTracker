@@ -1,0 +1,132 @@
+package com.companynews.newsscheduler.scheduler;
+
+import com.companynews.newsscheduler.dto.NseAnnouncement;
+import com.companynews.newsscheduler.dto.NewsItem;
+import com.companynews.newsscheduler.service.NseFetchService;
+import com.companynews.newsscheduler.service.SeqIdWindowService;
+import com.companynews.newsscheduler.service.WorkerService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Component
+public class NseScheduler {
+
+    private static final Logger log = LoggerFactory.getLogger(NseScheduler.class);
+
+    private final NseFetchService nseFetchService;
+    private final WorkerService workerService;
+    private final SeqIdWindowService seqIdWindowService;
+
+    // This flag makes sure the startup fetch runs ONLY ONCE.
+    // WHY: @EventListener(ContextRefreshedEvent.class) can fire more than once
+    // in some Spring configurations (e.g. if the context is refreshed again).
+    // Without this flag, you could get duplicate fetches on startup.
+    private boolean startupFetchDone = false;
+
+    public NseScheduler(NseFetchService nseFetchService,
+                        WorkerService workerService,
+                        SeqIdWindowService seqIdWindowService) {
+        this.nseFetchService = nseFetchService;
+        this.workerService = workerService;
+        this.seqIdWindowService = seqIdWindowService;
+    }
+
+    /**
+     * Runs ONCE when the Spring application context is fully started.
+     *
+     * WHY @EventListener(ContextRefreshedEvent.class):
+     * This event fires after Spring has finished setting up everything —
+     * database connection, Flyway migrations, all beans ready.
+     * It is the safest place to run startup logic that needs the DB.
+     *
+     * WHY NOT @PostConstruct:
+     * @PostConstruct runs during bean creation, before the full application
+     * context is ready. Database transactions may not work reliably there.
+     * ContextRefreshedEvent fires after EVERYTHING is ready.
+     *
+     * What it does:
+     * Calls the same fetchAndSaveNseNews() method that the scheduler calls
+     * every 15 minutes — so all 20 NSE announcements are saved immediately
+     * on first startup without waiting.
+     */
+    @EventListener(ContextRefreshedEvent.class)
+    public void onStartup() {
+        if (startupFetchDone) {
+            return;  // Prevent duplicate execution if context refreshes
+        }
+        startupFetchDone = true;
+
+        log.info("=== Application started — triggering initial NSE fetch ===");
+        fetchAndSaveNseNews();
+    }
+
+    /**
+     * Runs every 15 minutes automatically via cron.
+     * Fetches latest NSE announcements and saves new ones.
+     */
+    @Scheduled(cron = "${news.nse.cron}")
+    public void fetchAndSaveNseNews() {
+        log.info("NSE fetch triggered — window size: {}",
+                seqIdWindowService.getWindowSize());
+
+        // Step 1: Fetch all announcements from NSE
+        List<NseAnnouncement> allAnnouncements = nseFetchService.fetchAllAnnouncements();
+
+        if (allAnnouncements.isEmpty()) {
+            log.warn("NSE returned 0 announcements — skipping");
+            return;
+        }
+
+        // Step 2: Filter duplicates using in-memory sliding window
+        // Pure memory check — zero DB queries here
+        List<NseAnnouncement> newAnnouncements = new ArrayList<>();
+
+        for (NseAnnouncement announcement : allAnnouncements) {
+            if (seqIdWindowService.isAlreadySeen(announcement.getSeqId())) {
+                log.debug("Duplicate seqId {} — skipping", announcement.getSeqId());
+            } else {
+                seqIdWindowService.markAsSeen(announcement.getSeqId());
+                newAnnouncements.add(announcement);
+            }
+        }
+
+        log.info("{} new out of {} total — window size now: {}",
+                newAnnouncements.size(),
+                allAnnouncements.size(),
+                seqIdWindowService.getWindowSize());
+
+        if (newAnnouncements.isEmpty()) {
+            log.info("No new announcements — nothing to save");
+            return;
+        }
+
+        // Step 3: Group by company symbol
+        // Collectors.groupingBy groups the list into a Map:
+        // { "INFY" -> [item1], "RELIANCE" -> [item2, item3], ... }
+        Map<String, List<NewsItem>> bySymbol = newAnnouncements.stream()
+            .filter(a -> a.getNewsItem().getSymbol() != null)
+            .collect(Collectors.groupingBy(
+                a -> a.getNewsItem().getSymbol(),
+                Collectors.mapping(
+                    NseAnnouncement::getNewsItem,
+                    Collectors.toList()
+                )
+            ));
+
+        // Step 4: Save each company's new items to DB
+        for (Map.Entry<String, List<NewsItem>> entry : bySymbol.entrySet()) {
+            workerService.processAndSave(entry.getKey(), entry.getValue());
+        }
+
+        log.info("NSE fetch complete — {} companies saved/updated", bySymbol.size());
+    }
+}
