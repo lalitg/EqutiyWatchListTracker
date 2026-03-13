@@ -14,9 +14,7 @@ public class WatchlistView {
     private BigDecimal allTimeLow;
     private BigDecimal allTimeHigh;
     private BigDecimal currentValue;
-    private String trendSentiment;
-    private BigDecimal peRatio;
-    private BigDecimal eps;
+    private BigDecimal tradedVolume;
 
     public String getCompanyCode() { return companyCode; }
     public void setCompanyCode(String companyCode) { this.companyCode = companyCode; }
@@ -39,12 +37,6 @@ public class WatchlistView {
     public BigDecimal getCurrentValue() { return currentValue; }
     public void setCurrentValue(BigDecimal currentValue) { this.currentValue = currentValue; }
 
-    public String getTrendSentiment() { return trendSentiment; }
-    public void setTrendSentiment(String trendSentiment) { this.trendSentiment = trendSentiment; }
-
-    public BigDecimal getPeRatio() { return peRatio; }
-    public void setPeRatio(BigDecimal peRatio) { this.peRatio = peRatio; }
-
-    public BigDecimal getEps() { return eps; }
-    public void setEps(BigDecimal eps) { this.eps = eps; }
+    public BigDecimal getTradedVolume() { return tradedVolume; }
+    public void setTradedVolume(BigDecimal tradedVolume) { this.tradedVolume = tradedVolume; }
 }
