@@ -54,8 +54,7 @@ public class MarketDataScheduler{
             snapshot.setAllTimeLow(data.allTimeLow);
             snapshot.setAllTimeHigh(data.allTimeHigh);
 
-            snapshot.setPeRatio(data.peRatio);
-            snapshot.setEps(data.eps);
+            snapshot.setTradedVolume(data.tradedVolume);
 
             snapshotRepository.save(snapshot);
         }

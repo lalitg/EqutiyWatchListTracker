@@ -53,15 +53,12 @@ public class NSEMarketDataClient {
 
             JsonNode tradeBody=tradeResponse.getBody();
 
-            if(tradeBody!=null && tradeBody.has("securityWiseDP")){
+            if(tradeBody!=null && tradeBody.has("marketDeptOrderBook")){
 
-                JsonNode dp=tradeBody.get("securityWiseDP");
+                JsonNode tradeInfo=tradeBody.get("marketDeptOrderBook").get("tradeInfo");
 
-                if(dp.has("pe"))
-                    data.peRatio=dp.get("pe").decimalValue();
-
-                if(dp.has("eps"))
-                    data.eps=dp.get("eps").decimalValue();
+                if(tradeInfo!=null && tradeInfo.has("totalTradedVolume"))
+                    data.tradedVolume=tradeInfo.get("totalTradedVolume").decimalValue();
             }
 
         }catch(Exception e){
@@ -81,7 +78,6 @@ public class NSEMarketDataClient {
         public BigDecimal allTimeLow;
         public BigDecimal allTimeHigh;
 
-        public BigDecimal peRatio;
-        public BigDecimal eps;
+        public BigDecimal tradedVolume;
     }
 }

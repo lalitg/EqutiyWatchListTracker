@@ -23,8 +23,7 @@ public class MarketDailySnapshot {
     private BigDecimal allTimeLow;
     private BigDecimal allTimeHigh;
 
-    private BigDecimal peRatio;
-    private BigDecimal eps;
+    private BigDecimal tradedVolume;
 
     public void setCompanyId(Long v){companyId=v;}
     public void setSnapshotDate(LocalDate v){snapshotDate=v;}
@@ -33,6 +32,5 @@ public class MarketDailySnapshot {
     public void setWeek52High(BigDecimal v){week52High=v;}
     public void setAllTimeLow(BigDecimal v){allTimeLow=v;}
     public void setAllTimeHigh(BigDecimal v){allTimeHigh=v;}
-    public void setPeRatio(BigDecimal v){peRatio=v;}
-    public void setEps(BigDecimal v){eps=v;}
+    public void setTradedVolume(BigDecimal v){tradedVolume=v;}
 }
