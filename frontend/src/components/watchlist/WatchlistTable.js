@@ -9,9 +9,7 @@ const TABLE_COLUMNS = [
   { key: 'allTimeLow', label: 'All Time Low', sortable: true },
   { key: 'allTimeHigh', label: 'All Time High', sortable: true },
   { key: 'currentValue', label: 'Current Value', sortable: true },
-  { key: 'trendSentiment', label: 'Trend/Sentiment', sortable: true },
-  { key: 'peRatio', label: 'P/E Ratio', sortable: true },
-  { key: 'eps', label: 'EPS', sortable: true },
+  { key: 'tradedVolume', label: 'Traded Volume', sortable: true },
 ];
 
 const ROWS_PER_PAGE = 10;
