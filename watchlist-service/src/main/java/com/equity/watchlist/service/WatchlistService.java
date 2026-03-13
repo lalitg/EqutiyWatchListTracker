@@ -46,9 +46,7 @@ public class WatchlistService {
         entity.setAllTimeLow(request.getAllTimeLow());
         entity.setAllTimeHigh(request.getAllTimeHigh());
         entity.setCurrentValue(request.getCurrentValue());
-        entity.setTrendSentiment(request.getTrendSentiment());
-        entity.setPeRatio(request.getPeRatio());
-        entity.setEps(request.getEps());
+        entity.setTradedVolume(request.getTradedVolume());
 
         Watchlist saved = watchlistRepository.save(entity);
         logger.info("Added company '{}' to watchlist", saved.getCompanyCode());
@@ -81,9 +79,7 @@ public class WatchlistService {
         entity.setAllTimeLow(request.getAllTimeLow());
         entity.setAllTimeHigh(request.getAllTimeHigh());
         entity.setCurrentValue(request.getCurrentValue());
-        entity.setTrendSentiment(request.getTrendSentiment());
-        entity.setPeRatio(request.getPeRatio());
-        entity.setEps(request.getEps());
+        entity.setTradedVolume(request.getTradedVolume());
 
         Watchlist updated = watchlistRepository.save(entity);
         logger.info("Updated company '{}' in watchlist", updated.getCompanyCode());
@@ -123,9 +119,7 @@ public class WatchlistService {
         view.setAllTimeLow(entity.getAllTimeLow());
         view.setAllTimeHigh(entity.getAllTimeHigh());
         view.setCurrentValue(entity.getCurrentValue());
-        view.setTrendSentiment(entity.getTrendSentiment());
-        view.setPeRatio(entity.getPeRatio());
-        view.setEps(entity.getEps());
+        view.setTradedVolume(entity.getTradedVolume());
         return view;
     }
 }

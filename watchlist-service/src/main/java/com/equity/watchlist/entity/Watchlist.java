@@ -45,14 +45,8 @@ public class Watchlist {
     @Column(name = "current_value", precision = 15, scale = 2)
     private BigDecimal currentValue;
 
-    @Column(name = "trend_sentiment", length = 50)
-    private String trendSentiment;
-
-    @Column(name = "pe_ratio", precision = 10, scale = 2)
-    private BigDecimal peRatio;
-
-    @Column(name = "eps", precision = 10, scale = 2)
-    private BigDecimal eps;
+    @Column(name = "traded_volume", precision = 20, scale = 2)
+    private BigDecimal tradedVolume;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -87,14 +81,8 @@ public class Watchlist {
     public BigDecimal getCurrentValue() { return currentValue; }
     public void setCurrentValue(BigDecimal currentValue) { this.currentValue = currentValue; }
 
-    public String getTrendSentiment() { return trendSentiment; }
-    public void setTrendSentiment(String trendSentiment) { this.trendSentiment = trendSentiment; }
-
-    public BigDecimal getPeRatio() { return peRatio; }
-    public void setPeRatio(BigDecimal peRatio) { this.peRatio = peRatio; }
-
-    public BigDecimal getEps() { return eps; }
-    public void setEps(BigDecimal eps) { this.eps = eps; }
+    public BigDecimal getTradedVolume() { return tradedVolume; }
+    public void setTradedVolume(BigDecimal tradedVolume) { this.tradedVolume = tradedVolume; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
