@@ -4,8 +4,10 @@ import com.companynews.newsscheduler.dto.NseAnnouncement;
 import com.companynews.newsscheduler.dto.NewsItem;
 import com.companynews.newsscheduler.model.CompanyNews;
 import com.companynews.newsscheduler.repository.CompanyNewsRepository;
+import com.companynews.newsscheduler.service.GoogleRssService;
 import com.companynews.newsscheduler.service.NseFetchService;
 import com.companynews.newsscheduler.service.SeqIdWindowService;
+import com.companynews.newsscheduler.service.UrlWindowService;
 import com.companynews.newsscheduler.service.WorkerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,58 +27,96 @@ public class NewsController {
 
     private final CompanyNewsRepository repository;
     private final NseFetchService nseFetchService;
+    private final GoogleRssService googleRssService;
     private final WorkerService workerService;
     private final SeqIdWindowService seqIdWindowService;
+    private final UrlWindowService urlWindowService;
 
     public NewsController(CompanyNewsRepository repository,
                           NseFetchService nseFetchService,
+                          GoogleRssService googleRssService,
                           WorkerService workerService,
-                          SeqIdWindowService seqIdWindowService) {
+                          SeqIdWindowService seqIdWindowService,
+                          UrlWindowService urlWindowService) {
         this.repository = repository;
         this.nseFetchService = nseFetchService;
+        this.googleRssService = googleRssService;
         this.workerService = workerService;
         this.seqIdWindowService = seqIdWindowService;
+        this.urlWindowService = urlWindowService;
     }
 
+    /**
+     * GET /api/news?key=INFY
+     * GET /api/news?key=Banking
+     * GET /api/news?key=Nifty 50
+     *
+     * Works for ANY keyword — company symbol, sector, or custom keyword.
+     *
+     * Logic:
+     * 1. Check DB — if found, return immediately
+     * 2. If not found — try NSE first (good for company symbols)
+     * 3. If NSE has nothing — try Google RSS (works for anything)
+     * 4. Save whatever we find and return it
+     * 5. If truly nothing found — return empty response
+     */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getNews(@RequestParam String key) {
         log.info("GET /api/news?key={}", key);
 
-        // Check DB first
+        // Step 1: Check DB first — fastest path
         Optional<CompanyNews> existing = repository.findByKeyword(key);
         if (existing.isPresent()) {
-            log.info("Found existing news for: {}", key);
+            log.info("Cache hit — returning DB data for: {}", key);
             return ResponseEntity.ok(buildResponse(existing.get()));
         }
 
-        // Not in DB — fetch on demand from NSE
-        log.info("Not found in DB — triggering on-demand fetch for: {}", key);
-        List<NseAnnouncement> fetched = nseFetchService.fetchAllAnnouncements();
+        // Step 2: Not in DB — try NSE on-demand
+        log.info("Not in DB — trying NSE on-demand for: {}", key);
+        List<NseAnnouncement> nseAnnouncements = nseFetchService.fetchAllAnnouncements();
 
-        // Filter to matching symbol, deduplicate via window, extract NewsItems
-        List<NewsItem> matching = fetched.stream()
+        List<NewsItem> nseMatching = nseAnnouncements.stream()
             .filter(a -> key.equalsIgnoreCase(a.getNewsItem().getSymbol()))
             .filter(a -> {
-                if (seqIdWindowService.isAlreadySeen(a.getSeqId())) {
-                    return false;  // duplicate
-                }
+                if (seqIdWindowService.isAlreadySeen(a.getSeqId())) return false;
                 seqIdWindowService.markAsSeen(a.getSeqId());
-                return true;  // new
+                return true;
             })
             .map(NseAnnouncement::getNewsItem)
             .toList();
 
-        if (!matching.isEmpty()) {
-            workerService.processAndSave(key, matching);
+        if (!nseMatching.isEmpty()) {
+            workerService.processAndSave(key, nseMatching);
         }
 
-        // Read back what was just saved
+        // Step 3: Also fetch from Google RSS for this keyword
+        // WHY always fetch Google RSS too:
+        // NSE only has corporate announcements.
+        // Google RSS has broader news — articles, analysis, sector news.
+        // Both together give the user richer news.
+        log.info("Fetching Google RSS on-demand for: {}", key);
+        List<NewsItem> googleItems = googleRssService.fetchNews(key);
+
+        List<NewsItem> googleNew = googleItems.stream()
+            .filter(item -> {
+                if (urlWindowService.isAlreadySeen(item.getLink())) return false;
+                urlWindowService.markAsSeen(item.getLink());
+                return true;
+            })
+            .toList();
+
+        if (!googleNew.isEmpty()) {
+            workerService.processAndSave(key, googleNew);
+        }
+
+        // Step 4: Read back whatever was saved
         Optional<CompanyNews> saved = repository.findByKeyword(key);
         if (saved.isPresent()) {
             return ResponseEntity.ok(buildResponse(saved.get()));
         }
 
-        log.warn("No news found for: {} even after on-demand fetch", key);
+        // Step 5: Nothing found anywhere — return empty
+        log.warn("No news found for: {} from any source", key);
         return ResponseEntity.ok(buildEmptyResponse(key));
     }
 
