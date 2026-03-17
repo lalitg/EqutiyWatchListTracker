@@ -97,12 +97,9 @@ public class NewsController {
         log.info("Fetching Google RSS on-demand for: {}", key);
         List<NewsItem> googleItems = googleRssService.fetchNews(key);
 
+        // NEW — use checkAndMark instead of separate check and mark
         List<NewsItem> googleNew = googleItems.stream()
-            .filter(item -> {
-                if (urlWindowService.isAlreadySeen(item.getLink())) return false;
-                urlWindowService.markAsSeen(item.getLink());
-                return true;
-            })
+            .filter(item -> urlWindowService.checkAndMark(item.getLink()))
             .toList();
 
         if (!googleNew.isEmpty()) {

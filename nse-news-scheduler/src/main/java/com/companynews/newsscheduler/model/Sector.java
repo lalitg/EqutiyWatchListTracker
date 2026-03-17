@@ -3,15 +3,14 @@ package com.companynews.newsscheduler.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "sectors")
+// Changed table name from "sectors" to "sector_companies"
+@Table(name = "sector_companies")
 public class Sector {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // The sector name column — e.g. "Information Technology", "Banking"
-    // Change "sector_name" to match your actual column name
     @Column(name = "sector_name")
     private String sectorName;
 

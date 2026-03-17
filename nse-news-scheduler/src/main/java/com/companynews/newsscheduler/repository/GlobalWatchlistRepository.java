@@ -10,8 +10,8 @@ import java.util.List;
 @Repository
 public interface GlobalWatchlistRepository extends JpaRepository<GlobalWatchlist, Long> {
 
-    // Fetch only the symbol strings — we don't need the full entity objects
-    // This runs: SELECT symbol FROM global_watchlist
-    @Query("SELECT g.symbol FROM GlobalWatchlist g")
+    // Changed g.symbol to g.companyCode to match the renamed Java field
+    // JPQL uses Java field names, not DB column names
+    @Query("SELECT g.companyCode FROM GlobalWatchlist g")
     List<String> findAllSymbols();
 }

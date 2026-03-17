@@ -11,6 +11,8 @@ import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,31 +43,20 @@ public class NseScheduler {
     }
 
     /**
-     * Runs ONCE when the Spring application context is fully started.
+     * ApplicationReadyEvent fires AFTER ContextRefreshedEvent.
+     * It means the application is fully ready to serve requests.
+     * NSE runs first on this event.
      *
-     * WHY @EventListener(ContextRefreshedEvent.class):
-     * This event fires after Spring has finished setting up everything —
-     * database connection, Flyway migrations, all beans ready.
-     * It is the safest place to run startup logic that needs the DB.
-     *
-     * WHY NOT @PostConstruct:
-     * @PostConstruct runs during bean creation, before the full application
-     * context is ready. Database transactions may not work reliably there.
-     * ContextRefreshedEvent fires after EVERYTHING is ready.
-     *
-     * What it does:
-     * Calls the same fetchAndSaveNseNews() method that the scheduler calls
-     * every 15 minutes — so all 20 NSE announcements are saved immediately
-     * on first startup without waiting.
+     * WHY ApplicationReadyEvent instead of ContextRefreshedEvent:
+     * ContextRefreshedEvent can fire multiple times.
+     * ApplicationReadyEvent fires exactly ONCE when the app is
+     * fully started and ready. More reliable for startup tasks.
      */
-    @EventListener(ContextRefreshedEvent.class)
+    @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
-        if (startupFetchDone) {
-            return;  // Prevent duplicate execution if context refreshes
-        }
+        if (startupFetchDone) return;
         startupFetchDone = true;
-
-        log.info("=== Application started — triggering initial NSE fetch ===");
+        log.info("=== NSE startup fetch triggered ===");
         fetchAndSaveNseNews();
     }
 
@@ -73,7 +64,13 @@ public class NseScheduler {
      * Runs every 15 minutes automatically via cron.
      * Fetches latest NSE announcements and saves new ones.
      */
-    @Scheduled(cron = "${news.nse.cron}")
+    /**
+     * scheduler = "nseTaskScheduler" tells Spring to use our dedicated
+     * named thread pool for this scheduled method instead of the default
+     * shared thread pool.
+     * Now NSE always runs on "nse-scheduler-thread-1".
+     */
+    @Scheduled(cron = "${news.nse.cron}", scheduler = "nseTaskScheduler")
     public void fetchAndSaveNseNews() {
         log.info("NSE fetch triggered — window size: {}",
                 seqIdWindowService.getWindowSize());

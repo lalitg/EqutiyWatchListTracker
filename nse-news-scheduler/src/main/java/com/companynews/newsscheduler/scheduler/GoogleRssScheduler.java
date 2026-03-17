@@ -12,6 +12,7 @@ import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -53,19 +54,33 @@ public class GoogleRssScheduler {
     }
 
     /**
-     * Runs ONCE when the Spring application context is fully started.
-     * Fetches Google RSS news for ALL keywords immediately on startup.
+     * Google RSS startup fetch runs after NSE startup fetch.
+     * WHY Thread.sleep(5000):
+     * NSE and Google RSS both save data for the same keywords.
+     * By delaying Google RSS startup by 5 seconds, NSE gets to
+     * complete its startup fetch first.
+     * When Google RSS runs, the per-keyword locks in WorkerService
+     * handle any remaining concurrency safely.
      *
-     * WHY: Same reason as NSE — we don't want to wait until 8 AM
-     * to see any Google RSS news on first run.
+     * 5 seconds is enough — NSE fetches 20 items, saves them fast.
      */
-    @EventListener(ContextRefreshedEvent.class)
+    @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         if (startupFetchDone) return;
         startupFetchDone = true;
 
-        log.info("=== Application started — triggering initial Google RSS fetch ===");
-        fetchAndSaveGoogleRssNews();
+        // Run in a separate thread so the 5-second delay does not
+        // block the main application thread
+        new Thread(() -> {
+            try {
+                log.info("=== Google RSS startup fetch — waiting 5s for NSE to complete ===");
+                Thread.sleep(5000);
+                fetchAndSaveGoogleRssNews();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Google RSS startup fetch interrupted");
+            }
+        }, "google-rss-startup-thread").start();
     }
 
     /**
@@ -149,14 +164,9 @@ public class GoogleRssScheduler {
             }
 
             // Deduplicate using URL window — keep only new articles
+            // NEW — atomic check and mark in one step
             List<NewsItem> newItems = fetched.stream()
-                .filter(item -> {
-                    if (urlWindowService.isAlreadySeen(item.getLink())) {
-                        return false;  // duplicate URL — skip
-                    }
-                    urlWindowService.markAsSeen(item.getLink());
-                    return true;  // new article — keep
-                })
+                .filter(item -> urlWindowService.checkAndMark(item.getLink()))
                 .toList();
 
             if (newItems.isEmpty()) {
