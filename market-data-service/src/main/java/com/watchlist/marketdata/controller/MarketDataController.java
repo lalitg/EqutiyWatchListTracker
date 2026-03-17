@@ -31,6 +31,7 @@ public class MarketDataController {
         response.put("currentPrice", data.currentPrice);
         response.put("week52Low", data.week52Low);
         response.put("week52High", data.week52High);
+        response.put("allTimeLow", data.allTimeLow);
         response.put("allTimeHigh", data.allTimeHigh);
         response.put("tradedVolume", data.tradedVolume);
 
