@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ============================================================ -->
+    <!-- CONSOLE APPENDER — keeps logging to terminal as before       -->
+    <!-- ============================================================ -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread] %logger{36} : %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ============================================================ -->
+    <!-- FILE APPENDER — writes logs to a rolling file on disk        -->
+    <!-- RollingFileAppender: creates a new file every day            -->
+    <!-- and deletes files older than 30 days automatically           -->
+    <!-- ============================================================ -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <!-- Current active log file — always this name -->
+        <file>logs/nse-events-scheduler.log</file>
+
+        <!-- Rolling policy: rotate daily, keep 30 days, max 10MB per file -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+
+            <!-- Archived files get this name pattern e.g. nse-events-scheduler.2026-03-18.log -->
+            <fileNamePattern>logs/nse-events-scheduler.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+
+            <!-- Keep last 30 days of logs -->
+            <maxHistory>30</maxHistory>
+
+            <!-- If a single file exceeds 10MB, start a new file with next index -->
+            <timeBasedFileNamingAndTriggeringPolicy
+                class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>10MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread] %logger{36} : %msg%n</pattern>
+        </encoder>
+
+    </appender>
+
+    <!-- ============================================================ -->
+    <!-- ROOT LOGGER — sends all logs to both CONSOLE and FILE        -->
+    <!-- INFO level: shows INFO, WARN, ERROR but not DEBUG            -->
+    <!-- ============================================================ -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </root>
+
+    <!-- ============================================================ -->
+    <!-- Reduce noise from Spring/Hibernate internal logs             -->
+    <!-- These frameworks log a lot at INFO — set them to WARN        -->
+    <!-- so your own service logs are easier to spot                  -->
+    <!-- ============================================================ -->
+    <logger name="org.springframework" level="WARN" />
+    <logger name="org.hibernate" level="WARN" />
+    <logger name="com.zaxxer.hikari" level="WARN" />
+    <logger name="org.flywaydb" level="WARN" />
+
+    <!-- ============================================================ -->
+    <!-- Your own package — keep at INFO so all your logs show up     -->
+    <!-- ============================================================ -->
+    <logger name="com.nseevents" level="INFO" />
+
+</configuration>
