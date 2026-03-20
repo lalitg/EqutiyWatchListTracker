@@ -57,7 +57,18 @@ public class GoogleRssService {
         try {
             // Build the URL — URLEncoder handles spaces and special characters
             // e.g. "Nifty 50" becomes "Nifty+50" in the URL
-            String encodedKeyword = URLEncoder.encode(keyword, StandardCharsets.UTF_8);
+            // Enrich the query with finance-related terms
+            // WHY: Generic keywords like "US" or "Europe" return general news
+            // (sports, politics, entertainment). Adding finance terms forces
+            // Google to return only financially relevant articles.
+            // WHY these specific terms:
+            // "finance" — filters for financial news
+            // "market"  — stock/commodity market news
+            // "economy" — macroeconomic news that affects markets
+            // We do NOT add these for company symbols (INFY, RELIANCE etc)
+            // because company symbols are already specific enough.
+            String enrichedKeyword = enrichQuery(keyword);
+            String encodedKeyword = URLEncoder.encode(enrichedKeyword, StandardCharsets.UTF_8);
             String url = GOOGLE_RSS_BASE + encodedKeyword;
 
             // Make the HTTP request
@@ -124,5 +135,62 @@ public class GoogleRssService {
         NodeList list = element.getElementsByTagName(tagName);
         if (list.getLength() == 0) return null;
         return list.item(0).getTextContent();
+    }
+
+    /**
+     * Enriches a search keyword with finance-related terms for better results.
+     *
+     * Strategy:
+     * - Company symbols (INFY, RELIANCE, TCS) — already specific, just add "NSE"
+     *   to get stock-related news instead of general company news
+     * - Sector names (Banking, Pharma) — add "sector India stock market"
+     * - Region/macro keywords (US, Europe, crude oil) — add "finance economy market"
+     * - Custom keywords from keywords.txt — add "India finance"
+     *
+     * WHY different enrichment per keyword type:
+     * "INFY finance" returns Infosys financial news
+     * "Banking sector India stock market" returns Indian banking sector news
+     * "US finance economy market" returns US economic news affecting markets
+     */
+    private String enrichQuery(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return keyword;
+        }
+
+        String upper = keyword.trim().toUpperCase();
+
+        // Company symbols — typically 2-10 uppercase characters, no spaces
+        // Examples: INFY, RELIANCE, TCS, HDFCBANK, BAJFINANCE
+        // Add "NSE stock" to get stock-specific news
+        if (upper.matches("[A-Z0-9]{2,10}") && !upper.contains(" ")) {
+            return keyword + " NSE stock";
+        }
+
+        // Sector names — contain spaces or are longer descriptive words
+        // Examples: "Information Technology", "Banking", "Pharmaceuticals"
+        // Add "sector India stock market" for sector-specific market news
+        if (isSector(upper)) {
+            return keyword + " sector India stock market";
+        }
+
+        // Everything else — regions, macro keywords, custom keywords
+        // Examples: "US", "Europe", "crude oil", "Nifty 50", "RBI"
+        // Add "finance economy market India" for financial context
+        return keyword + " finance economy market India";
+    }
+
+    /**
+     * Checks if a keyword looks like a sector name.
+     * Sector names are typically multi-word or known financial sector terms.
+     */
+    private boolean isSector(String keyword) {
+        // List of known sector keywords — matches what's in your sectors table
+        java.util.Set<String> knownSectors = java.util.Set.of(
+            "INFORMATION TECHNOLOGY", "BANKING", "PHARMACEUTICALS",
+            "AUTOMOBILE", "FMCG", "ENERGY", "INFRASTRUCTURE",
+            "CHEMICALS", "METALS", "REAL ESTATE", "TELECOM",
+            "HEALTHCARE", "FINANCE", "INSURANCE", "MEDIA"
+        );
+        return knownSectors.contains(keyword) || keyword.contains(" ");
     }
 }

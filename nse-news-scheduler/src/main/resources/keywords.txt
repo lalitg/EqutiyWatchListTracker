@@ -1,7 +1,58 @@
-Nifty 50
-Sensex
 RBI monetary policy
-Budget 2026
+Budget
 FII investment
 crude oil India
 inflation India
+Fed rate hike or cut
+FOMC meeting
+US inflation (CPI, PPI)
+US job data (Nonfarm payrolls)
+GDP growth / recession
+Interest rates
+Bond yields (US 10Y yield)
+Dollar index (DXY)
+Quantitative tightening (QT)
+Quantitative easing (QE)
+RBI policy / repo rate
+Inflation (CPI/WPI India)
+Union Budget
+Fiscal deficit
+GST changes
+IIP data
+Trade deficit
+Rupee vs Dollar
+Economic survey
+War
+Trade war
+Military strike
+Border tension
+Sanctions
+Terrorist attack
+Political crisis
+
+# Indian Market Indices
+Nifty 50
+Sensex
+Bank Nifty
+
+# Macroeconomic
+RBI monetary policy
+inflation India
+FII investment
+Budget 2026
+
+# Commodities
+crude oil
+gold price
+silver price
+
+# Global Regions
+US economy
+Europe economy
+Asia markets
+China economy
+
+# Geopolitical
+war commodity prices
+OPEC oil
+US Federal Reserve

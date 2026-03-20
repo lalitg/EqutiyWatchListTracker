@@ -14,7 +14,7 @@ public class UrlWindowService {
 
     private static final Logger log = LoggerFactory.getLogger(UrlWindowService.class);
 
-    private static final int WINDOW_SIZE = 100;
+    private static final int WINDOW_SIZE = 500;
 
     // These are the same data structures as before
     // BUT all methods that access them are now synchronized

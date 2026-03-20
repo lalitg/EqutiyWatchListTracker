@@ -85,7 +85,9 @@ public class NseFetchService {
                 }
 
                 // Build NewsItem WITHOUT seqId — seqId lives separately
-                NewsItem item = new NewsItem(anDt, text, file);
+                String labelledText = (text != null) ? text + " - NSE" : null;
+
+                NewsItem item = new NewsItem(anDt, labelledText, file);
                 item.setSymbol(symbol);
 
                 // Wrap them together in NseAnnouncement

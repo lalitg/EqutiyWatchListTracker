@@ -84,16 +84,28 @@ public class NseScheduler {
         }
 
         // Step 2: Filter duplicates using in-memory sliding window
-        // Pure memory check — zero DB queries here
+        // Also deduplicate within the batch itself by seqId
+        java.util.Set<Long> seenInThisBatch = new java.util.HashSet<>();
         List<NseAnnouncement> newAnnouncements = new ArrayList<>();
 
         for (NseAnnouncement announcement : allAnnouncements) {
-            if (seqIdWindowService.isAlreadySeen(announcement.getSeqId())) {
-                log.debug("Duplicate seqId {} — skipping", announcement.getSeqId());
-            } else {
-                seqIdWindowService.markAsSeen(announcement.getSeqId());
-                newAnnouncements.add(announcement);
+            Long seqId = announcement.getSeqId();
+
+            // Skip if already seen in this batch (NSE sometimes returns duplicates)
+            if (seenInThisBatch.contains(seqId)) {
+                log.debug("Duplicate seqId {} in same NSE batch — skipping", seqId);
+                continue;
             }
+
+            // Skip if already seen in previous fetch cycles (window check)
+            if (seqIdWindowService.isAlreadySeen(seqId)) {
+                log.debug("Duplicate seqId {} from previous cycle — skipping", seqId);
+                continue;
+            }
+
+            seenInThisBatch.add(seqId);
+            seqIdWindowService.markAsSeen(seqId);
+            newAnnouncements.add(announcement);
         }
 
         log.info("{} new out of {} total — window size now: {}",

@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+logs/
+
+logs/
+nse-news-scheduler/logs/
