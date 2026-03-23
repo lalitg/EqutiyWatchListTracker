@@ -5,9 +5,9 @@ import com.companynews.newsscheduler.service.RssFetcher;
 import com.companynews.newsscheduler.service.KeywordLoader;
 import com.companynews.newsscheduler.service.UrlWindow;
 import com.companynews.newsscheduler.service.NewsWorker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.ThreadContext;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -22,10 +22,27 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
+/**
+ * Scheduled component that fetches Google RSS news for all configured keywords.
+ *
+ * <p>Fetch pipeline:
+ * <ol>
+ *   <li>Load all keywords from {@link KeywordLoader} (company symbols, sectors, macro terms).</li>
+ *   <li>Submit one fetch task per keyword to the managed {@code googleRssExecutor} thread pool.</li>
+ *   <li>Each task: fetch from Google RSS → dedup by {@link UrlWindow} → save via {@link NewsWorker}.</li>
+ *   <li>Wait for all tasks to complete before returning (using {@link CompletableFuture#allOf}).</li>
+ * </ol>
+ *
+ * <p>A configurable delay ({@code news.google.fetch.delay.ms}, default 500ms) is inserted
+ * between keyword submissions to avoid triggering Google's rate limits.
+ *
+ * <p>An immediate startup fetch is scheduled 5 seconds after {@link ApplicationReadyEvent}
+ * to give the NSE scheduler time to complete its own startup fetch first.
+ */
 @Component
 public class GoogleRssScheduler {
 
-    private static final Logger log = LoggerFactory.getLogger(GoogleRssScheduler.class);
+    private static final Logger log = LogManager.getLogger(GoogleRssScheduler.class);
 
     private final RssFetcher rssFetcher;
     private final NewsWorker newsWorker;
@@ -33,110 +50,105 @@ public class GoogleRssScheduler {
     private final UrlWindow urlWindow;
 
     /**
-     * Injected singleton ExecutorService (defined in AppConfig as "googleRssExecutor").
+     * Injected singleton {@link ExecutorService} (defined in
+     * {@link com.companynews.newsscheduler.config.AppConfig} as {@code googleRssExecutor}).
      *
-     * WHY injected instead of created inline:
-     * The old code called Executors.newFixedThreadPool(n) inside runFetch(), then
-     * called executor.shutdown() at the end. This created and destroyed a thread pool
-     * on every scheduler run — expensive, and the shutdown() call would have permanently
-     * killed the pool if the code was ever restructured to reuse it.
-     *
-     * With a managed bean:
-     *  - Pool is created ONCE at startup and reused across all scheduler runs
-     *  - Thread names ("rss-worker-N") appear in logs and thread dumps
-     *  - Spring's destroyMethod = "shutdown" gracefully drains the pool on app stop
-     *  - @Qualifier avoids ambiguity if other ExecutorService beans are added later
+     * <p>WHY injected instead of created inline: The old code called
+     * {@code Executors.newFixedThreadPool(n)} inside {@link #runFetch()}, which created and
+     * destroyed a thread pool on every scheduler run — expensive, and the {@code shutdown()}
+     * call permanently killed the pool. With a managed bean, the pool is created once at
+     * startup and reused; Spring drains it gracefully on app stop.
      */
     private final ExecutorService executor;
 
     /**
-     * Spring-managed TaskScheduler for the one-off startup delay.
+     * Spring-managed {@link TaskScheduler} for the one-off startup delay.
      *
-     * WHY TaskScheduler instead of raw new Thread():
-     * The previous implementation used:
-     *   new Thread(() -> { Thread.sleep(5000); runFetch(); }, "rss-startup-thread").start()
-     *
-     * Problems with raw Thread:
-     *  - Unmanaged: Spring cannot monitor or gracefully stop it on shutdown
-     *  - If the app stops during the 5-second sleep, the thread is silently abandoned
-     *  - Requires manual Thread.currentThread().interrupt() boilerplate
-     *
-     * With the managed TaskScheduler:
-     *  - Spring owns the lifecycle — destroyMethod="shutdown" drains it on app stop
-     *  - The 5-second delay is expressed as Instant.now().plusSeconds(5) — no sleep needed
-     *  - Thread is named "startup-thread-1", visible in thread dumps and metrics
+     * <p>WHY {@code TaskScheduler} instead of raw {@code new Thread()}: A raw thread is
+     * unmanaged — Spring cannot monitor or stop it gracefully on shutdown. With a managed
+     * {@code TaskScheduler}, Spring owns the lifecycle and the delay is expressed as a
+     * future {@link Instant}, eliminating manual {@code Thread.sleep()} and interrupt handling.
      */
     private final TaskScheduler startupScheduler;
 
+    /** Delay in milliseconds between keyword fetch submissions to avoid Google rate limits. */
     @Value("${news.google.fetch.delay.ms:500}")
     private long fetchDelayMs;
 
     /**
-     * WHY volatile:
-     * ApplicationReadyEvent fires on the main Spring startup thread.
-     * @Scheduled tasks run on a different thread (nse-scheduler-thread or default scheduler).
-     * Without volatile, the JVM is free to cache startupDone=true in a CPU register,
-     * and another thread may never observe the updated value — meaning onStartup() could
-     * run more than once. volatile guarantees cross-thread visibility.
+     * Guards against the startup fetch running more than once.
+     *
+     * <p>WHY {@code volatile}: {@link ApplicationReadyEvent} fires on the main Spring startup
+     * thread. {@code @Scheduled} tasks run on a different thread. Without {@code volatile},
+     * the JVM is free to cache {@code startupDone=true} in a CPU register, making it invisible
+     * to other threads. {@code volatile} guarantees cross-thread visibility of the write.
      */
     private volatile boolean startupDone = false;
 
+    /**
+     * Constructs a {@code GoogleRssScheduler} with all required dependencies injected by Spring.
+     *
+     * @param rssFetcher       fetches news articles from Google RSS feeds
+     * @param newsWorker       handles deduplication and persistence of news items
+     * @param keywordLoader    loads the merged keyword list from DB and classpath
+     * @param urlWindow        in-memory sliding window for URL-based deduplication
+     * @param executor         named fixed thread pool for parallel keyword processing
+     * @param startupScheduler lightweight scheduler for the one-shot startup delay
+     */
     public GoogleRssScheduler(RssFetcher rssFetcher,
                                NewsWorker newsWorker,
                                KeywordLoader keywordLoader,
                                UrlWindow urlWindow,
                                @Qualifier("googleRssExecutor") ExecutorService executor,
                                @Qualifier("startupScheduler") TaskScheduler startupScheduler) {
-        this.rssFetcher      = rssFetcher;
-        this.newsWorker      = newsWorker;
-        this.keywordLoader   = keywordLoader;
-        this.urlWindow       = urlWindow;
-        this.executor        = executor;
+        this.rssFetcher       = rssFetcher;
+        this.newsWorker       = newsWorker;
+        this.keywordLoader    = keywordLoader;
+        this.urlWindow        = urlWindow;
+        this.executor         = executor;
         this.startupScheduler = startupScheduler;
     }
 
     /**
-     * Startup fetch — scheduled 5 seconds after NSE startup fetch to let NSE complete first.
+     * Schedules the startup fetch 5 seconds after the application is fully ready.
      *
-     * WHY the delay: NSE and Google RSS both write to the same company_news rows.
-     * Starting RSS 5 seconds after NSE means NSE data is already saved when RSS runs,
-     * so the URL and similarity dedup in NewsWorker correctly skips duplicates.
-     *
-     * WHY startupScheduler.schedule() instead of new Thread():
-     * See field comment above. The managed TaskScheduler expresses the one-shot delay
-     * as a future Instant — no manual Thread.sleep() or interrupt handling needed.
+     * <p>WHY the 5-second delay: NSE and Google RSS both write to the same
+     * {@code company_news} rows. Starting RSS 5 seconds after NSE gives NSE data time
+     * to be saved, so the URL and similarity dedup in {@link NewsWorker} correctly
+     * skips any cross-source duplicates on the first run.
      */
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         if (startupDone) return;
         startupDone = true;
-        log.info("=== Google RSS startup fetch — scheduling in 5s for NSE to complete ===");
+        log.info("=== Google RSS startup fetch — scheduling in 5s for NSE to complete first ===");
         startupScheduler.schedule(this::runFetch, Instant.now().plusSeconds(5));
     }
 
     /**
-     * Scheduled fetch — runs at configured times (default: midnight, 8 AM, 10 AM, 12 PM, 2 PM, 4 PM, 8 PM).
+     * Runs the full Google RSS fetch-dedup-save cycle on the configured cron schedule
+     * (default: midnight, 8 AM, 10 AM, 12 PM, 2 PM, 4 PM, 8 PM, configured via {@code news.google.cron}).
      *
-     * Submits one task per keyword to the managed executor pool with a configurable
-     * delay between submissions to avoid rate-limiting from Google RSS.
+     * <p>Submits one {@link CompletableFuture} per keyword to the managed executor pool
+     * with a configurable delay between submissions to avoid rate-limiting.
+     * Uses {@link CompletableFuture#allOf} to wait for all tasks without shutting down the pool.
      *
-     * WHY CompletableFuture.allOf().join() instead of executor.awaitTermination():
-     * executor.awaitTermination() requires shutting down the pool first.
-     * Since we're reusing the managed pool across runs, we must NOT shut it down.
-     * CompletableFuture.allOf() collects all submitted task futures and blocks until
-     * every one completes — equivalent behaviour without touching the pool lifecycle.
+     * <p>WHY {@code CompletableFuture.allOf().join()} instead of {@code executor.awaitTermination()}:
+     * {@code awaitTermination()} requires shutting down the pool first. Since the pool is reused
+     * across runs, it must NOT be shut down. {@code allOf()} blocks until all submitted futures
+     * complete — equivalent behaviour without touching the pool lifecycle.
      */
     @Scheduled(cron = "${news.google.cron}")
     public void runFetch() {
-        log.info("Google RSS fetch started — loading keywords...");
+        log.info("Google RSS fetch started — loading keywords");
 
         List<String> keywords = keywordLoader.load();
         if (keywords.isEmpty()) {
-            log.warn("No keywords found — skipping Google RSS fetch");
+            log.warn("No keywords found — skipping Google RSS fetch cycle");
             return;
         }
 
-        log.info("Submitting {} keywords to executor", keywords.size());
+        log.info("Submitting {} keywords to executor pool", keywords.size());
 
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (String keyword : keywords) {
@@ -147,7 +159,7 @@ public class GoogleRssScheduler {
                 Thread.sleep(fetchDelayMs);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                log.warn("Fetch delay interrupted — stopping remaining submissions");
+                log.warn("Fetch delay interrupted — stopping remaining keyword submissions");
                 break;
             }
         }
@@ -155,25 +167,35 @@ public class GoogleRssScheduler {
         // Wait for all submitted tasks to finish before returning
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
-        log.info("Google RSS fetch completed for all {} keywords", keywords.size());
+        log.info("Google RSS fetch cycle completed — {} keywords processed", keywords.size());
     }
 
     /**
-     * Processes a single keyword: fetch → dedup → save.
-     * Runs inside a worker thread from the executor pool.
+     * Processes a single keyword: fetch articles → URL dedup → save.
+     * Runs inside a worker thread from the managed executor pool.
      *
-     * MDC.put("keyword") ensures all log lines for this keyword carry the keyword field,
-     * making parallel log output traceable in log aggregators without grepping by thread name.
-     * MDC.remove() in finally guarantees cleanup even if an exception occurs mid-processing.
+     * <p>Log4j2's {@link ThreadContext} (equivalent to SLF4J MDC) is populated with the keyword
+     * so that all log lines emitted during processing of this keyword carry the {@code keyword}
+     * field. This makes parallel log output traceable in log aggregators without needing to
+     * grep by thread name. {@code ThreadContext.remove()} in {@code finally} guarantees cleanup
+     * even when an exception is thrown mid-processing.
+     *
+     * <p>Exception handling strategy: catches any {@link Exception} so that one failed keyword
+     * does not stop other keywords from processing. Note: {@link java.io.IOException} from
+     * {@link RssFetcher#fetch(String)} is always wrapped as {@link RuntimeException} before
+     * escaping (required by Resilience4j's proxy model), so it is caught here as a
+     * {@code RuntimeException} whose cause can be inspected if needed.
+     *
+     * @param keyword the keyword to fetch news for
      */
     private void processKeyword(String keyword) {
-        MDC.put("keyword", keyword);
+        ThreadContext.put("keyword", keyword);
         try {
-            log.debug("Processing keyword");
+            log.debug("Processing keyword: {}", keyword);
 
             List<NewsItem> fetched = rssFetcher.fetch(keyword);
             if (fetched.isEmpty()) {
-                log.debug("No news returned");
+                log.debug("No news returned for keyword: {}", keyword);
                 return;
             }
 
@@ -182,17 +204,18 @@ public class GoogleRssScheduler {
                 .toList();
 
             if (newItems.isEmpty()) {
-                log.debug("All items already seen in URL window");
+                log.debug("All {} items already seen in URL window for keyword: {}", fetched.size(), keyword);
                 return;
             }
 
             newsWorker.saveNews(keyword, newItems);
 
         } catch (Exception e) {
-            // Catch-all: one failed keyword must not stop other keywords from processing
-            log.error("Error processing keyword: {}", e.getMessage());
+            // One failed keyword must not stop other keywords from processing.
+            // RuntimeException wrapping IOException is caught here — inspect e.getCause() if needed.
+            log.error("Error processing keyword [{}]: {}", keyword, e.getMessage(), e);
         } finally {
-            MDC.remove("keyword");
+            ThreadContext.remove("keyword");
         }
     }
 }

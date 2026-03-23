@@ -10,8 +10,8 @@ import com.companynews.newsscheduler.service.SeqIdWindow;
 import com.companynews.newsscheduler.service.UrlWindow;
 import com.companynews.newsscheduler.service.NewsWorker;
 import jakarta.validation.constraints.NotBlank;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +21,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * REST controller exposing the news query API.
+ *
+ * <p>Provides a single endpoint {@code GET /api/news?key=} that:
+ * <ol>
+ *   <li>Returns cached data from the database if available (fastest path).</li>
+ *   <li>Falls back to on-demand NSE and Google RSS fetches if no cache entry exists.</li>
+ *   <li>Returns an empty response if no data is found from any source.</li>
+ * </ol>
+ *
+ * <p>{@code @Validated} at the class level activates Spring's method-level constraint validation
+ * so that {@code @NotBlank} on {@code @RequestParam} is enforced before the method body runs.
+ * Violations are handled by {@link GlobalExceptionHandler}.
+ */
 @Validated
 @RestController
 @RequestMapping("/api/news")
 public class NewsController {
 
-    private static final Logger log = LoggerFactory.getLogger(NewsController.class);
+    private static final Logger log = LogManager.getLogger(NewsController.class);
 
     private final CompanyNewsRepository repository;
     private final NseFetcher nseFetcher;
@@ -35,6 +49,16 @@ public class NewsController {
     private final SeqIdWindow seqIdWindow;
     private final UrlWindow urlWindow;
 
+    /**
+     * Constructs a {@code NewsController} with all required dependencies injected by Spring.
+     *
+     * @param repository   repository for reading/writing {@link CompanyNews} records
+     * @param nseFetcher   fetches corporate announcements from the NSE API
+     * @param rssFetcher   fetches news articles from Google RSS feeds
+     * @param newsWorker   handles deduplication and persistence of news items
+     * @param seqIdWindow  in-memory sliding window for NSE sequence ID deduplication
+     * @param urlWindow    in-memory sliding window for URL-based deduplication
+     */
     public NewsController(CompanyNewsRepository repository,
                           NseFetcher nseFetcher,
                           RssFetcher rssFetcher,
@@ -50,33 +74,43 @@ public class NewsController {
     }
 
     /**
-     * GET /api/news?key=INFY
-     * GET /api/news?key=Banking
-     * GET /api/news?key=Nifty 50
+     * Returns news for the given keyword, fetching on-demand if not already cached in the DB.
      *
-     * @NotBlank rejects null, empty, or whitespace-only keys before any service logic runs.
-     * GlobalExceptionHandler converts the resulting ConstraintViolationException into a 400.
+     * <p>Accepted keyword types:
+     * <ul>
+     *   <li>Company symbol: {@code GET /api/news?key=INFY}</li>
+     *   <li>Sector name: {@code GET /api/news?key=Banking}</li>
+     *   <li>Macro keyword: {@code GET /api/news?key=Nifty 50}</li>
+     * </ul>
      *
-     * Logic:
-     * 1. DB cache hit → return immediately (fastest path)
-     * 2. NSE on-demand fetch → filter + dedup by seqId → save
-     * 3. Google RSS on-demand fetch → dedup by URL window → save
-     * 4. Read back what was saved and return
-     * 5. Nothing found → return empty response
+     * <p>Fetch logic (applied only on cache miss):
+     * <ol>
+     *   <li>NSE on-demand fetch → filter by symbol → dedup by seqId → save.</li>
+     *   <li>Google RSS on-demand fetch → dedup by URL window → save.</li>
+     *   <li>Read back from DB and return. If still empty, return an empty response.</li>
+     * </ol>
+     *
+     * <p>{@code @NotBlank} rejects null, empty, or whitespace-only keys before any service
+     * logic runs. {@link GlobalExceptionHandler} converts the resulting
+     * {@link jakarta.validation.ConstraintViolationException} into a 400 Bad Request.
+     *
+     * @param key the keyword to look up (must not be blank)
+     * @return 200 OK with a JSON body containing {@code keyword}, {@code sentiments},
+     *         {@code news} (list), and {@code lastUpdated}; {@code news} is empty if not found
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getNews(
             @RequestParam @NotBlank(message = "key must not be blank") String key) {
 
-        log.info("GET /api/news?key={}", key);
+        log.info("GET /api/news requested for key={}", key);
 
         Optional<CompanyNews> existing = repository.findByKeyword(key);
         if (existing.isPresent()) {
-            log.info("Cache hit — returning DB data for: {}", key);
+            log.info("Cache hit — returning DB data for key={}", key);
             return ResponseEntity.ok(buildResponse(existing.get()));
         }
 
-        log.info("Not in DB — fetching on-demand for: {}", key);
+        log.info("Cache miss — fetching on-demand for key={}", key);
 
         List<NseAnnouncement> nseAnnouncements = nseFetcher.fetch();
         List<NewsItem> nseMatching = nseAnnouncements.stream()
@@ -90,6 +124,7 @@ public class NewsController {
             .toList();
 
         if (!nseMatching.isEmpty()) {
+            log.info("NSE on-demand: {} matching items found for key={}", nseMatching.size(), key);
             newsWorker.saveNews(key, nseMatching);
         }
 
@@ -99,6 +134,7 @@ public class NewsController {
             .toList();
 
         if (!googleNew.isEmpty()) {
+            log.info("Google RSS on-demand: {} new items found for key={}", googleNew.size(), key);
             newsWorker.saveNews(key, googleNew);
         }
 
@@ -107,10 +143,16 @@ public class NewsController {
             return ResponseEntity.ok(buildResponse(saved.get()));
         }
 
-        log.warn("No news found for: {} from any source", key);
+        log.warn("No news found for key={} from any source", key);
         return ResponseEntity.ok(buildEmptyResponse(key));
     }
 
+    /**
+     * Builds a populated response map from a {@link CompanyNews} record.
+     *
+     * @param companyNews the persisted news record to serialize
+     * @return a map with {@code keyword}, {@code sentiments}, {@code news}, and {@code lastUpdated}
+     */
     private Map<String, Object> buildResponse(CompanyNews companyNews) {
         Map<String, Object> response = new HashMap<>();
         response.put("keyword",     companyNews.getKeyword());
@@ -120,6 +162,13 @@ public class NewsController {
         return response;
     }
 
+    /**
+     * Builds an empty response map for keywords that have no news from any source.
+     *
+     * @param key the keyword that returned no results
+     * @return a map with {@code keyword}, empty {@code sentiments}, empty {@code news} list,
+     *         and {@code null} for {@code lastUpdated}
+     */
     private Map<String, Object> buildEmptyResponse(String key) {
         Map<String, Object> response = new HashMap<>();
         response.put("keyword",     key);

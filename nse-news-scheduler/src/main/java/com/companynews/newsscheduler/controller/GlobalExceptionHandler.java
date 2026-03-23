@@ -1,8 +1,8 @@
 package com.companynews.newsscheduler.controller;
 
 import jakarta.validation.ConstraintViolationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -18,30 +18,38 @@ import java.util.Map;
 /**
  * Centralized exception handler for all controllers in this service.
  *
- * WHY this is needed:
+ * <p>WHY this is needed:
  * Without this, Spring returns its default error response which is verbose,
  * inconsistent, and leaks internal stack trace details to callers.
  *
- * With this handler:
- * - All validation failures return a clean, structured JSON body
- * - HTTP status codes are correct (400 for bad input, 500 for unexpected errors)
- * - No stack traces leak to the API caller
- * - All errors are logged server-side for debugging
+ * <p>With this handler:
+ * <ul>
+ *   <li>All validation failures return a clean, structured JSON body.</li>
+ *   <li>HTTP status codes are correct (400 for bad input, 500 for unexpected errors).</li>
+ *   <li>No stack traces leak to the API caller.</li>
+ *   <li>All errors are logged server-side for debugging.</li>
+ * </ul>
  *
- * Handles three error types:
- * 1. ConstraintViolationException     — @NotBlank on @RequestParam (NewsController)
- * 2. MethodArgumentNotValidException  — @Valid on @RequestBody (WatchlistEventController)
- * 3. Exception                        — unexpected runtime errors (catch-all)
+ * <p>Handles three error types:
+ * <ol>
+ *   <li>{@link ConstraintViolationException} — {@code @NotBlank} on {@code @RequestParam} (NewsController).</li>
+ *   <li>{@link MethodArgumentNotValidException} — {@code @Valid} on {@code @RequestBody} (WatchlistEventController).</li>
+ *   <li>{@link MissingServletRequestParameterException} — required param not sent at all.</li>
+ *   <li>{@link Exception} — unexpected runtime errors (catch-all).</li>
+ * </ol>
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final Logger log = LogManager.getLogger(GlobalExceptionHandler.class);
 
     /**
-     * Handles violations from @NotBlank / @Valid on @RequestParam.
-     * Triggered when: GET /api/news?key= (blank key)
-     * Returns: 400 Bad Request
+     * Handles violations from {@code @NotBlank} / {@code @Valid} on {@code @RequestParam}.
+     *
+     * <p>Triggered when: {@code GET /api/news?key=} (blank key).
+     *
+     * @param ex the constraint violation exception containing field-level violation details
+     * @return 400 Bad Request with a structured error body listing each violated constraint
      */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<Map<String, Object>> handleConstraintViolation(
@@ -56,9 +64,12 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles violations from @Valid on @RequestBody DTOs.
-     * Triggered when: POST /api/internal/watchlist/added with blank/missing symbol
-     * Returns: 400 Bad Request
+     * Handles violations from {@code @Valid} on {@code @RequestBody} DTOs.
+     *
+     * <p>Triggered when: {@code POST /api/internal/watchlist/added} with blank or missing symbol.
+     *
+     * @param ex the binding result exception containing field-level error messages
+     * @return 400 Bad Request with a structured error body listing each field error
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleMethodArgumentNotValid(
@@ -73,9 +84,12 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles missing required @RequestParam entirely (param not sent at all).
-     * Triggered when: GET /api/news (no key param provided)
-     * Returns: 400 Bad Request
+     * Handles missing required {@code @RequestParam} (parameter not sent at all).
+     *
+     * <p>Triggered when: {@code GET /api/news} (no {@code key} param provided).
+     *
+     * @param ex the exception identifying which parameter was missing
+     * @return 400 Bad Request naming the missing parameter
      */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<Map<String, Object>> handleMissingParam(
@@ -87,8 +101,13 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Catch-all for any unexpected runtime exception.
-     * Returns: 500 Internal Server Error — with no internal detail exposed to caller.
+     * Catch-all handler for any unexpected runtime exception not matched by the handlers above.
+     *
+     * <p>Logs the full stack trace server-side but returns no internal details to the caller,
+     * preventing information leakage.
+     *
+     * @param ex the unexpected exception
+     * @return 500 Internal Server Error with a generic error message
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception ex) {
@@ -97,6 +116,14 @@ public class GlobalExceptionHandler {
             .body(errorBody("An unexpected error occurred", List.of()));
     }
 
+    /**
+     * Builds a structured error response body suitable for JSON serialization.
+     *
+     * @param message a human-readable summary of the error
+     * @param errors  a list of individual error details (may be empty for generic errors)
+     * @return an ordered map containing {@code timestamp}, {@code status}, {@code message},
+     *         and optionally {@code errors}
+     */
     private Map<String, Object> errorBody(String message, List<String> errors) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now().toString());

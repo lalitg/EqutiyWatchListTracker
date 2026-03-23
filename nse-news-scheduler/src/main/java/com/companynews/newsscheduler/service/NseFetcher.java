@@ -9,8 +9,8 @@ import io.github.resilience4j.retry.annotation.Retry;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -24,45 +24,70 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Service that fetches corporate announcements from the NSE (National Stock Exchange) API.
+ *
+ * <p>Applies Resilience4j's {@link CircuitBreaker} and {@link Retry} to all outbound HTTP calls:
+ * <ul>
+ *   <li><b>Circuit Breaker (outer)</b> — if the circuit is already OPEN (too many recent failures),
+ *       short-circuits immediately and returns the fallback — no HTTP call is attempted.</li>
+ *   <li><b>Retry (inner)</b> — only runs when the circuit is CLOSED or HALF-OPEN. On failure,
+ *       waits 1 second and retries up to 3 times before the circuit breaker counts the final
+ *       attempt as a failure.</li>
+ * </ul>
+ *
+ * <p>Micrometer metrics are recorded for every fetch attempt (including retries):
+ * <ul>
+ *   <li>{@code news.fetch.duration} tagged {@code source=nse} — wall-clock time of each attempt.</li>
+ *   <li>{@code news.items.fetched} tagged {@code source=nse} — count of announcements per success.</li>
+ * </ul>
+ */
 @Service
 public class NseFetcher {
 
-    private static final Logger log = LoggerFactory.getLogger(NseFetcher.class);
+    private static final Logger log = LogManager.getLogger(NseFetcher.class);
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
     private final int requestTimeoutSeconds;
     private final String nseUrl;
+    private final MeterRegistry meterRegistry;
 
     /**
-     * Micrometer metrics:
-     *
-     * news.fetch.duration (source=nse) — Timer recording the wall-clock time of each
-     *   NSE HTTP call + JSON parse. Recorded on every attempt including retries.
-     *   Visible at /actuator/metrics/news.fetch.duration?tag=source:nse
-     *   Used to detect degradation (p99 latency rising) before circuit breaker opens.
-     *
-     * news.items.fetched (source=nse) — Counter incremented with the number of
-     *   announcements returned from a successful parse.
-     *   Useful for alerting on "0 announcements for N minutes" (NSE feed silent).
+     * Timer recording the wall-clock time of each NSE HTTP fetch + JSON parse attempt.
+     * Visible at {@code /actuator/metrics/news.fetch.duration?tag=source:nse}.
+     * Used to detect degradation (p99 latency rising) before the circuit breaker opens.
      */
-    private final MeterRegistry meterRegistry;
     private final Timer fetchTimer;
+
+    /**
+     * Counter incremented with the number of announcements returned from each successful parse.
+     * Useful for alerting on "0 announcements fetched for N minutes" (silent NSE feed detection).
+     */
     private final Counter fetchedCounter;
 
+    /**
+     * Constructs an {@code NseFetcher} with all required dependencies injected by Spring.
+     *
+     * @param objectMapper          Jackson mapper for parsing the NSE JSON response
+     * @param httpClient            shared singleton HTTP client with connection pooling
+     * @param requestTimeoutSeconds per-request read timeout (from {@code news.http.request-timeout-seconds})
+     * @param nseUrl                NSE API endpoint URL (from {@code news.nse.url})
+     * @param meterRegistry         Micrometer registry for registering fetch metrics
+     */
     public NseFetcher(ObjectMapper objectMapper,
                       HttpClient httpClient,
                       @Value("${news.http.request-timeout-seconds:10}") int requestTimeoutSeconds,
                       @Value("${news.nse.url}") String nseUrl,
                       MeterRegistry meterRegistry) {
-        this.objectMapper = objectMapper;
-        this.httpClient = httpClient;
+        this.objectMapper          = objectMapper;
+        this.httpClient            = httpClient;
         this.requestTimeoutSeconds = requestTimeoutSeconds;
-        this.nseUrl = nseUrl;
-        this.meterRegistry = meterRegistry;
+        this.nseUrl                = nseUrl;
+        this.meterRegistry         = meterRegistry;
         this.fetchTimer = Timer.builder("news.fetch.duration")
             .tag("source", "nse")
-            .description("Time taken for NSE HTTP fetch and JSON parse")
+            .description("Time taken for NSE HTTP fetch and JSON parse per attempt")
             .register(meterRegistry);
         this.fetchedCounter = Counter.builder("news.items.fetched")
             .tag("source", "nse")
@@ -71,33 +96,32 @@ public class NseFetcher {
     }
 
     /**
-     * Fetches all corporate announcements from NSE.
+     * Fetches all corporate announcements from the NSE equities endpoint.
      *
-     * WHY @CircuitBreaker wraps @Retry (outer-to-inner):
-     * @CircuitBreaker is the outer guard. If the circuit is already OPEN (too many
-     * recent failures), it short-circuits immediately and returns the fallback — no
-     * HTTP call attempted, no retry tried. This prevents a storm of retry attempts
-     * hitting an already-dead NSE endpoint.
+     * <p>Resilience4j ordering — {@code @CircuitBreaker} wraps {@code @Retry} (outer-to-inner):
+     * <ul>
+     *   <li>{@code @CircuitBreaker} is the outer guard. If the circuit is OPEN, it returns
+     *       the fallback immediately — no HTTP call attempted, no retry consumed.</li>
+     *   <li>{@code @Retry} is the inner guard. On {@link IOException} (network failure, timeout),
+     *       waits 1s and retries up to 3 times before the circuit breaker counts the failure.</li>
+     * </ul>
      *
-     * @Retry is the inner guard. Only runs when the circuit is CLOSED or HALF-OPEN.
-     * On IOException (network failure, timeout), it waits 1s and retries up to 3 times
-     * before the circuit breaker counts the final attempt as a failure.
+     * <p>{@link IOException} is re-wrapped as {@link RuntimeException} so it propagates through
+     * the Resilience4j AOP proxy (which only intercepts unchecked exceptions by default).
+     * {@link InterruptedException} is handled inline — do not retry when the thread is being killed.
      *
-     * Both annotations point to the same fallback — whichever fires last
-     * (exhausted retries OR open circuit) returns an empty list.
-     *
-     * IOException is wrapped as RuntimeException so it propagates through the
-     * resilience4j proxy. InterruptedException is handled inline (do not retry
-     * on interrupt — the thread is being killed).
-     *
-     * Timer.Sample is started at the top and stopped in finally so every code path
-     * (success, non-200 status, IOException) contributes a timing observation.
+     * <p>The {@link Timer.Sample} is started before the HTTP call and stopped in {@code finally}
+     * so every code path (success, non-200, exception) contributes a timing observation.
      * On retry, each individual attempt records its own timer entry.
+     *
+     * @return a list of {@link NseAnnouncement} objects parsed from the NSE response;
+     *         returns an empty list if interrupted or if the fallback fires
      */
     @CircuitBreaker(name = "nse-fetch", fallbackMethod = "fetchFallback")
     @Retry(name = "nse-fetch")
     public List<NseAnnouncement> fetch() {
         Timer.Sample sample = Timer.start(meterRegistry);
+        log.debug("Starting NSE HTTP fetch — url: {}", nseUrl);
         try {
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(nseUrl))
@@ -116,38 +140,48 @@ public class NseFetcher {
                 httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                // Throw RuntimeException so resilience4j counts this as a failure and retries
-                throw new RuntimeException("NSE API returned status: " + response.statusCode());
+                // Throw RuntimeException so Resilience4j counts this as a failure and retries
+                throw new RuntimeException("NSE API returned non-200 status: " + response.statusCode());
             }
 
             return parseAnnouncements(response.body());
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt(); // restore interrupt flag — do not retry
-            log.warn("NSE fetch interrupted");
+            log.warn("NSE fetch interrupted — thread is shutting down");
             return List.of();
         } catch (IOException e) {
-            // Wrap as RuntimeException so resilience4j @Retry intercepts it
-            throw new RuntimeException("NSE fetch failed: " + e.getMessage(), e);
+            // Wrap as RuntimeException so Resilience4j @Retry intercepts it
+            throw new RuntimeException("NSE HTTP fetch failed: " + e.getMessage(), e);
         } finally {
             sample.stop(fetchTimer);
         }
     }
 
     /**
-     * Fallback called by resilience4j when all retries are exhausted OR the circuit is open.
-     * Returns empty list — the next scheduled run (15 min) will try again.
+     * Resilience4j fallback invoked when all retries are exhausted or the circuit is open.
+     *
+     * <p>Returns an empty list so the scheduler gracefully skips this cycle.
+     * The next scheduled run (15 minutes later) will attempt the fetch again.
+     *
+     * @param ex the exception that triggered the fallback (last retry failure or circuit open cause)
+     * @return an empty immutable list
      */
-    @SuppressWarnings("unused") // called by resilience4j via AOP reflection
+    @SuppressWarnings("unused") // called by Resilience4j via AOP reflection — not referenced directly
     private List<NseAnnouncement> fetchFallback(Throwable ex) {
-        log.error("NSE fetch unavailable — retries exhausted or circuit open: {}", ex.getMessage());
+        log.error("NSE fetch unavailable — retries exhausted or circuit open. Cause: {}", ex.getMessage());
         return List.of();
     }
 
     /**
-     * Parses the NSE JSON response body into a list of NseAnnouncement objects.
-     * JSON parse errors are caught here (non-retriable — bad data, not network failure).
-     * Increments fetchedCounter with the number of valid announcements parsed.
+     * Parses the NSE JSON response body into a list of {@link NseAnnouncement} objects.
+     *
+     * <p>JSON parse errors are caught here — they represent bad/unexpected data from NSE,
+     * not a retriable network failure, so they do not propagate to the retry logic.
+     * Each successfully parsed announcement increments {@link #fetchedCounter}.
+     *
+     * @param json the raw JSON string from the NSE API response body
+     * @return a list of parsed {@link NseAnnouncement} objects; empty if parsing fails entirely
      */
     private List<NseAnnouncement> parseAnnouncements(String json) {
         List<NseAnnouncement> result = new ArrayList<>();
@@ -168,7 +202,7 @@ public class NseFetcher {
                 try {
                     seqId = Long.parseLong(seqStr);
                 } catch (NumberFormatException e) {
-                    log.warn("Could not parse seqId: {} — skipping", seqStr);
+                    log.warn("Could not parse seqId value [{}] for symbol [{}] — skipping", seqStr, symbol);
                     continue;
                 }
 
@@ -179,13 +213,20 @@ public class NseFetcher {
             }
 
             fetchedCounter.increment(result.size());
-            log.info("NSE fetch complete — {} announcements retrieved", result.size());
+            log.info("NSE JSON parsed successfully — {} announcements retrieved", result.size());
         } catch (Exception e) {
-            log.error("NSE response parsing failed: {}", e.getMessage());
+            log.error("Failed to parse NSE JSON response: {}", e.getMessage(), e);
         }
         return result;
     }
 
+    /**
+     * Safely extracts a string value from a JSON object map.
+     *
+     * @param map the parsed JSON object
+     * @param key the field name to look up
+     * @return the string representation of the value, or {@code null} if the key is absent
+     */
     private String getString(Map<String, Object> map, String key) {
         Object val = map.get(key);
         return val != null ? val.toString() : null;

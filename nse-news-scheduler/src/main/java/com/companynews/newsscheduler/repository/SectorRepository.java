@@ -7,12 +7,29 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+/**
+ * Spring Data JPA repository for the {@code sector_companies} table.
+ *
+ * <p>Provides access to all market sector names used as search keywords in the
+ * Google RSS scheduler. Sector names (e.g., {@code Banking}, {@code Pharma}) are loaded
+ * alongside company symbols and macro keywords to build the full keyword list for each
+ * scheduled fetch run.
+ */
 @Repository
 public interface SectorRepository extends JpaRepository<Sector, Long> {
 
-    // No change needed here — JPQL uses the Java class name "Sector"
-    // and field name "sectorName" — both unchanged
-    // The @Table annotation on the entity handles the actual table name mapping
+    /**
+     * Returns all sector names stored in the {@code sector_companies} table.
+     *
+     * <p>Uses JPQL with the Java field name {@code sectorName} and entity class name
+     * {@code Sector}. The {@code @Table(name = "sector_companies")} annotation on the entity
+     * maps this to the correct physical table.
+     *
+     * <p>Generated SQL equivalent: {@code SELECT sector_name FROM sector_companies}
+     *
+     * @return a list of sector name strings (e.g., {@code ["Banking", "Pharmaceuticals"]});
+     *         returns an empty list if the table is empty
+     */
     @Query("SELECT s.sectorName FROM Sector s")
     List<String> findAllSectorNames();
 }

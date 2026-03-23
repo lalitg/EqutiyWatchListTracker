@@ -5,9 +5,9 @@ import com.companynews.newsscheduler.model.CompanyNews;
 import com.companynews.newsscheduler.repository.CompanyNewsRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.ThreadContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -27,57 +27,91 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+/**
+ * Core service responsible for deduplicating and persisting news items to the database.
+ *
+ * <p>Applies a 4-layer deduplication strategy before saving:
+ * <ol>
+ *   <li><b>Null/empty link</b> — items with no URL are unusable and skipped immediately.</li>
+ *   <li><b>Exact URL match against DB</b> — URLs already stored in the {@code news} JSONB
+ *       column for this keyword are skipped.</li>
+ *   <li><b>Exact URL match within current batch</b> — prevents saving the same URL twice
+ *       if it appears multiple times in a single fetch result.</li>
+ *   <li><b>Jaccard similarity check</b> — headlines too similar (≥ 60% token overlap) to any
+ *       existing stored headline are skipped to avoid near-duplicate articles.</li>
+ * </ol>
+ *
+ * <p>Per-keyword locking via {@link ReentrantLock} ensures that two threads saving news for
+ * the same keyword do not race. Threads saving different keywords are never blocked by each other.
+ *
+ * <p>Micrometer counters track items saved and skipped (by reason) for production monitoring.
+ */
 @Service
 public class NewsWorker {
 
-    private static final Logger log = LoggerFactory.getLogger(NewsWorker.class);
+    private static final Logger log = LogManager.getLogger(NewsWorker.class);
 
-    // Pre-compiled date formatters — shared, DateTimeFormatter is thread-safe
+    /** Pre-compiled formatter for NSE date strings: {@code "12-Mar-2026 17:11:14"}. Thread-safe. */
     private static final DateTimeFormatter NSE_FORMAT =
         DateTimeFormatter.ofPattern("dd-MMM-yyyy HH:mm:ss", Locale.ENGLISH);
+
+    /** Pre-compiled formatter for Google RSS date strings: {@code "Thu, 12 Mar 2026 10:00:00 GMT"}. Thread-safe. */
     private static final DateTimeFormatter RSS_FORMAT =
         DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH);
 
     private final CompanyNewsRepository repository;
     private final SimilarityChecker similarityChecker;
 
+    /** Maximum number of news items to retain per keyword. Configurable via {@code news.limit}. */
     @Value("${news.limit:5}")
     private int newsLimit;
 
     /**
-     * Per-keyword locking: Thread 1 saving "INFY" does NOT block Thread 2 saving "RELIANCE".
-     * ConcurrentHashMap.computeIfAbsent is atomic — no external synchronization needed.
+     * Per-keyword {@link ReentrantLock} map.
+     *
+     * <p>Thread 1 saving {@code INFY} does NOT block Thread 2 saving {@code RELIANCE}.
+     * {@link ConcurrentHashMap#computeIfAbsent} is atomic — no external synchronization needed
+     * for lock creation.
      */
     private final ConcurrentHashMap<String, ReentrantLock> keywordLocks = new ConcurrentHashMap<>();
 
     /**
-     * Micrometer metrics:
-     *
-     * news.items.saved — Counter of items written to DB across all keywords.
-     *   Useful for alerting on "0 items saved in last N minutes" (pipeline silent).
-     *
-     * news.items.skipped tagged by reason:
-     *   url_duplicate  — item URL already in DB or seen in current batch
-     *   similarity     — headline too similar to existing stored headline
-     *   null_link      — item had no URL (unusable)
-     *
-     * WHY not tagged by keyword: keyword is high-cardinality (hundreds of symbols).
-     * High-cardinality tags blow up Prometheus memory and cardinality limits.
+     * Micrometer counter tracking the total number of news items written to the database.
+     * Useful for alerting on "0 items saved in last N minutes" (silent pipeline detection).
      */
     private final Counter savedCounter;
+
+    /**
+     * Micrometer counter tracking items skipped due to duplicate URL (DB match or batch match).
+     */
     private final Counter skippedUrlCounter;
+
+    /**
+     * Micrometer counter tracking items skipped due to near-duplicate headline (Jaccard similarity).
+     */
     private final Counter skippedSimilarityCounter;
+
+    /**
+     * Micrometer counter tracking items skipped because their link URL was null or empty.
+     */
     private final Counter skippedNullLinkCounter;
 
+    /**
+     * Constructs a {@code NewsWorker} with all required dependencies injected by Spring.
+     *
+     * @param repository        repository for reading and writing {@link CompanyNews} records
+     * @param similarityChecker Jaccard similarity checker for near-duplicate headline detection
+     * @param meterRegistry     Micrometer registry for registering production counters
+     */
     public NewsWorker(CompanyNewsRepository repository,
                       SimilarityChecker similarityChecker,
                       MeterRegistry meterRegistry) {
-        this.repository = repository;
-        this.similarityChecker = similarityChecker;
-        this.savedCounter = Counter.builder("news.items.saved")
+        this.repository          = repository;
+        this.similarityChecker   = similarityChecker;
+        this.savedCounter        = Counter.builder("news.items.saved")
             .description("Total news items written to DB")
             .register(meterRegistry);
-        this.skippedUrlCounter = Counter.builder("news.items.skipped")
+        this.skippedUrlCounter   = Counter.builder("news.items.skipped")
             .tag("reason", "url_duplicate")
             .description("Items skipped due to exact URL already in DB or current batch")
             .register(meterRegistry);
@@ -85,28 +119,40 @@ public class NewsWorker {
             .tag("reason", "similarity")
             .description("Items skipped due to near-duplicate headline")
             .register(meterRegistry);
-        this.skippedNullLinkCounter = Counter.builder("news.items.skipped")
+        this.skippedNullLinkCounter   = Counter.builder("news.items.skipped")
             .tag("reason", "null_link")
             .description("Items skipped because link was null or empty")
             .register(meterRegistry);
     }
 
+    /**
+     * Returns the {@link ReentrantLock} for the given keyword, creating one if absent.
+     *
+     * @param keyword the keyword to get or create a lock for
+     * @return the {@link ReentrantLock} associated with this keyword
+     */
     private ReentrantLock getLock(String keyword) {
         return keywordLocks.computeIfAbsent(keyword, k -> new ReentrantLock());
     }
 
     /**
-     * Deduplicates and saves news items for a given keyword.
+     * Deduplicates the given news items and saves new ones to the database for the given keyword.
      *
-     * 4-layer dedup strategy (in order):
-     *  1. URL null/empty check — no link → skip
-     *  2. Exact URL match against DB — already saved → skip
-     *  3. Exact URL match within this batch — same URL submitted twice → skip
-     *  4. Jaccard similarity against existing headlines — near-duplicate text → skip
+     * <p>The 4-layer deduplication (null check → DB URL match → batch URL match → Jaccard similarity)
+     * is applied inside the per-keyword lock so concurrent calls for the same keyword do not
+     * produce race conditions or duplicate DB inserts.
      *
-     * MDC.put("keyword") is set here so ALL log lines inside this method (and anything
-     * called from it) include the keyword field — visible in log aggregators without
-     * needing to grep through interleaved parallel log output.
+     * <p>After dedup, items are sorted newest-first and trimmed to {@code news.limit}.
+     *
+     * <p>Log4j2's {@link ThreadContext} is populated with the keyword so all log lines inside
+     * this method carry the {@code keyword} field, making parallel log output traceable in
+     * log aggregators without needing to grep by thread name.
+     *
+     * <p>If a {@link DataIntegrityViolationException} is thrown (concurrent insert race),
+     * {@link #upsert(String, List)} is called as a fallback to re-read and merge.
+     *
+     * @param keyword  the keyword to save news under (company symbol, sector, or macro term)
+     * @param newItems the list of candidate news items to deduplicate and save
      */
     @Transactional
     public void saveNews(String keyword, List<NewsItem> newItems) {
@@ -114,7 +160,7 @@ public class NewsWorker {
 
         ReentrantLock lock = getLock(keyword);
         lock.lock();
-        MDC.put("keyword", keyword);
+        ThreadContext.put("keyword", keyword);
 
         try {
             Optional<CompanyNews> existing = repository.findByKeyword(keyword);
@@ -133,6 +179,7 @@ public class NewsWorker {
                 currentNews = new ArrayList<>();
             }
 
+            // Build lookup sets from already-stored items for dedup layers 2 and 4
             Set<String> savedUrls = currentNews.stream()
                 .map(NewsItem::getLink)
                 .filter(l -> l != null)
@@ -150,23 +197,27 @@ public class NewsWorker {
                 String link    = item.getLink();
                 String summary = item.getSummary();
 
+                // Layer 1: null/empty link check
                 if (link == null || link.isEmpty()) {
-                    log.debug("Skipping item with null/empty link");
+                    log.debug("Skipping item with null/empty link — summary: {}", summary);
                     skippedNullLinkCounter.increment();
                     continue;
                 }
+                // Layer 2: exact URL match against DB
                 if (savedUrls.contains(link)) {
-                    log.debug("Duplicate URL — already in DB");
+                    log.debug("Duplicate URL already in DB — skipping: {}", link);
                     skippedUrlCounter.increment();
                     continue;
                 }
+                // Layer 3: exact URL match within current batch
                 if (seenInBatch.contains(link)) {
-                    log.debug("Duplicate URL — seen in current batch");
+                    log.debug("Duplicate URL seen in current batch — skipping: {}", link);
                     skippedUrlCounter.increment();
                     continue;
                 }
+                // Layer 4: Jaccard similarity check against existing headlines
                 if (similarityChecker.isDuplicate(summary, existingSummaries)) {
-                    log.debug("Similarity duplicate skipped: {}", summary);
+                    log.debug("Near-duplicate headline skipped (Jaccard): {}", summary);
                     skippedSimilarityCounter.increment();
                     continue;
                 }
@@ -179,11 +230,11 @@ public class NewsWorker {
             }
 
             if (added == 0) {
-                log.debug("No new items to save");
+                log.debug("No new items to save after deduplication for keyword: {}", keyword);
                 return;
             }
 
-            // Sort latest first, trim to limit
+            // Sort latest first, then trim to configured limit
             currentNews.sort((a, b) -> compareDates(b.getDate(), a.getDate()));
             if (currentNews.size() > newsLimit) {
                 currentNews = currentNews.subList(0, newsLimit);
@@ -194,31 +245,39 @@ public class NewsWorker {
             repository.save(record);
 
             savedCounter.increment(added);
-            log.info("Saved {} new item(s)", added);
+            log.info("Saved {} new item(s) for keyword: {}", added, keyword);
 
         } catch (DataIntegrityViolationException e) {
-            log.warn("Constraint violation — retrying as upsert");
+            log.warn("Constraint violation on save — falling back to upsert for keyword: {}", keyword);
             upsert(keyword, newItems);
         } finally {
-            MDC.remove("keyword");
+            ThreadContext.remove("keyword");
             lock.unlock();
         }
     }
 
     /**
-     * Fallback for race conditions: the INSERT path found no row, but between
-     * findByKeyword and save, another thread inserted one. Re-read and update.
+     * Fallback for concurrent insert races: re-reads the row and merges new items in.
      *
-     * WHY no @Transactional here:
-     * This method is called from saveNews() which is itself @Transactional.
-     * Java's proxy-based AOP intercepts only external calls — calling upsert() via
-     * "this.upsert()" bypasses the proxy entirely, so @Transactional on this method
-     * would have no effect. The method already participates in saveNews()'s transaction
-     * by default (Spring's REQUIRED propagation), so no annotation is needed.
+     * <p>Called when {@link #saveNews} finds no existing row but another thread inserts one
+     * between the {@code findByKeyword} and {@code save} calls. Re-reading guarantees we
+     * merge onto the latest state rather than overwriting it.
+     *
+     * <p>WHY no {@code @Transactional} here: this method is called from {@link #saveNews}
+     * which is itself {@code @Transactional}. Spring's AOP proxy intercepts only external
+     * calls — calling {@code upsert()} via {@code this.upsert()} bypasses the proxy entirely,
+     * so adding {@code @Transactional} here would have no effect. The method already
+     * participates in the caller's transaction via Spring's default REQUIRED propagation.
+     *
+     * @param keyword  the keyword whose row encountered a concurrent insert
+     * @param newItems the items to merge into the existing row
      */
     private void upsert(String keyword, List<NewsItem> newItems) {
         Optional<CompanyNews> existing = repository.findByKeyword(keyword);
-        if (existing.isEmpty()) return;
+        if (existing.isEmpty()) {
+            log.warn("Upsert: row still not found for keyword: {} — giving up", keyword);
+            return;
+        }
 
         CompanyNews record = existing.get();
         List<NewsItem> currentNews = record.getNews() != null
@@ -239,6 +298,17 @@ public class NewsWorker {
         log.info("Upsert succeeded for keyword: {}", keyword);
     }
 
+    /**
+     * Compares two date strings for chronological ordering, with null-safe handling.
+     *
+     * <p>Null dates are sorted to the end (treated as the oldest). If both are non-null,
+     * they are parsed to {@link ZonedDateTime} for accurate chronological comparison.
+     * Falls back to lexicographic string comparison if parsing fails for either date.
+     *
+     * @param dateA the first date string
+     * @param dateB the second date string
+     * @return negative if dateA is before dateB, positive if after, 0 if equal
+     */
     private int compareDates(String dateA, String dateB) {
         if (dateA == null && dateB == null) return 0;
         if (dateA == null) return -1;
@@ -247,23 +317,35 @@ public class NewsWorker {
         try {
             return parseDate(dateA).compareTo(parseDate(dateB));
         } catch (Exception e) {
-            log.warn("Date parse failed — string fallback: {} vs {}", dateA, dateB);
+            log.warn("Date comparison fallback to string comparison: [{}] vs [{}]", dateA, dateB);
             return dateA.compareTo(dateB);
         }
     }
 
+    /**
+     * Parses a date string into a {@link ZonedDateTime} using the NSE format first,
+     * then the Google RSS format.
+     *
+     * <p>NSE format: {@code "dd-MMM-yyyy HH:mm:ss"} (e.g., {@code "12-Mar-2026 17:11:14"}).
+     * Google RSS format: {@code "EEE, dd MMM yyyy HH:mm:ss z"} (e.g., {@code "Thu, 12 Mar 2026 10:00:00 GMT"}).
+     *
+     * @param dateStr the date string to parse; must not be {@code null}
+     * @return the parsed {@link ZonedDateTime}
+     * @throws IllegalArgumentException if the date string matches neither known format
+     */
     private ZonedDateTime parseDate(String dateStr) {
-        // NSE format: "12-Mar-2026 17:11:14"
+        // Try NSE format first: "12-Mar-2026 17:11:14"
         try {
-            return java.time.LocalDateTime.parse(dateStr, NSE_FORMAT)
+            return LocalDateTime.parse(dateStr, NSE_FORMAT)
                 .atZone(ZoneId.of("Asia/Kolkata"));
         } catch (Exception ignored) {}
 
-        // Google RSS format: "Thu, 12 Mar 2026 10:00:00 GMT"
+        // Try Google RSS format: "Thu, 12 Mar 2026 10:00:00 GMT"
         try {
             return ZonedDateTime.parse(dateStr, RSS_FORMAT);
         } catch (Exception e) {
-            throw new RuntimeException("Cannot parse date: " + dateStr);
+            throw new IllegalArgumentException(
+                "Cannot parse date string — no matching format found for value: [" + dateStr + "]", e);
         }
     }
 }
