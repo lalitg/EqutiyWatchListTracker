@@ -4,7 +4,7 @@
     <!-- CONSOLE APPENDER — keeps logging to terminal as before -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread] %logger{36} : %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread]%X{keyword:+[}%X{keyword}%X{keyword:+]} %logger{36} : %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -23,7 +23,7 @@
         </rollingPolicy>
 
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread] %logger{36} : %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread]%X{keyword:+[}%X{keyword}%X{keyword:+]} %logger{36} : %msg%n</pattern>
         </encoder>
 
     </appender>

@@ -15,36 +15,38 @@ import java.util.List;
 import java.util.Set;
 
 @Service
-public class KeywordLoaderService {
+public class KeywordLoader {
 
-    private static final Logger log = LoggerFactory.getLogger(KeywordLoaderService.class);
+    private static final Logger log = LoggerFactory.getLogger(KeywordLoader.class);
 
     private final GlobalWatchlistRepository watchlistRepository;
     private final SectorRepository sectorRepository;
 
-    public KeywordLoaderService(GlobalWatchlistRepository watchlistRepository,
-                                SectorRepository sectorRepository) {
+    public KeywordLoader(GlobalWatchlistRepository watchlistRepository,
+                         SectorRepository sectorRepository) {
         this.watchlistRepository = watchlistRepository;
         this.sectorRepository = sectorRepository;
     }
 
     /**
-     * Loads all keywords from all 3 sources and returns one combined list.
+     * Loads all keywords from three sources and returns a deduplicated ordered list.
      *
-     * Sources:
-     * 1. global_watchlist table  — company symbols
-     * 2. sectors table           — sector names
-     * 3. keywords.txt file       — additional custom keywords
+     * Sources (in priority order):
+     *  1. global_watchlist table — company symbols (e.g. INFY, RELIANCE)
+     *  2. sector_companies table — sector names (e.g. Banking, Pharma)
+     *  3. keywords.txt classpath file — custom/macro keywords (e.g. Nifty 50, RBI)
      *
      * WHY LinkedHashSet:
-     * A Set removes duplicates automatically.
-     * LinkedHashSet preserves insertion order (so watchlist symbols come first).
-     * This prevents fetching the same keyword twice if it appears in multiple sources.
+     * A plain HashSet removes duplicates but loses insertion order.
+     * LinkedHashSet preserves insertion order while still removing duplicates.
+     * Watchlist symbols always appear first — they are the highest-priority keywords.
+     *
+     * Each source is wrapped in a try-catch so a DB outage or missing file
+     * does not prevent the other sources from loading.
      */
-    public List<String> loadAllKeywords() {
+    public List<String> load() {
         Set<String> keywords = new LinkedHashSet<>();
 
-        // Source 1: Company symbols from global_watchlist table
         try {
             List<String> symbols = watchlistRepository.findAllSymbols();
             keywords.addAll(symbols);
@@ -53,33 +55,29 @@ public class KeywordLoaderService {
             log.error("Failed to load symbols from global_watchlist: {}", e.getMessage());
         }
 
-        // Source 2: Sector names from sectors table
         try {
             List<String> sectors = sectorRepository.findAllSectorNames();
             keywords.addAll(sectors);
-            log.info("Loaded {} sectors from sectors table", sectors.size());
+            log.info("Loaded {} sectors from sector_companies", sectors.size());
         } catch (Exception e) {
-            log.error("Failed to load sectors from sectors table: {}", e.getMessage());
+            log.error("Failed to load sectors from sector_companies: {}", e.getMessage());
         }
 
-        // Source 3: Additional keywords from keywords.txt
         try {
             ClassPathResource resource = new ClassPathResource("keywords.txt");
-            BufferedReader reader = new BufferedReader(
-                new InputStreamReader(resource.getInputStream())
-            );
-            String line;
-            int count = 0;
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                // Skip empty lines and lines starting with # (comments)
-                if (!line.isEmpty() && !line.startsWith("#")) {
-                    keywords.add(line);
-                    count++;
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(resource.getInputStream()))) {
+                int count = 0;
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    line = line.trim();
+                    if (!line.isEmpty() && !line.startsWith("#")) {
+                        keywords.add(line);
+                        count++;
+                    }
                 }
+                log.info("Loaded {} keywords from keywords.txt", count);
             }
-            reader.close();
-            log.info("Loaded {} keywords from keywords.txt", count);
         } catch (Exception e) {
             log.warn("keywords.txt not found or unreadable — skipping: {}", e.getMessage());
         }

@@ -2,11 +2,13 @@ package com.companynews.newsscheduler.controller;
 
 import com.companynews.newsscheduler.dto.NewsItem;
 import com.companynews.newsscheduler.dto.NseAnnouncement;
-import com.companynews.newsscheduler.service.GoogleRssService;
-import com.companynews.newsscheduler.service.NseFetchService;
-import com.companynews.newsscheduler.service.SeqIdWindowService;
-import com.companynews.newsscheduler.service.UrlWindowService;
-import com.companynews.newsscheduler.service.WorkerService;
+import com.companynews.newsscheduler.dto.WatchlistAddedRequest;
+import com.companynews.newsscheduler.service.RssFetcher;
+import com.companynews.newsscheduler.service.NseFetcher;
+import com.companynews.newsscheduler.service.SeqIdWindow;
+import com.companynews.newsscheduler.service.UrlWindow;
+import com.companynews.newsscheduler.service.NewsWorker;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -19,105 +21,80 @@ import java.util.Map;
 @RequestMapping("/api/internal")
 public class WatchlistEventController {
 
-    private static final Logger log =
-        LoggerFactory.getLogger(WatchlistEventController.class);
+    private static final Logger log = LoggerFactory.getLogger(WatchlistEventController.class);
 
-    private final GoogleRssService googleRssService;
-    private final NseFetchService nseFetchService;
-    private final WorkerService workerService;
-    private final UrlWindowService urlWindowService;
-    private final SeqIdWindowService seqIdWindowService;
+    private final RssFetcher rssFetcher;
+    private final NseFetcher nseFetcher;
+    private final NewsWorker newsWorker;
+    private final UrlWindow urlWindow;
+    private final SeqIdWindow seqIdWindow;
 
-    public WatchlistEventController(GoogleRssService googleRssService,
-                                     NseFetchService nseFetchService,
-                                     WorkerService workerService,
-                                     UrlWindowService urlWindowService,
-                                     SeqIdWindowService seqIdWindowService) {
-        this.googleRssService = googleRssService;
-        this.nseFetchService = nseFetchService;
-        this.workerService = workerService;
-        this.urlWindowService = urlWindowService;
-        this.seqIdWindowService = seqIdWindowService;
+    public WatchlistEventController(RssFetcher rssFetcher,
+                                     NseFetcher nseFetcher,
+                                     NewsWorker newsWorker,
+                                     UrlWindow urlWindow,
+                                     SeqIdWindow seqIdWindow) {
+        this.rssFetcher  = rssFetcher;
+        this.nseFetcher  = nseFetcher;
+        this.newsWorker  = newsWorker;
+        this.urlWindow   = urlWindow;
+        this.seqIdWindow = seqIdWindow;
     }
 
     /**
      * POST /api/internal/watchlist/added
      * Body: { "symbol": "WIPRO" }
      *
-     * Called by watchlist-service when a user adds a new company
-     * to their global watchlist.
+     * Called by watchlist-service when a new company is added to the global watchlist.
+     * Triggers an immediate on-demand fetch so the user sees news right away instead
+     * of waiting for the next scheduled run.
      *
-     * What it does:
-     * 1. Fetches Google RSS news for the new symbol immediately
-     * 2. Fetches NSE announcements and filters for this symbol
-     * 3. Saves whatever is found
-     * 4. Returns how many items were saved
-     *
-     * WHY a separate controller and not in NewsController:
-     * This is an internal service-to-service endpoint.
-     * It is not called by the frontend or users directly.
-     * Keeping it separate under /api/internal makes it clear
-     * this is a backend integration endpoint.
-     *
-     * HOW watchlist-service calls this:
-     * After inserting a new row into global_watchlist table,
-     * watchlist-service makes a POST request to:
-     * http://localhost:8084/api/internal/watchlist/added
-     * with body { "symbol": "WIPRO" }
+     * @Valid on WatchlistAddedRequest ensures symbol is non-null and non-blank before
+     * this method runs. GlobalExceptionHandler converts violations to 400 Bad Request.
      */
     @PostMapping("/watchlist/added")
     public ResponseEntity<Map<String, Object>> onNewSymbolAdded(
-            @RequestBody Map<String, String> body) {
+            @Valid @RequestBody WatchlistAddedRequest body) {
 
-        String rawSymbol = body.get("symbol");
-        if (rawSymbol == null || rawSymbol.trim().isEmpty()) {
-            return ResponseEntity.badRequest()
-                .body(Map.of("error", "symbol is required"));
-        }
-
-        // Create a new final variable — this is what lambdas below will use
-        // WHY final: Java requires variables used inside lambda expressions
-        // to never be reassigned. By creating a new variable instead of
-        // reassigning the old one, we satisfy this requirement.
-        final String symbol = rawSymbol.trim().toUpperCase();
+        final String symbol = body.getSymbol().trim().toUpperCase();
         log.info("New symbol added to watchlist: {} — triggering immediate fetch", symbol);
 
         int totalSaved = 0;
 
-        // Step 1: Fetch from Google RSS for this symbol
-        List<NewsItem> googleItems = googleRssService.fetchNews(symbol);
+        // Google RSS fetch for the new symbol
+        List<NewsItem> googleItems = rssFetcher.fetch(symbol);
         List<NewsItem> googleNew = googleItems.stream()
-            .filter(item -> urlWindowService.checkAndMark(item.getLink()))
+            .filter(item -> urlWindow.addIfAbsent(item.getLink()))
             .toList();
 
         if (!googleNew.isEmpty()) {
-            workerService.processAndSave(symbol, googleNew);
+            newsWorker.saveNews(symbol, googleNew);
             totalSaved += googleNew.size();
-            log.info("Google RSS: saved {} items for new symbol: {}", googleNew.size(), symbol);
+            log.info("Google RSS: {} items saved for new symbol: {}", googleNew.size(), symbol);
         }
 
-        // Step 2: Fetch from NSE and filter for this symbol
-        List<NseAnnouncement> nseAnnouncements = nseFetchService.fetchAllAnnouncements();
+        // NSE fetch filtered for the new symbol
+        List<NseAnnouncement> nseAnnouncements = nseFetcher.fetch();
         List<NewsItem> nseMatching = nseAnnouncements.stream()
             .filter(a -> symbol.equalsIgnoreCase(a.getNewsItem().getSymbol()))
             .filter(a -> {
-                if (seqIdWindowService.isAlreadySeen(a.getSeqId())) return false;
-                seqIdWindowService.markAsSeen(a.getSeqId());
+                if (seqIdWindow.contains(a.getSeqId())) return false;
+                seqIdWindow.add(a.getSeqId());
                 return true;
             })
             .map(NseAnnouncement::getNewsItem)
             .toList();
 
         if (!nseMatching.isEmpty()) {
-            workerService.processAndSave(symbol, nseMatching);
+            newsWorker.saveNews(symbol, nseMatching);
             totalSaved += nseMatching.size();
-            log.info("NSE: saved {} items for new symbol: {}", nseMatching.size(), symbol);
+            log.info("NSE: {} items saved for new symbol: {}", nseMatching.size(), symbol);
         }
 
         return ResponseEntity.ok(Map.of(
-            "symbol", symbol,
+            "symbol",     symbol,
             "itemsSaved", totalSaved,
-            "message", totalSaved > 0
+            "message",    totalSaved > 0
                 ? "News fetched and saved successfully"
                 : "No news found at this time — will be fetched at next scheduled run"
         ));
