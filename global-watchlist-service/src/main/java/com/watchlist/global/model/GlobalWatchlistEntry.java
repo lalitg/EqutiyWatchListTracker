@@ -1,0 +1,79 @@
+package com.watchlist.global.model;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+/**
+ * In-memory value object stored in the {@link java.util.concurrent.ConcurrentHashMap}
+ * maintained by {@link com.watchlist.global.service.GlobalWatchlistService}.
+ *
+ * <p>Not a JPA entity — never written to the database directly.
+ * It is populated from {@link com.watchlist.global.entity.GlobalWatchlist} on startup
+ * and refreshed with live prices every 5 minutes during market hours.
+ */
+public class GlobalWatchlistEntry {
+
+    /** NSE stock symbol (e.g. {@code "INFY"}). */
+    private String companyCode;
+
+    /** Latest live traded price. */
+    private BigDecimal currentValue;
+
+    /** 52-week low price. */
+    private BigDecimal week52Low;
+
+    /** 52-week high price. */
+    private BigDecimal week52High;
+
+    /** All-time low price. */
+    private BigDecimal allTimeLow;
+
+    /** All-time high price. */
+    private BigDecimal allTimeHigh;
+
+    /** Total traded volume for the latest session. */
+    private BigDecimal tradedVolume;
+
+    /** Timestamp of the last in-memory price update. */
+    private LocalDateTime lastUpdated;
+
+    /** @return the NSE stock symbol */
+    public String getCompanyCode() { return companyCode; }
+    /** @param companyCode the NSE stock symbol */
+    public void setCompanyCode(String companyCode) { this.companyCode = companyCode; }
+
+    /** @return the latest live traded price */
+    public BigDecimal getCurrentValue() { return currentValue; }
+    /** @param currentValue the latest traded price */
+    public void setCurrentValue(BigDecimal currentValue) { this.currentValue = currentValue; }
+
+    /** @return the 52-week low price */
+    public BigDecimal getWeek52Low() { return week52Low; }
+    /** @param week52Low the 52-week low price */
+    public void setWeek52Low(BigDecimal week52Low) { this.week52Low = week52Low; }
+
+    /** @return the 52-week high price */
+    public BigDecimal getWeek52High() { return week52High; }
+    /** @param week52High the 52-week high price */
+    public void setWeek52High(BigDecimal week52High) { this.week52High = week52High; }
+
+    /** @return the all-time low price */
+    public BigDecimal getAllTimeLow() { return allTimeLow; }
+    /** @param allTimeLow the all-time low price */
+    public void setAllTimeLow(BigDecimal allTimeLow) { this.allTimeLow = allTimeLow; }
+
+    /** @return the all-time high price */
+    public BigDecimal getAllTimeHigh() { return allTimeHigh; }
+    /** @param allTimeHigh the all-time high price */
+    public void setAllTimeHigh(BigDecimal allTimeHigh) { this.allTimeHigh = allTimeHigh; }
+
+    /** @return the total traded volume */
+    public BigDecimal getTradedVolume() { return tradedVolume; }
+    /** @param tradedVolume the total traded volume */
+    public void setTradedVolume(BigDecimal tradedVolume) { this.tradedVolume = tradedVolume; }
+
+    /** @return the timestamp of the last in-memory price update */
+    public LocalDateTime getLastUpdated() { return lastUpdated; }
+    /** @param lastUpdated the timestamp of the last in-memory price update */
+    public void setLastUpdated(LocalDateTime lastUpdated) { this.lastUpdated = lastUpdated; }
+}
