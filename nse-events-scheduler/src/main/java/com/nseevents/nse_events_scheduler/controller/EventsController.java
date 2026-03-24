@@ -14,16 +14,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
- * Single REST controller — one GET endpoint.
- * Serves events for any company symbol.
+ * REST controller for company event queries.
  *
- * Logic:
- * 1. Check DB first — return immediately if found (cache hit)
- * 2. If not found — fetch from NSE on-demand, save, return
- * 3. If nothing found anywhere — return empty response
+ * <p>Exposes a single endpoint: {@code GET /api/events?key=SYMBOL}</p>
+ *
+ * <p>Flow:
+ * <ol>
+ *   <li>DB hit → return immediately (fast path)</li>
+ *   <li>DB miss → on-demand fetch from NSE → save → return</li>
+ *   <li>Not found anywhere → empty response</li>
+ * </ol>
+ * </p>
  */
 @RestController
 @RequestMapping("/api/events")
@@ -44,64 +47,76 @@ public class EventsController {
     }
 
     /**
-     * GET /api/events?key=INFY
+     * Returns events for the given company symbol.
+     * Triggers an on-demand NSE fetch if the symbol is not cached in the database.
      *
-     * Returns all events (both upcoming and past) for the given symbol.
-     * If not in DB — triggers on-demand fetch from NSE and returns result.
-     *
-     * @param key company symbol e.g. "INFY", "RELIANCE", "TCS"
+     * @param key company symbol, e.g. "INFY", "TCS", "RELIANCE"
+     * @return events payload with keyword, events list, and lastUpdated;
+     *         HTTP 400 if key is blank; HTTP 200 with empty events if not found
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getEvents(@RequestParam String key) {
-        log.info("GET /api/events?key={}", key);
+        if (key == null || key.isBlank()) {
+            log.warn("GET /api/events called with blank or missing key");
+            return ResponseEntity.badRequest().build();
+        }
 
-        final String keyword = key.trim().toUpperCase();
+        final String symbol = key.trim().toUpperCase();
+        log.info("GET /api/events?key={}", symbol);
 
-        // Step 1: Check DB first — fastest path, no external API call
-        Optional<CompanyEvents> existing = repository.findByKeyword(keyword);
+        // Fast path: return from DB if already present
+        Optional<CompanyEvents> existing = repository.findByKeyword(symbol);
         if (existing.isPresent()) {
-            log.info("Cache hit — returning DB data for: {}", keyword);
+            log.info("DB hit for [{}]", symbol);
             return ResponseEntity.ok(buildResponse(existing.get()));
         }
 
-        // Step 2: Not in DB — fetch from NSE on-demand
-        log.info("Not in DB — fetching on-demand from NSE for: {}", keyword);
+        // Slow path: on-demand fetch from NSE, filter by symbol, persist
+        log.info("DB miss — on-demand fetch from NSE for [{}]", symbol);
         List<EventItem> allEvents = fetchService.fetchAllEvents();
 
-        // Filter only events matching the requested symbol
         List<EventItem> matching = allEvents.stream()
-            .filter(e -> keyword.equalsIgnoreCase(e.getSymbol()))
-            .collect(Collectors.toList());
+            .filter(e -> symbol.equalsIgnoreCase(e.getSymbol()))
+            .toList();
 
         if (!matching.isEmpty()) {
-            workerService.saveEvents(keyword, matching);
+            workerService.saveEvents(symbol, matching);
         }
 
-        // Step 3: Read back what was saved
-        Optional<CompanyEvents> saved = repository.findByKeyword(keyword);
+        Optional<CompanyEvents> saved = repository.findByKeyword(symbol);
         if (saved.isPresent()) {
             return ResponseEntity.ok(buildResponse(saved.get()));
         }
 
-        // Step 4: Nothing found — return empty response
-        log.warn("No events found for: {}", keyword);
-        return ResponseEntity.ok(buildEmptyResponse(keyword));
+        log.warn("No events found for [{}]", symbol);
+        return ResponseEntity.ok(emptyResponse(symbol));
     }
 
-    private Map<String, Object> buildResponse(CompanyEvents companyEvents) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("keyword", companyEvents.getKeyword());
-        response.put("events", companyEvents.getEvents());
-        response.put("lastUpdated", companyEvents.getLastUpdated());
-        return response;
+    /**
+     * Builds the standard response payload for a company.
+     *
+     * @param ce the company events entity
+     * @return map with keyword, events list, and lastUpdated timestamp
+     */
+    private Map<String, Object> buildResponse(CompanyEvents ce) {
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("keyword", ce.getKeyword());
+        resp.put("events", ce.getEvents());
+        resp.put("lastUpdated", ce.getLastUpdated());
+        return resp;
     }
 
-    private Map<String, Object> buildEmptyResponse(String key) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("keyword", key);
-        response.put("events", List.of());
-        response.put("lastUpdated", null);
-        return response;
+    /**
+     * Builds an empty response when no events are found for the given symbol.
+     *
+     * @param symbol company symbol
+     * @return map with empty events list and null lastUpdated
+     */
+    private Map<String, Object> emptyResponse(String symbol) {
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("keyword", symbol);
+        resp.put("events", List.of());
+        resp.put("lastUpdated", null);
+        return resp;
     }
 }
-

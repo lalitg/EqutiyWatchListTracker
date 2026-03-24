@@ -12,16 +12,14 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
- * Orchestrates the NSE Events pipeline.
- * Runs once on startup and then every day at 7 AM.
+ * Orchestrates the NSE Events data pipeline.
+ * Runs once on startup, then daily at the configured cron time.
  *
- * Flow:
- * 1. Fetch all events from NSE Event Calendar API
- * 2. Group by company symbol
- * 3. Save each company's events to DB (replace strategy)
+ * <p>Flow: fetch all events → group by symbol → persist each company's events.</p>
  */
 @Component
 public class NseEventsScheduler {
@@ -31,8 +29,11 @@ public class NseEventsScheduler {
     private final NseEventFetchService fetchService;
     private final EventWorkerService workerService;
 
-    // Prevents duplicate startup execution
-    private boolean startupFetchDone = false;
+    /**
+     * Guards against duplicate startup execution.
+     * AtomicBoolean ensures thread-safe check-and-set without synchronization blocks.
+     */
+    private final AtomicBoolean startupDone = new AtomicBoolean(false);
 
     public NseEventsScheduler(NseEventFetchService fetchService,
                                EventWorkerService workerService) {
@@ -41,27 +42,28 @@ public class NseEventsScheduler {
     }
 
     /**
-     * Runs ONCE when application is fully started.
-     * ApplicationReadyEvent fires exactly once — more reliable than
-     * ContextRefreshedEvent which can fire multiple times.
+     * Runs once when the application is fully started.
+     *
+     * <p>{@link ApplicationReadyEvent} is preferred over {@code ContextRefreshedEvent}
+     * because it fires exactly once — after all beans and Flyway migrations are ready.</p>
      */
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
-        if (startupFetchDone) return;
-        startupFetchDone = true;
+        if (!startupDone.compareAndSet(false, true)) return;
         log.info("=== NSE Events startup fetch triggered ===");
-        fetchAndSaveEvents();
+        syncEvents();
     }
 
     /**
-     * Runs every day at 7 AM via cron.
-     * Fetches the full event calendar and saves/updates all companies.
+     * Fetches the full NSE event calendar and persists all companies.
+     * Runs every day at the configured cron time (default: 7 AM).
+     *
+     * <p>Also called directly by {@link #onStartup()} on first boot.</p>
      */
     @Scheduled(cron = "${events.nse.cron}")
-    public void fetchAndSaveEvents() {
-        log.info("NSE Events fetch started...");
+    public void syncEvents() {
+        log.info("NSE Events sync started");
 
-        // Step 1: Fetch all events from NSE
         List<EventItem> allEvents = fetchService.fetchAllEvents();
 
         if (allEvents.isEmpty()) {
@@ -69,21 +71,14 @@ public class NseEventsScheduler {
             return;
         }
 
-        // Step 2: Group by company symbol
-        // NSE returns a flat list mixing all companies
-        // We need one group per company to save separately
-        // Result: { "INFY" -> [event1, event2], "RELIANCE" -> [event3] }
+        // Group flat event list by company symbol
+        // e.g. { "INFY" -> [event1, event2], "TCS" -> [event3] }
         Map<String, List<EventItem>> bySymbol = allEvents.stream()
             .filter(e -> e.getSymbol() != null)
             .collect(Collectors.groupingBy(EventItem::getSymbol));
 
-        // Step 3: Save each company's events
-        for (Map.Entry<String, List<EventItem>> entry : bySymbol.entrySet()) {
-            workerService.saveEvents(entry.getKey(), entry.getValue());
-        }
+        bySymbol.forEach(workerService::saveEvents);
 
-        log.info("NSE Events fetch complete — {} companies saved/updated",
-                 bySymbol.size());
+        log.info("NSE Events sync complete — {} companies updated", bySymbol.size());
     }
 }
-

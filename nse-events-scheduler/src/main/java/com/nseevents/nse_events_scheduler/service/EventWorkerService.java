@@ -18,15 +18,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Saves events to DB with per-keyword locking to prevent race conditions.
- * Handles INSERT vs UPDATE automatically.
- * Enforces the events.limit per company.
+ * Persists company events to the database with per-keyword locking.
  *
- * WHY replaceAll strategy:
- * Unlike news (where we accumulate items over time),
- * events are a calendar — NSE gives us the full current list each time.
- * We REPLACE all events for a company on every fetch.
- * This ensures past events that NSE removes are also removed from our DB.
+ * <p>Uses a <b>replace strategy</b>: all events for a company are overwritten
+ * on each fetch. NSE provides the full current calendar, not incremental updates.</p>
+ *
+ * <p>Per-keyword {@link ReentrantLock} prevents concurrent writes for the same
+ * company symbol (e.g. two scheduler threads racing on "INFY").</p>
  */
 @Service
 public class EventWorkerService {
@@ -38,72 +36,90 @@ public class EventWorkerService {
     @Value("${events.limit:10}")
     private int eventsLimit;
 
-    // Per-keyword locking — prevents race condition when multiple
-    // threads save events for the same company simultaneously
-    private final ConcurrentHashMap<String, ReentrantLock> keywordLocks
-        = new ConcurrentHashMap<>();
+    /** Per-keyword locks — prevents concurrent writes for the same company. */
+    private final ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
 
     public EventWorkerService(CompanyEventsRepository repository) {
         this.repository = repository;
     }
 
-    private ReentrantLock getLockForKeyword(String keyword) {
-        return keywordLocks.computeIfAbsent(keyword, k -> new ReentrantLock());
+    /**
+     * Returns the lock for the given keyword, creating one if absent.
+     *
+     * @param keyword company symbol
+     * @return lock instance for that keyword
+     */
+    private ReentrantLock getLock(String keyword) {
+        return locks.computeIfAbsent(keyword, k -> new ReentrantLock());
     }
 
-    @Transactional
+    /**
+     * Saves or replaces events for the given keyword.
+     *
+     * <p>Uses {@code noRollbackFor = DataIntegrityViolationException.class} so
+     * the transaction stays alive when a constraint violation is caught, allowing
+     * the fallback {@link #retryUpdate} to run in the same transaction.</p>
+     *
+     * @param keyword   company symbol (e.g. "INFY")
+     * @param newEvents list of events to persist; no-op if null or empty
+     */
+    @Transactional(noRollbackFor = DataIntegrityViolationException.class)
     public void saveEvents(String keyword, List<EventItem> newEvents) {
         if (newEvents == null || newEvents.isEmpty()) return;
 
-        ReentrantLock lock = getLockForKeyword(keyword);
+        ReentrantLock lock = getLock(keyword);
         lock.lock();
 
         try {
-            // Load existing row or create new one
             Optional<CompanyEvents> existing = repository.findByKeyword(keyword);
-            CompanyEvents record;
+            CompanyEvents record = existing.orElseGet(() -> {
+                CompanyEvents c = new CompanyEvents();
+                c.setKeyword(keyword);
+                return c;
+            });
 
-            if (existing.isPresent()) {
-                record = existing.get();
-            } else {
-                record = new CompanyEvents();
-                record.setKeyword(keyword);
-            }
-
-            // REPLACE strategy — NSE gives us the full current event list
-            // Trim to limit before saving
+            // new ArrayList<> copies the subList view to prevent later modification issues
             List<EventItem> toSave = newEvents.size() > eventsLimit
-                ? newEvents.subList(0, eventsLimit)
+                ? new ArrayList<>(newEvents.subList(0, eventsLimit))
                 : newEvents;
 
             record.setEvents(toSave);
             record.setLastUpdated(LocalDateTime.now());
             repository.save(record);
 
-            log.info("Saved {} event(s) for keyword: {}", toSave.size(), keyword);
+            log.info("Saved {} event(s) for [{}]", toSave.size(), keyword);
 
         } catch (DataIntegrityViolationException e) {
-            log.warn("Constraint hit for keyword: {} — retrying", keyword);
-            retryAsUpdate(keyword, newEvents);
+            log.warn("Constraint violation for [{}] — retrying as update", keyword);
+            retryUpdate(keyword, newEvents);
         } finally {
             lock.unlock();
         }
     }
 
-    @Transactional
-    private void retryAsUpdate(String keyword, List<EventItem> newEvents) {
+    /**
+     * Fallback update executed when a constraint violation is caught in
+     * {@link #saveEvents}.
+     *
+     * <p>Runs inside the same open transaction (kept alive by
+     * {@code noRollbackFor}). No separate {@code @Transactional} needed —
+     * and none is added, since Spring AOP cannot intercept private methods.</p>
+     *
+     * @param keyword   company symbol
+     * @param newEvents events to persist
+     */
+    private void retryUpdate(String keyword, List<EventItem> newEvents) {
         Optional<CompanyEvents> existing = repository.findByKeyword(keyword);
         if (existing.isEmpty()) return;
 
         CompanyEvents record = existing.get();
         List<EventItem> toSave = newEvents.size() > eventsLimit
-            ? newEvents.subList(0, eventsLimit)
+            ? new ArrayList<>(newEvents.subList(0, eventsLimit))
             : newEvents;
 
         record.setEvents(toSave);
         record.setLastUpdated(LocalDateTime.now());
         repository.save(record);
-        log.info("Retry update succeeded for keyword: {}", keyword);
+        log.info("Retry update succeeded for [{}]", keyword);
     }
 }
-
