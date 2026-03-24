@@ -4,14 +4,16 @@ import com.companycode.nse.entity.SectorCompanies;
 import com.companycode.nse.repository.SectorCompaniesRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpClient.Redirect;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,59 +21,75 @@ import java.util.List;
 /**
  * Service responsible for syncing NSE sectoral index data into the database.
  *
- * Flow:
- *   1. Establish a session with NSE by hitting the home page to obtain cookies.
- *   2. Fetch all NSE indices and filter down to SECTORAL INDICES only (19 sectors).
- *   3. For each sector, fetch its constituent stocks and upsert into sector_companies table.
+ * <p>Fetches all 19 NSE sectoral indices and their constituent stocks from the
+ * NSE API, then upserts each sector into the {@code sector_companies} table.
  *
- * NSE's API requires a valid browser-like session (cookies) — plain HTTP calls are blocked.
- * This service handles that by doing a cookie handshake before making any API calls.
+ * <p>NSE's API requires a valid browser session cookie — plain HTTP calls are
+ * blocked. This service performs a cookie handshake against the NSE home page
+ * before making any API calls.
+ *
+ * <p>The underlying {@link HttpClient} is shared across all calls within a sync
+ * run — it is thread-safe and reused rather than recreated per request.
  */
 @Service
 public class NseSectorSyncService {
 
-    // NSE home page — hit first to establish a session and get cookies
-    private static final String NSE_HOME = "https://www.nseindia.com";
+    private static final Logger logger = LogManager.getLogger(NseSectorSyncService.class);
 
-    // Returns all 135 NSE indices across all categories
-    private static final String ALL_INDICES_URL = "https://www.nseindia.com/api/allIndices";
-
-    // Returns constituent stocks for a given index — append URL-encoded index name
+    private static final String NSE_HOME         = "https://www.nseindia.com";
+    private static final String ALL_INDICES_URL  = "https://www.nseindia.com/api/allIndices";
     private static final String STOCK_INDICES_URL = "https://www.nseindia.com/api/equity-stockIndices?index=";
 
-    // The category value we filter on — only want sector-based indices, not broad market or strategy
+    /** Category value used to filter down to sector-based indices only. */
     private static final String SECTORAL = "SECTORAL INDICES";
 
+    /** Shared, thread-safe HTTP client — reused across all NSE API calls. */
+    private final HttpClient                httpClient = HttpClient.newBuilder()
+                                                                   .followRedirects(Redirect.ALWAYS)
+                                                                   .build();
     private final SectorCompaniesRepository repository;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper              objectMapper;
 
+    /**
+     * Constructs the service with required dependencies.
+     *
+     * @param repository   JPA repository for the {@code sector_companies} table
+     * @param objectMapper Jackson mapper for parsing NSE JSON responses
+     */
     public NseSectorSyncService(SectorCompaniesRepository repository, ObjectMapper objectMapper) {
-        this.repository = repository;
+        this.repository   = repository;
         this.objectMapper = objectMapper;
     }
 
     /**
-     * Main sync method — fetches all 19 NSE sectoral indices and their constituent
-     * stocks, then upserts each sector into the sector_companies table.
+     * Fetches all 19 NSE sectoral indices and upserts each into the
+     * {@code sector_companies} table.
      *
-     * Wrapped in @Transactional so if anything fails mid-sync, no partial data is saved.
+     * <p>Steps:
+     * <ol>
+     *   <li>Obtain NSE session cookies via a home-page handshake</li>
+     *   <li>Fetch all NSE indices and filter down to {@code SECTORAL INDICES}</li>
+     *   <li>For each sector, fetch its constituent stocks from the NSE API</li>
+     *   <li>Upsert the sector row (insert if new, update if existing)</li>
+     * </ol>
+     *
+     * @throws RuntimeException wrapping any HTTP or parsing error encountered during sync
      */
     @Transactional
     public void syncSectors() {
+        logger.info("Starting sector sync from NSE API...");
         try {
-            // HttpClient with redirect following — NSE sometimes redirects on first hit
-            HttpClient client = HttpClient.newBuilder()
-                    .followRedirects(Redirect.ALWAYS)
-                    .build();
+            // Step 1: cookie handshake — NSE blocks API calls without a valid session
+            String cookies = fetchSessionCookies();
+            if (cookies.isEmpty()) {
+                logger.warn("Could not obtain NSE session cookies — sector sync aborted");
+                return;
+            }
+            logger.debug("NSE session cookies obtained");
 
-            // Step 1: hit NSE home page to get session cookies
-            // NSE blocks API calls without a valid session — this mimics what a browser does
-            String cookies = fetchSessionCookies(client);
-
-            // Step 2: fetch all indices and filter down to SECTORAL INDICES only
-            String allIndicesJson = fetchWithCookies(client, ALL_INDICES_URL, cookies);
-            JsonNode root = objectMapper.readTree(allIndicesJson);
-            JsonNode data = root.get("data");
+            // Step 2: fetch all indices and extract only SECTORAL INDICES names
+            String allIndicesJson = fetchWithCookies(ALL_INDICES_URL, cookies);
+            JsonNode data = objectMapper.readTree(allIndicesJson).get("data");
 
             List<String> sectorNames = new ArrayList<>();
             for (JsonNode index : data) {
@@ -79,20 +97,18 @@ public class NseSectorSyncService {
                     sectorNames.add(index.get("index").asText());
                 }
             }
-            // sectorNames now holds 19 sector names e.g. ["NIFTY IT", "NIFTY PHARMA", ...]
+            logger.info("Found {} sectoral indices to sync", sectorNames.size());
 
-            // Step 3: for each sector, fetch its stocks and upsert into DB
+            // Step 3: for each sector fetch its stocks and upsert into DB
+            int synced = 0;
             for (String sectorName : sectorNames) {
-
                 // URL-encode the sector name — spaces become %20, & becomes %26
                 String encodedSector = sectorName.replace(" ", "%20").replace("&", "%26");
-                String stocksJson = fetchWithCookies(client, STOCK_INDICES_URL + encodedSector, cookies);
+                String stocksJson = fetchWithCookies(STOCK_INDICES_URL + encodedSector, cookies);
 
-                JsonNode stocksRoot = objectMapper.readTree(stocksJson);
-                JsonNode stockData = stocksRoot.get("data");
+                JsonNode stockData = objectMapper.readTree(stocksJson).get("data");
 
-                // Extract just the symbol from each stock entry in the response
-                // Skip the first entry — NSE includes the index itself (e.g. "NIFTY IT") as the first item
+                // Extract stock symbols — skip the first entry (NSE includes the index itself)
                 List<String> symbols = new ArrayList<>();
                 if (stockData != null) {
                     boolean first = true;
@@ -105,29 +121,38 @@ public class NseSectorSyncService {
                     }
                 }
 
-                // Serialize symbol list to JSON string e.g. ["INFY","TCS","WIPRO"]
-                String companiesJson = objectMapper.writeValueAsString(symbols);
-
-                // Upsert: if sector row already exists update it, otherwise create new
+                // Upsert: update existing row or create a new one
                 SectorCompanies sector = repository.findBySectorName(sectorName)
                         .orElse(new SectorCompanies());
                 sector.setSectorName(sectorName);
-                sector.setCompanies(companiesJson);
+                sector.setCompanies(objectMapper.writeValueAsString(symbols));
                 sector.setLastUpdated(LocalDateTime.now());
                 repository.save(sector);
+
+                logger.debug("Synced sector '{}' with {} stocks", sectorName, symbols.size());
+                synced++;
             }
 
+            logger.info("Sector sync complete — synced {} sectors", synced);
+
         } catch (Exception e) {
+            logger.error("Sector sync failed: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to sync NSE sectors", e);
         }
     }
 
     /**
-     * Hits the NSE home page and extracts session cookies from the response headers.
-     * NSE sets cookies like "nsit" and "nseappid" which are required for API access.
-     * We strip the cookie attributes (Path, Secure, etc.) and keep only name=value pairs.
+     * Hits the NSE home page to obtain session cookies required for subsequent API calls.
+     *
+     * <p>NSE sets cookies like {@code nsit} and {@code nseappid} that must be present
+     * on all API requests. Cookie attributes (Path, Secure, etc.) are stripped —
+     * only the {@code name=value} pairs are retained.
+     *
+     * @return a semicolon-separated cookie string (e.g. {@code "nsit=abc; nseappid=xyz"}),
+     *         or an empty string if the handshake fails
+     * @throws Exception if the HTTP request fails
      */
-    private String fetchSessionCookies(HttpClient client) throws Exception {
+    private String fetchSessionCookies() throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(NSE_HOME))
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
@@ -135,11 +160,9 @@ public class NseSectorSyncService {
                 .GET()
                 .build();
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        // Each set-cookie header looks like "nsit=abc123; Path=/; Secure"
-        // We split on ";" and take only the first part (name=value)
-        // Then join all cookies into one header string e.g. "nsit=abc; nseappid=xyz"
+        // Strip cookie attributes (Path, Secure, etc.) — keep only "name=value"
         return response.headers().allValues("set-cookie")
                 .stream()
                 .map(c -> c.split(";")[0])
@@ -147,20 +170,27 @@ public class NseSectorSyncService {
     }
 
     /**
-     * Makes an authenticated GET request to a NSE API endpoint using the session cookies.
-     * Sets browser-like headers (User-Agent, Referer) to avoid being blocked by NSE.
+     * Makes an authenticated GET request to a NSE API endpoint using the shared
+     * {@link HttpClient} and the provided session cookies.
+     *
+     * <p>Sets browser-like headers ({@code User-Agent}, {@code Referer}) to avoid
+     * being blocked by NSE's request validation.
+     *
+     * @param url     the NSE API endpoint URL
+     * @param cookies the session cookie string from {@link #fetchSessionCookies()}
+     * @return the raw JSON response body
+     * @throws Exception if the HTTP request fails
      */
-    private String fetchWithCookies(HttpClient client, String url, String cookies) throws Exception {
+    private String fetchWithCookies(String url, String cookies) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                 .header("Accept", "application/json, text/plain, */*")
-                .header("Referer", NSE_HOME)  // NSE checks the Referer header
+                .header("Referer", NSE_HOME)
                 .header("Cookie", cookies)
                 .GET()
                 .build();
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        return response.body();
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body();
     }
 }
