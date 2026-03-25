@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import WatchlistTable from '../components/watchlist/WatchlistTable';
 import AddCompanyModal from '../components/watchlist/AddCompanyModal';
+import ImportCsvModal from '../components/watchlist/ImportCsvModal';
 import CompanyInsightsModal from '../components/watchlist/CompanyInsightsModal';
 import { useWatchlist } from '../context/WatchlistContext';
 
 const WatchlistPage = () => {
   const {
     entries, isLoading, error, isActionLoading,
-    fetchEntries, addCompany, bulkDelete,
+    fetchEntries, addCompany, bulkDelete, importCompanies,
   } = useWatchlist();
 
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [insightsEntry, setInsightsEntry] = useState(null);
 
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
@@ -26,6 +28,7 @@ const WatchlistPage = () => {
         <h1 className="page-title">My Watchlist</h1>
         <div className="page-actions">
           <button className="btn btn-secondary" onClick={fetchEntries}>Refresh</button>
+          <button className="btn btn-secondary" onClick={() => setImportModalOpen(true)}>Import CSV</button>
           <button className="btn btn-add" onClick={() => setAddModalOpen(true)}>+ Add Company</button>
         </div>
       </div>
@@ -55,6 +58,13 @@ const WatchlistPage = () => {
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         onAdd={handleAdd}
+        isLoading={isActionLoading}
+      />
+
+      <ImportCsvModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImport={importCompanies}
         isLoading={isActionLoading}
       />
 
