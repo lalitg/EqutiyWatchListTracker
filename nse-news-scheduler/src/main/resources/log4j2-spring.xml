@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+
+    <Properties>
+        <!-- Log pattern includes timestamp, level, thread, keyword (MDC), logger name, and message -->
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t]%X{keyword:+[}%X{keyword}%X{keyword:+]} %c{36} : %m%n</Property>
+        <Property name="LOG_FILE">logs/nse-news-scheduler.log</Property>
+        <Property name="LOG_FILE_PATTERN">logs/nse-news-scheduler.%d{yyyy-MM-dd}.%i.log</Property>
+    </Properties>
+
+    <Appenders>
+
+        <!-- CONSOLE APPENDER — writes logs to terminal -->
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <!-- FILE APPENDER — writes logs to a rolling file on disk.
+             Rolls daily and also when file reaches 10MB.
+             Keeps 30 days of history and max 300MB total. -->
+        <RollingFile name="FILE"
+                     fileName="${LOG_FILE}"
+                     filePattern="${LOG_FILE_PATTERN}">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="logs" maxDepth="1">
+                    <IfFileName glob="nse-news-scheduler.*.log"/>
+                    <IfLastModified age="30d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+    </Appenders>
+
+    <Loggers>
+
+        <!-- Reduce noise from framework logs -->
+        <Logger name="org.springframework" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="FILE"/>
+        </Logger>
+
+        <Logger name="org.hibernate" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="FILE"/>
+        </Logger>
+
+        <Logger name="com.zaxxer.hikari" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="FILE"/>
+        </Logger>
+
+        <Logger name="org.flywaydb" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="FILE"/>
+        </Logger>
+
+        <!-- Application package — keep at INFO -->
+        <Logger name="com.companynews.newsscheduler" level="INFO" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="FILE"/>
+        </Logger>
+
+        <!-- ROOT LOGGER — catch-all for anything not matched above -->
+        <Root level="INFO">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="FILE"/>
+        </Root>
+
+    </Loggers>
+
+</Configuration>
