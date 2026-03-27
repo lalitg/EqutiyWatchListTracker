@@ -96,6 +96,14 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<!--
+					    classifier=exec: produces nse-events-scheduler-0.0.1-SNAPSHOT-exec.jar
+					    (executable fat JAR) and keeps nse-events-scheduler-0.0.1-SNAPSHOT.jar
+					    as a plain JAR for use as a dependency in unified-scheduler.
+					-->
+					<classifier>exec</classifier>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

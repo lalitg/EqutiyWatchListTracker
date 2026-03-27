@@ -77,6 +77,12 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>com.companycode.nse.NseEnterpriseSchedulerApplication</mainClass>
+                    <!--
+                        classifier=exec: produces nse-enterprise-scheduler-1.0.0-exec.jar
+                        (executable fat JAR) and keeps nse-enterprise-scheduler-1.0.0.jar
+                        as a plain JAR for use as a dependency in unified-scheduler.
+                    -->
+                    <classifier>exec</classifier>
                 </configuration>
             </plugin>
         </plugins>

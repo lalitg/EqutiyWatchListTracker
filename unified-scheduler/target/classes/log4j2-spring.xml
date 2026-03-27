@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Unified Log4j2 configuration for the single-JVM launcher.
+
+    Log4j2 is a JVM-level singleton — it is initialised ONCE by whichever
+    Spring context boots first, and subsequent contexts' logging.config values
+    are silently ignored. This file is the authoritative config for all 4 services
+    running inside unified-scheduler.
+
+    UnifiedSchedulerApplication.main() pins this file via:
+        System.setProperty("logging.config", "classpath:log4j2-spring.xml")
+    before any service thread starts, guaranteeing this config is used.
+
+    Appenders:
+      CONSOLE  — real-time output to SYSTEM_OUT (local dev / Docker logs)
+      FILE     — rolling file: daily rollover + 50 MB size cap, 30-day retention
+      ASYNC    — non-blocking wrapper around FILE; prevents disk I/O from
+                 stalling scheduler/fetch threads
+
+    Package loggers (INFO):
+      com.watchlist.global    — global-watchlist-service
+      com.companycode.nse     — nse-code-service
+      com.nseevents           — nse-events-scheduler
+      com.companynews         — nse-news-scheduler
+      com.unified             — this launcher
+
+    Framework loggers (WARN — suppress noise):
+      org.springframework, org.hibernate, com.zaxxer.hikari, org.flywaydb
+-->
+<Configuration status="WARN" monitorInterval="30">
+
+    <Properties>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%t] %logger{36} : %msg%n</Property>
+        <Property name="LOG_FILE">logs/unified-scheduler.log</Property>
+        <Property name="LOG_ARCHIVE">logs/unified-scheduler.%d{yyyy-MM-dd}.%i.log.gz</Property>
+    </Properties>
+
+    <Appenders>
+
+        <!-- Console — terminal / Docker stdout -->
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <!-- Rolling file — daily + 50 MB cap, compressed archives -->
+        <RollingFile name="FILE"
+                     fileName="${LOG_FILE}"
+                     filePattern="${LOG_ARCHIVE}">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="50MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <!-- Auto-delete archives older than 30 days or when total exceeds 500 MB -->
+                <Delete basePath="logs" maxDepth="1">
+                    <IfFileName glob="unified-scheduler.*.log.gz"/>
+                    <IfAccumulatedFileSize exceeds="500MB"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+        <!--
+            Async wrapper — all disk writes happen on a background I/O thread.
+            bufferSize=1024 keeps 1024 log events in memory before blocking,
+            which is more than enough for 4 concurrent schedulers.
+        -->
+        <Async name="ASYNC_FILE" bufferSize="1024">
+            <AppenderRef ref="FILE"/>
+        </Async>
+
+    </Appenders>
+
+    <Loggers>
+
+        <!-- ── Framework internals — WARN only ─────────────────────────── -->
+        <Logger name="org.springframework" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="org.hibernate" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="com.zaxxer.hikari" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="org.flywaydb" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- ── Application packages — INFO ──────────────────────────────── -->
+
+        <!-- global-watchlist-service -->
+        <Logger name="com.watchlist.global" level="INFO" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- nse-code-service -->
+        <Logger name="com.companycode.nse" level="INFO" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- nse-events-scheduler -->
+        <Logger name="com.nseevents" level="INFO" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- nse-news-scheduler -->
+        <Logger name="com.companynews" level="INFO" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- unified-scheduler launcher itself -->
+        <Logger name="com.unified" level="INFO" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- Root — catch-all for any library not explicitly listed above -->
+        <Root level="WARN">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Root>
+
+    </Loggers>
+
+</Configuration>

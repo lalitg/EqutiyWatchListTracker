@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Root aggregator POM — not a parent, just a build coordinator.
+
+        Running `mvn install` from this directory will build all modules
+        in the correct order (services first, unified-scheduler last)
+        and install each artifact to the local ~/.m2 repository.
+
+        Each module keeps its own spring-boot-starter-parent, so there
+        is no version lock imposed here.
+    -->
+    <groupId>com.equitywatchlist</groupId>
+    <artifactId>equity-watchlist-tracker</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>EquityWatchListTracker</name>
+
+    <modules>
+        <!-- Build the 4 services first so their regular JARs land in ~/.m2 -->
+        <module>global-watchlist-service</module>
+        <module>nse-code-service</module>
+        <module>nse-events-scheduler</module>
+        <module>nse-news-scheduler</module>
+
+        <!-- unified-scheduler depends on the 4 above — must be last -->
+        <module>unified-scheduler</module>
+    </modules>
+
+</project>

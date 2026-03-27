@@ -71,6 +71,14 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <!--
+            classifier=exec: Spring Boot repackages into global-watchlist-service-1.0.0-exec.jar
+            (the executable fat JAR), leaving global-watchlist-service-1.0.0.jar as a plain JAR
+            usable as a Maven dependency by unified-scheduler.
+          -->
+          <classifier>exec</classifier>
+        </configuration>
       </plugin>
     </plugins>
   </build>
