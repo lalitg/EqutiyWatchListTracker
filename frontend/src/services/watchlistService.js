@@ -25,3 +25,10 @@ export function deleteCompany(companyCode) {
     method: 'DELETE',
   });
 }
+
+export function importCompanies(companyCodes) {
+  return apiClient(`${BASE}/import`, {
+    method: 'POST',
+    body: JSON.stringify({ companyCodes }),
+  });
+}

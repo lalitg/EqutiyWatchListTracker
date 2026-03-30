@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import SectorSelector from '../components/market/SectorSelector';
-import TrendPanel from '../components/market/TrendPanel';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import { useMarket } from '../context/MarketContext';
@@ -41,7 +40,6 @@ const GlobalMarketPage = () => {
 
       {!globalLoading && !globalError && global && (
         <div className="market-content">
-          <TrendPanel trend={global.trend} />
           <NewsList news={global.news} />
           <EventsList events={global.events} />
         </div>
