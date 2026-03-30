@@ -4,20 +4,33 @@ import java.math.BigDecimal;
 
 /**
  * Request DTO for adding or updating a watchlist entry.
+ *
+ * <p>On add, only {@link #companyCode} is required — price fields are fetched
+ * automatically from the global-watchlist-service.
+ * On update, price fields are provided explicitly by the caller.
  */
 public class WatchlistRequest {
 
+    /** NSE stock symbol to add or update (e.g. {@code "INFY"}). Required on add. */
     private String companyCode;
-    private BigDecimal week52Low;
-    private BigDecimal week52High;
-    private BigDecimal allTimeLow;
-    private BigDecimal allTimeHigh;
-    private BigDecimal currentValue;
-    private String trendSentiment;
-    private BigDecimal peRatio;
-    private BigDecimal eps;
 
-    // Getters and Setters
+    /** 52-week low price. Optional on add; used on update. */
+    private BigDecimal week52Low;
+
+    /** 52-week high price. Optional on add; used on update. */
+    private BigDecimal week52High;
+
+    /** All-time low price. Optional on add; used on update. */
+    private BigDecimal allTimeLow;
+
+    /** All-time high price. Optional on add; used on update. */
+    private BigDecimal allTimeHigh;
+
+    /** Latest traded price. Optional on add; used on update. */
+    private BigDecimal currentValue;
+
+    /** Total traded volume for the latest session. Optional on add; used on update. */
+    private BigDecimal tradedVolume;
 
     public String getCompanyCode() { return companyCode; }
     public void setCompanyCode(String companyCode) { this.companyCode = companyCode; }
@@ -37,12 +50,6 @@ public class WatchlistRequest {
     public BigDecimal getCurrentValue() { return currentValue; }
     public void setCurrentValue(BigDecimal currentValue) { this.currentValue = currentValue; }
 
-    public String getTrendSentiment() { return trendSentiment; }
-    public void setTrendSentiment(String trendSentiment) { this.trendSentiment = trendSentiment; }
-
-    public BigDecimal getPeRatio() { return peRatio; }
-    public void setPeRatio(BigDecimal peRatio) { this.peRatio = peRatio; }
-
-    public BigDecimal getEps() { return eps; }
-    public void setEps(BigDecimal eps) { this.eps = eps; }
+    public BigDecimal getTradedVolume() { return tradedVolume; }
+    public void setTradedVolume(BigDecimal tradedVolume) { this.tradedVolume = tradedVolume; }
 }
