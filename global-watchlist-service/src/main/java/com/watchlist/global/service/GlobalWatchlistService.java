@@ -8,7 +8,6 @@ import com.watchlist.global.repository.GlobalWatchlistRepository;
 import jakarta.annotation.PostConstruct;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -18,12 +17,13 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Core service managing the in-memory global watchlist price cache.
  *
- * <p>On startup ({@link PostConstruct}), seeds the cache from the DB, unions in
- * NIFTY 50 symbols fetched from NSE, and loads all rows into the in-memory map.
- * After full startup, {@link com.watchlist.global.scheduler.GlobalWatchlistScheduler}
- * triggers a price refresh and DB persist via {@link ApplicationReadyEvent}.
- * Prices are then refreshed every 5 minutes during market hours and persisted
- * to the {@code global_watchlist} table at market close.
+ * <p>On startup ({@link PostConstruct}), seeds NIFTY 50 symbols into the
+ * {@code global_watchlist} table (if not already present), then loads all rows
+ * into the in-memory map. Non-NIFTY 50 companies enter the cache organically
+ * when {@code watchlist-service} calls {@link #addCompany(String)}.
+ *
+ * <p>Prices are refreshed every 5 minutes during market hours and persisted
+ * to the {@code global_watchlist} table at market close (3:30 PM IST).
  */
 @Service
 public class GlobalWatchlistService {
@@ -36,7 +36,6 @@ public class GlobalWatchlistService {
     private final GlobalWatchlistRepository repository;
     private final NseClient                 nseClient;
     private final NsePriceClient            nsePriceClient;
-    private final JdbcTemplate              jdbcTemplate;
 
     /**
      * Constructs the service with required dependencies.
@@ -44,16 +43,13 @@ public class GlobalWatchlistService {
      * @param repository     JPA repository for the {@code global_watchlist} table
      * @param nseClient      client for fetching NIFTY 50 symbols from NSE
      * @param nsePriceClient client for fetching live price data directly from NSE
-     * @param jdbcTemplate   JDBC template for raw SQL queries
      */
     public GlobalWatchlistService(GlobalWatchlistRepository repository,
                                   NseClient nseClient,
-                                  NsePriceClient nsePriceClient,
-                                  JdbcTemplate jdbcTemplate) {
+                                  NsePriceClient nsePriceClient) {
         this.repository     = repository;
         this.nseClient      = nseClient;
         this.nsePriceClient = nsePriceClient;
-        this.jdbcTemplate   = jdbcTemplate;
     }
 
     /**
@@ -61,43 +57,35 @@ public class GlobalWatchlistService {
      *
      * <p>Steps:
      * <ol>
-     *   <li>Fetch NIFTY 50 symbols from NSE</li>
-     *   <li>Load all distinct company codes from user watchlists</li>
-     *   <li>Union both sets and seed missing rows into {@code global_watchlist}</li>
-     *   <li>Load all DB rows into the in-memory map</li>
+     *   <li>Fetch NIFTY 50 symbols from NSE. For each symbol, insert a row into
+     *       {@code global_watchlist} if one does not already exist (skipped on restarts).</li>
+     *   <li>Load ALL rows from {@code global_watchlist} into the in-memory map — covers
+     *       NIFTY 50 plus any companies added by users in previous runs.</li>
      * </ol>
+     *
+     * <p>This service has no dependency on the {@code watchlist} table. Non-NIFTY 50
+     * companies enter the cache organically via {@link #addCompany(String)}, which
+     * {@code watchlist-service} calls before adding any company to a user's watchlist.
      */
     @PostConstruct
     public void init() {
         logger.info("GlobalWatchlistService: initialising in-memory cache...");
 
-        // Step 1: Fetch NIFTY 50 symbols
+        // Step 1: Fetch NIFTY 50 and insert any symbols not yet in global_watchlist
         List<String> nifty50 = nseClient.fetchNifty50Symbols();
-
-        // Step 2: Load all distinct company codes from user watchlists
-        List<String> userWatchlistCodes = jdbcTemplate.queryForList(
-            "SELECT DISTINCT company_code FROM watchlist", String.class);
-
-        // Step 3: Union both sets (deduplicated)
-        Set<String> allCodes = new LinkedHashSet<>();
-        allCodes.addAll(nifty50);
-        allCodes.addAll(userWatchlistCodes);
-        logger.info("Total companies to seed: {}", allCodes.size());
-
-        // Step 4: Seed global_watchlist table for any missing companies
-        for (String code : allCodes) {
+        logger.info("Fetched {} NIFTY 50 symbols from NSE", nifty50.size());
+        for (String code : nifty50) {
             if (!repository.existsByCompanyCode(code)) {
                 GlobalWatchlist entity = new GlobalWatchlist();
                 entity.setCompanyCode(code);
                 repository.save(entity);
-                logger.debug("Seeded new company '{}' into global_watchlist", code);
+                logger.debug("Inserted NIFTY 50 company '{}' into global_watchlist", code);
             }
         }
 
-        // Load all DB rows into map
+        // Step 2: Load ALL rows into cache (NIFTY 50 + user-added companies from previous runs)
         repository.findAll().forEach(entity -> globalMap.put(entity.getCompanyCode(), toEntry(entity)));
         logger.info("Loaded {} companies into in-memory map", globalMap.size());
-        // Price refresh and persist are triggered after full startup via ApplicationReadyEvent
     }
 
     /**
