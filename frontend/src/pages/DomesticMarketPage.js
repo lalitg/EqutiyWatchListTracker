@@ -61,7 +61,7 @@ const DomesticMarketPage = () => {
 
       {!domesticLoading && !domesticError && domestic && (
         <div className="market-content">
-          <NewsList news={domestic.news} />
+          <NewsList news={domestic.news?.slice(0, 5)} />
           <EventsList events={domestic.events} />
         </div>
       )}
