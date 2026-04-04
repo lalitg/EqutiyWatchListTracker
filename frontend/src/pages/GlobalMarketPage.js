@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import SectorSelector from '../components/market/SectorSelector';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
@@ -28,10 +28,14 @@ const REGIONS = ['US', 'Europe', 'Asia', 'India', 'Global'];
  * The Refresh button force-fetches fresh data for the active tab only,
  * bypassing the cache.
  */
+/** Auto-refresh interval — 15 minutes. */
+const AUTO_REFRESH_MS = 15 * 60 * 1000;
+
 const GlobalMarketPage = () => {
   const {
     globalCache, globalLoading, globalError,
     selectedRegion, setRegion, fetchGlobal, refreshGlobal,
+    STALE_FOCUS_MS,
   } = useMarket();
 
   /** Data for the currently active region tab, or null if not yet loaded. */
@@ -39,14 +43,60 @@ const GlobalMarketPage = () => {
 
   /**
    * Triggers a fetch whenever the selected region changes.
-   * fetchGlobal is a no-op if data for this region is already cached.
+   * fetchGlobal checks cache freshness (TTL 15 min) — re-fetches if stale.
    */
   useEffect(() => {
     fetchGlobal(selectedRegion);
   }, [selectedRegion, fetchGlobal]);
 
+  /**
+   * Auto-refresh: silently re-fetches every 15 minutes.
+   * Skips if a fetch is already in progress to prevent concurrent calls.
+   */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!globalLoading) {
+        console.log(`[GlobalMarketPage] Auto-refresh triggered for region '${selectedRegion}'`);
+        refreshGlobal(selectedRegion);
+      }
+    }, AUTO_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, [selectedRegion, globalLoading, refreshGlobal]);
+
+  /**
+   * Tab-focus refresh: re-fetches when the user returns to the browser tab
+   * if the cached data for the active region is older than STALE_FOCUS_MS (5 min).
+   */
+  const handleVisibilityChange = useCallback(() => {
+    if (document.visibilityState === 'visible') {
+      const cached = globalCache[selectedRegion];
+      const isStale = !cached || (Date.now() - cached.fetchedAt) > STALE_FOCUS_MS;
+      if (isStale && !globalLoading) {
+        console.log(`[GlobalMarketPage] Tab focused — stale data, refreshing region '${selectedRegion}'`);
+        refreshGlobal(selectedRegion);
+      }
+    }
+  }, [selectedRegion, globalCache, globalLoading, refreshGlobal, STALE_FOCUS_MS]);
+
+  useEffect(() => {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [handleVisibilityChange]);
+
   const handleRegionChange = (region) => {
     setRegion(region);
+  };
+
+  /**
+   * Formats the fetchedAt timestamp into a human-readable "X min ago" string.
+   * Returns null if no timestamp is available yet.
+   */
+  const getLastUpdatedLabel = () => {
+    if (!currentData?.fetchedAt) return null;
+    const diffMs = Date.now() - currentData.fetchedAt;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'Updated just now';
+    return `Updated ${diffMin} min ago`;
   };
 
   return (
@@ -79,6 +129,9 @@ const GlobalMarketPage = () => {
 
       {!globalLoading && !globalError && currentData && (
         <div className="market-content">
+          {getLastUpdatedLabel() && (
+            <p className="last-updated-label">{getLastUpdatedLabel()}</p>
+          )}
           <NewsList news={currentData.news?.slice(0, 5)} />
           <EventsList events={currentData.events ?? []} />
         </div>

@@ -14,13 +14,19 @@ const ACTIONS = {
   SET_SECTOR:      'SET_SECTOR',
 };
 
+/** How long (ms) cached data is considered fresh before a re-fetch is triggered. */
+const CACHE_TTL_MS    = 15 * 60 * 1000; // 15 minutes
+/** Minimum staleness (ms) before a tab-focus event triggers a re-fetch. */
+const STALE_FOCUS_MS  =  5 * 60 * 1000; //  5 minutes
+
 /**
  * Initial reducer state.
  *
  * globalCache is a plain object keyed by region (e.g. 'US', 'India').
+ * Each entry is { news, fetchedAt } where fetchedAt is a Date.now() timestamp.
  * A null/undefined value means data for that region has not been fetched yet.
- * Once fetched, the region key holds the { news } payload and is never
- * cleared unless the user explicitly clicks Refresh (which calls refreshGlobal).
+ * Once fetched, the region key is refreshed either by: manual Refresh button,
+ * auto 15-min interval, tab-focus staleness check, or stale tab-switch.
  */
 const initialState = {
   globalCache:    {},
@@ -41,7 +47,10 @@ function reducer(state, action) {
       return {
         ...state,
         globalLoading: false,
-        globalCache: { ...state.globalCache, [action.payload.region]: action.payload.data },
+        globalCache: {
+          ...state.globalCache,
+          [action.payload.region]: { ...action.payload.data, fetchedAt: Date.now() },
+        },
       };
     case ACTIONS.GLOBAL_ERROR:
       return { ...state, globalLoading: false, globalError: action.payload };
@@ -50,7 +59,7 @@ function reducer(state, action) {
     case ACTIONS.DOMESTIC_START:
       return { ...state, domesticLoading: true, domesticError: null };
     case ACTIONS.DOMESTIC_SUCCESS:
-      return { ...state, domesticLoading: false, domestic: action.payload };
+      return { ...state, domesticLoading: false, domestic: { ...action.payload, fetchedAt: Date.now() } };
     case ACTIONS.DOMESTIC_ERROR:
       return { ...state, domesticLoading: false, domesticError: action.payload };
     case ACTIONS.SET_SECTOR:
@@ -74,11 +83,13 @@ export function MarketProvider({ children }) {
    */
   const fetchGlobal = useCallback(async (region) => {
     const r = region || state.selectedRegion;
-    if (state.globalCache[r]) {
+    const cached = state.globalCache[r];
+    const isFresh = cached && (Date.now() - cached.fetchedAt) < CACHE_TTL_MS;
+    if (isFresh) {
       console.log(`[MarketContext] Cache hit for region '${r}' — skipping fetch`);
       return;
     }
-    console.log(`[MarketContext] Fetching global insights for region '${r}'`);
+    console.log(`[MarketContext] Fetching global insights for region '${r}'${cached ? ' (stale cache)' : ''}`);
     dispatch({ type: ACTIONS.GLOBAL_START });
     try {
       const data = await marketService.fetchGlobalInsights(r);
@@ -143,6 +154,26 @@ export function MarketProvider({ children }) {
   }, [state.selectedSector]);
 
   /**
+   * Force-refreshes domestic market insights for the given sector, bypassing
+   * any in-flight guard. Called by the auto-refresh interval and tab-focus
+   * listener in DomesticMarketPage.
+   *
+   * @param {string} sector - Sector tab key to refresh.
+   */
+  const refreshDomestic = useCallback(async (sector) => {
+    const s = sector || state.selectedSector;
+    console.log(`[MarketContext] Force-refreshing domestic insights for sector '${s}'`);
+    dispatch({ type: ACTIONS.DOMESTIC_START });
+    try {
+      const data = await marketService.fetchDomesticInsights(s);
+      dispatch({ type: ACTIONS.DOMESTIC_SUCCESS, payload: data });
+    } catch (err) {
+      console.error(`[MarketContext] Failed to refresh domestic insights for sector '${s}':`, err.message);
+      dispatch({ type: ACTIONS.DOMESTIC_ERROR, payload: err.message });
+    }
+  }, [state.selectedSector]);
+
+  /**
    * Updates the selected domestic sector tab.
    *
    * @param {string} sector - The newly selected sector tab.
@@ -157,7 +188,10 @@ export function MarketProvider({ children }) {
     refreshGlobal,
     setRegion,
     fetchDomestic,
+    refreshDomestic,
     setSector,
+    CACHE_TTL_MS,
+    STALE_FOCUS_MS,
   };
 
   return (
