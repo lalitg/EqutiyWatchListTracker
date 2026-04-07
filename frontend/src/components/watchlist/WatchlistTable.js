@@ -9,7 +9,7 @@ const TABLE_COLUMNS = [
   { key: 'allTimeLow', label: 'All Time Low', sortable: true },
   { key: 'allTimeHigh', label: 'All Time High', sortable: true },
   { key: 'currentValue', label: 'Current Value', sortable: true },
-  { key: 'tradedVolume', label: 'Traded Volume', sortable: true },
+  { key: 'tradedVolume', label: 'Traded Volume (Lakhs)', sortable: true },
 ];
 
 const ROWS_PER_PAGE = 10;
