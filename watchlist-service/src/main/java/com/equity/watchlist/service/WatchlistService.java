@@ -2,10 +2,14 @@ package com.equity.watchlist.service;
 
 import com.equity.watchlist.client.GlobalWatchlistClient;
 import com.equity.watchlist.client.GlobalWatchlistClient.GlobalWatchlistEntry;
+import com.equity.watchlist.dto.UserWatchlistRequest;
+import com.equity.watchlist.dto.UserWatchlistView;
 import com.equity.watchlist.dto.WatchlistRequest;
 import com.equity.watchlist.dto.WatchlistView;
+import com.equity.watchlist.entity.UserWatchlist;
 import com.equity.watchlist.entity.Watchlist;
 import com.equity.watchlist.repository.CompanyRepository;
+import com.equity.watchlist.repository.UserWatchlistRepository;
 import com.equity.watchlist.repository.WatchlistRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,9 +25,10 @@ import java.util.stream.Collectors;
 /**
  * Service layer handling all business logic for watchlist operations.
  *
- * <p>Coordinates between {@link WatchlistRepository}, {@link CompanyRepository},
- * and {@link GlobalWatchlistClient} to provide a complete watchlist management
- * experience with live NSE price data.
+ * <p>Prices are NOT stored in the {@code watchlist} table. They are fetched live
+ * from global-watchlist-service via {@link GlobalWatchlistClient} on every read.
+ * The {@code watchlist} table is a pure membership table: which company codes
+ * belong to which named watchlist ({@code user_watchlists}).
  */
 @Service
 public class WatchlistService {
@@ -34,34 +39,88 @@ public class WatchlistService {
     private static final Long DEFAULT_USER_ID = 1L;
 
     private final WatchlistRepository watchlistRepository;
+    private final UserWatchlistRepository userWatchlistRepository;
     private final CompanyRepository companyRepository;
     private final GlobalWatchlistClient globalWatchlistClient;
 
-    /**
-     * Constructs the service with required dependencies.
-     *
-     * @param watchlistRepository  repository for watchlist table CRUD
-     * @param companyRepository    repository for company_master lookups
-     * @param globalWatchlistClient REST client for global-watchlist-service
-     */
     public WatchlistService(WatchlistRepository watchlistRepository,
+                            UserWatchlistRepository userWatchlistRepository,
                             CompanyRepository companyRepository,
                             GlobalWatchlistClient globalWatchlistClient) {
-        this.watchlistRepository = watchlistRepository;
-        this.companyRepository = companyRepository;
-        this.globalWatchlistClient = globalWatchlistClient;
+        this.watchlistRepository     = watchlistRepository;
+        this.userWatchlistRepository = userWatchlistRepository;
+        this.companyRepository       = companyRepository;
+        this.globalWatchlistClient   = globalWatchlistClient;
+    }
+
+    // -------------------------------------------------------------------------
+    // User watchlist (named watchlist) CRUD
+    // -------------------------------------------------------------------------
+
+    /**
+     * Creates a new named watchlist for the current user.
+     *
+     * @param request the request containing the watchlist name
+     * @return the created {@link UserWatchlistView}
+     * @throws IllegalArgumentException if the name is blank or already exists
+     */
+    public UserWatchlistView createWatchlist(UserWatchlistRequest request) {
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new IllegalArgumentException("Watchlist name is required");
+        }
+        String name = request.getName().trim();
+        if (userWatchlistRepository.existsByUserIdAndName(DEFAULT_USER_ID, name)) {
+            throw new IllegalArgumentException("A watchlist named '" + name + "' already exists");
+        }
+        UserWatchlist entity = new UserWatchlist();
+        entity.setUserId(DEFAULT_USER_ID);
+        entity.setName(name);
+        UserWatchlist saved = userWatchlistRepository.save(entity);
+        logger.info("Created watchlist '{}' (id={}) for userId={}", name, saved.getId(), DEFAULT_USER_ID);
+        return toUserWatchlistView(saved);
     }
 
     /**
-     * Adds a new company to the user's watchlist.
+     * Returns all named watchlists for the current user.
      *
-     * <p>Live price data (currentValue, 52-week high/low, all-time high/low,
-     * traded volume) is fetched from global-watchlist-service. If the company
-     * is not yet tracked globally, it is added first (triggering an NSE fetch).
+     * @return list of {@link UserWatchlistView}, empty if user has no watchlists
+     */
+    public List<UserWatchlistView> getWatchlistsForUser() {
+        return userWatchlistRepository.findByUserIdOrderByCreatedAtAsc(DEFAULT_USER_ID)
+                .stream()
+                .map(this::toUserWatchlistView)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Deletes a named watchlist and all its company entries.
      *
-     * @param request the add request containing the company code
-     * @return a {@link WatchlistView} representing the saved entry
-     * @throws IllegalArgumentException if the company code is null or blank
+     * @param userWatchlistId the ID of the watchlist to delete
+     * @throws IllegalArgumentException if the watchlist does not belong to the current user
+     */
+    @Transactional
+    public void deleteWatchlist(Long userWatchlistId) {
+        userWatchlistRepository.findByUserIdAndId(DEFAULT_USER_ID, userWatchlistId)
+                .orElseThrow(() -> new IllegalArgumentException("Watchlist not found: " + userWatchlistId));
+        watchlistRepository.deleteByUserWatchlistId(userWatchlistId);
+        userWatchlistRepository.deleteById(userWatchlistId);
+        logger.info("Deleted watchlist id={} and all its entries", userWatchlistId);
+    }
+
+    // -------------------------------------------------------------------------
+    // Company entry CRUD
+    // -------------------------------------------------------------------------
+
+    /**
+     * Adds a new company to a named watchlist.
+     *
+     * <p>Only the company code and watchlist membership are stored. Price data is
+     * fetched from global-watchlist-service to populate the response view, but is
+     * NOT persisted in the {@code watchlist} table.
+     *
+     * @param request the add request (companyCode required; userWatchlistId optional — defaults to first watchlist)
+     * @return a {@link WatchlistView} with live price data
+     * @throws IllegalArgumentException if the company code is blank
      */
     public WatchlistView addCompany(WatchlistRequest request) {
         if (request.getCompanyCode() == null || request.getCompanyCode().isBlank()) {
@@ -69,7 +128,12 @@ public class WatchlistService {
         }
 
         String code = request.getCompanyCode().toUpperCase().trim();
-        logger.info("Adding company '{}' to watchlist", code);
+        Long userWatchlistId = resolveWatchlistId(request.getUserWatchlistId());
+        logger.info("Adding company '{}' to watchlist id={}", code, userWatchlistId);
+
+        if (watchlistRepository.findByUserWatchlistIdAndCompanyCode(userWatchlistId, code).isPresent()) {
+            throw new IllegalArgumentException("Company '" + code + "' is already in this watchlist");
+        }
 
         GlobalWatchlistEntry entry = globalWatchlistClient.getEntry(code);
         if (entry == null) {
@@ -78,96 +142,95 @@ public class WatchlistService {
         }
 
         Watchlist entity = new Watchlist();
-        entity.setUserId(DEFAULT_USER_ID);
+        entity.setUserWatchlistId(userWatchlistId);
         entity.setCompanyCode(code);
 
-        if (entry != null) {
-            entity.setWeek52Low(entry.getWeek52Low());
-            entity.setWeek52High(entry.getWeek52High());
-            entity.setAllTimeLow(entry.getAllTimeLow());
-            entity.setAllTimeHigh(entry.getAllTimeHigh());
-            entity.setCurrentValue(entry.getCurrentValue());
-            entity.setTradedVolume(entry.getTradedVolume());
-        } else {
-            logger.warn("No price data available for '{}' — saving with null price fields", code);
-        }
-
         Watchlist saved = watchlistRepository.save(entity);
-        logger.info("Company '{}' saved to watchlist with id={}", saved.getCompanyCode(), saved.getId());
-        return toView(saved);
+        logger.info("Company '{}' saved to watchlist id={} with row id={}", code, userWatchlistId, saved.getId());
+        return toView(saved, entry);
     }
 
     /**
-     * Returns all watchlist entries for the current user, ordered by creation time (oldest first).
+     * Returns all watchlist entries for a named watchlist, with live prices from global-watchlist-service.
      *
-     * @return a list of {@link WatchlistView} DTOs; empty list if the watchlist is empty
+     * @param userWatchlistId the watchlist to fetch; if null, defaults to the first watchlist for the current user
+     * @return list of {@link WatchlistView} with live price data
      */
-    public List<WatchlistView> getWatchlist() {
-        logger.debug("Fetching watchlist for userId={}", DEFAULT_USER_ID);
-        return watchlistRepository.findByUserIdOrderByCreatedAtAsc(DEFAULT_USER_ID)
+    public List<WatchlistView> getWatchlist(Long userWatchlistId) {
+        Long resolvedId = resolveWatchlistId(userWatchlistId);
+        logger.debug("Fetching watchlist entries for userWatchlistId={}", resolvedId);
+
+        UserWatchlist watchlist = userWatchlistRepository.findById(resolvedId).orElse(null);
+
+        return watchlistRepository.findByUserWatchlistIdOrderByCreatedAtAsc(resolvedId)
                 .stream()
-                .map(this::toView)
+                .map(entity -> {
+                    GlobalWatchlistEntry entry = globalWatchlistClient.getEntry(entity.getCompanyCode());
+                    WatchlistView view = toView(entity, entry);
+                    if (watchlist != null) view.setWatchlistName(watchlist.getName());
+                    return view;
+                })
                 .collect(Collectors.toList());
     }
 
     /**
-     * Updates the price fields of an existing watchlist entry.
+     * Updates the company code of an existing watchlist entry.
      *
-     * @param companyCode the NSE symbol identifying the entry to update
-     * @param request     the update request containing the new price values
-     * @return the updated {@link WatchlistView}
+     * <p>Prices are no longer stored in the watchlist table — they are fetched live
+     * on every read. This method only allows updating the company code itself.
+     *
+     * @param companyCode     the current NSE symbol identifying the entry
+     * @param userWatchlistId the watchlist the entry belongs to (null → defaults to first)
+     * @param request         the request containing the new company code
+     * @return the updated {@link WatchlistView} with live price data
      * @throws IllegalArgumentException if no entry exists for the given company code
      */
-    public WatchlistView updateCompany(String companyCode, WatchlistRequest request) {
-        logger.info("Updating watchlist entry for company '{}'", companyCode);
+    public WatchlistView updateCompany(String companyCode, Long userWatchlistId, WatchlistRequest request) {
+        Long resolvedId = resolveWatchlistId(userWatchlistId);
+        logger.info("Updating entry for company '{}' in watchlist id={}", companyCode, resolvedId);
 
         Watchlist entity = watchlistRepository
-                .findByUserIdAndCompanyCode(DEFAULT_USER_ID, companyCode)
+                .findByUserWatchlistIdAndCompanyCode(resolvedId, companyCode)
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyCode));
 
         if (request.getCompanyCode() != null && !request.getCompanyCode().isBlank()) {
             entity.setCompanyCode(request.getCompanyCode().toUpperCase().trim());
         }
-        entity.setWeek52Low(request.getWeek52Low());
-        entity.setWeek52High(request.getWeek52High());
-        entity.setAllTimeLow(request.getAllTimeLow());
-        entity.setAllTimeHigh(request.getAllTimeHigh());
-        entity.setCurrentValue(request.getCurrentValue());
-        entity.setTradedVolume(request.getTradedVolume());
 
         Watchlist updated = watchlistRepository.save(entity);
+        GlobalWatchlistEntry entry = globalWatchlistClient.getEntry(updated.getCompanyCode());
         logger.info("Company '{}' updated successfully", updated.getCompanyCode());
-        return toView(updated);
+        return toView(updated, entry);
     }
 
     /**
-     * Removes a company from the user's watchlist.
+     * Removes a company from a named watchlist.
      *
-     * @param companyCode the NSE symbol of the entry to delete
+     * @param companyCode     the NSE symbol of the entry to delete
+     * @param userWatchlistId the watchlist to remove from (null → defaults to first)
      */
     @Transactional
-    public void removeCompany(String companyCode) {
-        logger.info("Removing company '{}' from watchlist", companyCode);
-        watchlistRepository.deleteByUserIdAndCompanyCode(DEFAULT_USER_ID, companyCode);
+    public void removeCompany(String companyCode, Long userWatchlistId) {
+        Long resolvedId = resolveWatchlistId(userWatchlistId);
+        logger.info("Removing company '{}' from watchlist id={}", companyCode, resolvedId);
+        watchlistRepository.findByUserWatchlistIdAndCompanyCode(resolvedId, companyCode)
+                .orElseThrow(() -> new IllegalArgumentException("Company '" + companyCode + "' not found in this watchlist"));
+        watchlistRepository.deleteByUserWatchlistIdAndCompanyCode(resolvedId, companyCode);
         logger.info("Company '{}' removed successfully", companyCode);
     }
 
     /**
-     * Bulk-imports a list of company codes into the watchlist.
+     * Bulk-imports a list of company codes into a named watchlist.
      *
-     * <p>For each code, the method:
-     * <ol>
-     *   <li>Skips if already present in the user's watchlist</li>
-     *   <li>Checks global-watchlist-service for live price data</li>
-     *   <li>If not found globally, triggers an add (fetches live price from NSE)</li>
-     *   <li>Persists the entry into the watchlist table</li>
-     * </ol>
+     * <p>Skips duplicates (already in the watchlist). No price data is stored —
+     * prices are fetched live on every read.
      *
-     * @param companyCodes the list of NSE symbols to import
-     * @return a summary map with keys {@code imported}, {@code skipped}, {@code failed},
-     *         and optionally {@code failedCodes} listing unresolvable symbols
+     * @param companyCodes    the list of NSE symbols to import
+     * @param userWatchlistId the watchlist to import into (null → defaults to first)
+     * @return summary map with keys {@code imported}, {@code skipped}, {@code failed}
      */
-    public Map<String, Object> importCompanies(List<String> companyCodes) {
+    public Map<String, Object> importCompanies(List<String> companyCodes, Long userWatchlistId) {
+        Long resolvedId = resolveWatchlistId(userWatchlistId);
         int imported = 0, skipped = 0, failed = 0;
         List<String> failedCodes = new ArrayList<>();
 
@@ -175,7 +238,7 @@ public class WatchlistService {
             String code = raw.toUpperCase().trim();
             if (code.isBlank()) continue;
 
-            if (watchlistRepository.findByUserIdAndCompanyCode(DEFAULT_USER_ID, code).isPresent()) {
+            if (watchlistRepository.findByUserWatchlistIdAndCompanyCode(resolvedId, code).isPresent()) {
                 logger.debug("Import: '{}' already in watchlist — skipping", code);
                 skipped++;
                 continue;
@@ -195,17 +258,11 @@ public class WatchlistService {
             }
 
             Watchlist entity = new Watchlist();
-            entity.setUserId(DEFAULT_USER_ID);
+            entity.setUserWatchlistId(resolvedId);
             entity.setCompanyCode(code);
-            entity.setCurrentValue(entry.getCurrentValue());
-            entity.setWeek52Low(entry.getWeek52Low());
-            entity.setWeek52High(entry.getWeek52High());
-            entity.setAllTimeLow(entry.getAllTimeLow());
-            entity.setAllTimeHigh(entry.getAllTimeHigh());
-            entity.setTradedVolume(entry.getTradedVolume());
             watchlistRepository.save(entity);
             imported++;
-            logger.info("Import: '{}' added to watchlist", code);
+            logger.info("Import: '{}' added to watchlist id={}", code, resolvedId);
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -218,38 +275,78 @@ public class WatchlistService {
     }
 
     /**
-     * Returns the total count of entries in the current user's watchlist.
+     * Returns the total count of entries in a named watchlist.
      *
-     * @return the number of watchlist entries
+     * @param userWatchlistId the watchlist to count (null → defaults to first)
+     * @return the number of company entries
      */
-    public long getCount() {
-        long count = watchlistRepository.countByUserId(DEFAULT_USER_ID);
-        logger.debug("Watchlist count for userId={}: {}", DEFAULT_USER_ID, count);
+    public long getCount(Long userWatchlistId) {
+        Long resolvedId = resolveWatchlistId(userWatchlistId);
+        long count = watchlistRepository.countByUserWatchlistId(resolvedId);
+        logger.debug("Watchlist count for userWatchlistId={}: {}", resolvedId, count);
         return count;
     }
 
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
     /**
-     * Converts a {@link Watchlist} entity to a {@link WatchlistView} DTO.
+     * Resolves a watchlist ID: if the given ID is non-null it is used as-is;
+     * otherwise the first watchlist for the default user is returned.
+     * If no watchlist exists yet, a default one is created.
      *
-     * <p>Performs a lookup in {@code company_master} to populate the human-readable
-     * company name. If no match is found, {@code companyName} remains {@code null}.
-     *
-     * @param entity the watchlist entity to convert
-     * @return the corresponding view DTO
+     * @param userWatchlistId the requested watchlist ID, may be null
+     * @return a valid watchlist ID
      */
-    private WatchlistView toView(Watchlist entity) {
+    private Long resolveWatchlistId(Long userWatchlistId) {
+        if (userWatchlistId != null) return userWatchlistId;
+        return userWatchlistRepository.findFirstByUserIdOrderByCreatedAtAsc(DEFAULT_USER_ID)
+                .map(UserWatchlist::getId)
+                .orElseGet(() -> {
+                    logger.info("No watchlist found for userId={} — creating default", DEFAULT_USER_ID);
+                    UserWatchlist defaultList = new UserWatchlist();
+                    defaultList.setUserId(DEFAULT_USER_ID);
+                    defaultList.setName("My Watchlist");
+                    return userWatchlistRepository.save(defaultList).getId();
+                });
+    }
+
+    /**
+     * Converts a {@link Watchlist} entity and a live {@link GlobalWatchlistEntry} to a {@link WatchlistView}.
+     *
+     * @param entity the watchlist membership entity
+     * @param entry  live price data from global-watchlist-service; may be null
+     * @return the populated view DTO
+     */
+    private WatchlistView toView(Watchlist entity, GlobalWatchlistEntry entry) {
         WatchlistView view = new WatchlistView();
         view.setCompanyCode(entity.getCompanyCode());
+        view.setUserWatchlistId(entity.getUserWatchlistId());
 
         companyRepository.findBySymbol(entity.getCompanyCode())
                 .ifPresent(cm -> view.setCompanyName(cm.getCompanyName()));
 
-        view.setWeek52Low(entity.getWeek52Low());
-        view.setWeek52High(entity.getWeek52High());
-        view.setAllTimeLow(entity.getAllTimeLow());
-        view.setAllTimeHigh(entity.getAllTimeHigh());
-        view.setCurrentValue(entity.getCurrentValue());
-        view.setTradedVolume(entity.getTradedVolume());
+        if (entry != null) {
+            view.setCurrentValue(entry.getCurrentValue());
+            view.setWeek52Low(entry.getWeek52Low());
+            view.setWeek52High(entry.getWeek52High());
+            view.setAllTimeLow(entry.getAllTimeLow());
+            view.setAllTimeHigh(entry.getAllTimeHigh());
+            view.setTradedVolume(entry.getTradedVolume());
+        }
+        return view;
+    }
+
+    /**
+     * Converts a {@link UserWatchlist} entity to a {@link UserWatchlistView}.
+     */
+    private UserWatchlistView toUserWatchlistView(UserWatchlist entity) {
+        UserWatchlistView view = new UserWatchlistView();
+        view.setId(entity.getId());
+        view.setUserId(entity.getUserId());
+        view.setName(entity.getName());
+        view.setCreatedAt(entity.getCreatedAt());
         return view;
     }
 }
