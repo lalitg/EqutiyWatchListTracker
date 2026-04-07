@@ -48,6 +48,10 @@ public class GlobalWatchlist {
     @Column(name = "traded_volume", precision = 20, scale = 2)
     private BigDecimal tradedVolume;
 
+    /** Whether this company is part of the NIFTY 50 index. */
+    @Column(name = "is_nifty50", nullable = false)
+    private boolean nifty50 = false;
+
     /** Timestamp when this row was first inserted. */
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -101,6 +105,11 @@ public class GlobalWatchlist {
     public BigDecimal getTradedVolume() { return tradedVolume; }
     /** @param tradedVolume the total traded volume */
     public void setTradedVolume(BigDecimal tradedVolume) { this.tradedVolume = tradedVolume; }
+
+    /** @return true if this company is part of the NIFTY 50 index */
+    public boolean isNifty50() { return nifty50; }
+    /** @param nifty50 true if this company is part of the NIFTY 50 index */
+    public void setNifty50(boolean nifty50) { this.nifty50 = nifty50; }
 
     /** @return the row creation timestamp */
     public LocalDateTime getCreatedAt() { return createdAt; }

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -90,6 +91,17 @@ public class GlobalWatchlistController {
             throw new CompanyNotFoundException(companyCode);
         }
         return ResponseEntity.ok(Map.of("currentPrice", entry.getCurrentValue()));
+    }
+
+    /**
+     * Returns all entries flagged as NIFTY 50 from the in-memory cache.
+     *
+     * @return {@code 200 OK} with a list of {@link GlobalWatchlistEntry} objects
+     */
+    @GetMapping("/nifty50")
+    public ResponseEntity<List<GlobalWatchlistEntry>> getNifty50() {
+        logger.debug("GET /api/global-watchlist/nifty50");
+        return ResponseEntity.ok(service.getNifty50());
     }
 
     /**

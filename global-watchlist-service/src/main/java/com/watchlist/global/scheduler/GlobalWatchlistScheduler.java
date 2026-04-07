@@ -78,4 +78,15 @@ public class GlobalWatchlistScheduler {
         logger.info("Scheduled market-close persistence triggered");
         service.persistMarketClose();
     }
+
+    /**
+     * Refreshes NIFTY 50 composition bi-weekly (1st and 15th of every month at 2 AM).
+     *
+     * <p>Cron: {@code 0 0 2 1,15 * ?}
+     */
+    @Scheduled(cron = "0 0 2 1,15 * ?")
+    public void refreshNifty50Composition() {
+        logger.info("Bi-weekly NIFTY 50 composition refresh triggered");
+        service.refreshNifty50Composition();
+    }
 }
