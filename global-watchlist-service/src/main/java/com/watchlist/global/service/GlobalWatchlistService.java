@@ -132,10 +132,13 @@ public class GlobalWatchlistService {
             entry.setCurrentValue(price.getCurrentPrice());
             entry.setTradedVolume(price.getTradedVolume());
 
-            if (price.getWeek52Low() != null)  entry.setWeek52Low(price.getWeek52Low());
-            if (price.getWeek52High() != null) entry.setWeek52High(price.getWeek52High());
-            if (price.getAllTimeLow() != null)  entry.setAllTimeLow(price.getAllTimeLow());
-            if (price.getAllTimeHigh() != null) entry.setAllTimeHigh(price.getAllTimeHigh());
+            if (price.getWeek52Low() != null)    entry.setWeek52Low(price.getWeek52Low());
+            if (price.getWeek52High() != null)   entry.setWeek52High(price.getWeek52High());
+            if (price.getAllTimeLow() != null)    entry.setAllTimeLow(price.getAllTimeLow());
+            if (price.getAllTimeHigh() != null)   entry.setAllTimeHigh(price.getAllTimeHigh());
+            if (price.getPreviousClose() != null) entry.setPreviousClose(price.getPreviousClose());
+            if (price.getChangeValue() != null)   entry.setChangeValue(price.getChangeValue());
+            if (price.getPChange() != null)       entry.setPercentChange(price.getPChange());
 
             entry.setLastUpdated(LocalDateTime.now());
             globalMap.put(code, entry);
@@ -172,6 +175,9 @@ public class GlobalWatchlistService {
             entity.setAllTimeLow(entry.getAllTimeLow());
             entity.setAllTimeHigh(entry.getAllTimeHigh());
             entity.setTradedVolume(entry.getTradedVolume());
+            entity.setPreviousClose(entry.getPreviousClose());
+            entity.setChangeValue(entry.getChangeValue());
+            entity.setPercentChange(entry.getPercentChange());
             entity.setLastUpdated(LocalDateTime.now());
             toSave.add(entity);
         });
@@ -213,6 +219,9 @@ public class GlobalWatchlistService {
             entity.setAllTimeLow(price.getAllTimeLow());
             entity.setAllTimeHigh(price.getAllTimeHigh());
             entity.setTradedVolume(price.getTradedVolume());
+            entity.setPreviousClose(price.getPreviousClose());
+            entity.setChangeValue(price.getChangeValue());
+            entity.setPercentChange(price.getPChange());
         }
         repository.save(entity);
 
@@ -312,6 +321,9 @@ public class GlobalWatchlistService {
         entry.setAllTimeLow(entity.getAllTimeLow());
         entry.setAllTimeHigh(entity.getAllTimeHigh());
         entry.setTradedVolume(entity.getTradedVolume());
+        entry.setPreviousClose(entity.getPreviousClose());
+        entry.setChangeValue(entity.getChangeValue());
+        entry.setPercentChange(entity.getPercentChange());
         entry.setNifty50(entity.isNifty50());
         entry.setLastUpdated(entity.getLastUpdated());
         return entry;

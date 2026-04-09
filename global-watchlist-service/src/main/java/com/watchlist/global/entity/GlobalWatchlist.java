@@ -48,6 +48,18 @@ public class GlobalWatchlist {
     @Column(name = "traded_volume", precision = 20, scale = 2)
     private BigDecimal tradedVolume;
 
+    /** Previous closing price. */
+    @Column(name = "previous_close", precision = 15, scale = 2)
+    private BigDecimal previousClose;
+
+    /** Absolute change from previous close. */
+    @Column(name = "change_value", precision = 15, scale = 2)
+    private BigDecimal changeValue;
+
+    /** Percentage change from previous close. */
+    @Column(name = "percent_change", precision = 10, scale = 2)
+    private BigDecimal percentChange;
+
     /** Whether this company is part of the NIFTY 50 index. */
     @Column(name = "is_nifty50", nullable = false)
     private boolean nifty50 = false;
@@ -105,6 +117,15 @@ public class GlobalWatchlist {
     public BigDecimal getTradedVolume() { return tradedVolume; }
     /** @param tradedVolume the total traded volume */
     public void setTradedVolume(BigDecimal tradedVolume) { this.tradedVolume = tradedVolume; }
+
+    public BigDecimal getPreviousClose() { return previousClose; }
+    public void setPreviousClose(BigDecimal previousClose) { this.previousClose = previousClose; }
+
+    public BigDecimal getChangeValue() { return changeValue; }
+    public void setChangeValue(BigDecimal changeValue) { this.changeValue = changeValue; }
+
+    public BigDecimal getPercentChange() { return percentChange; }
+    public void setPercentChange(BigDecimal percentChange) { this.percentChange = percentChange; }
 
     /** @return true if this company is part of the NIFTY 50 index */
     public boolean isNifty50() { return nifty50; }

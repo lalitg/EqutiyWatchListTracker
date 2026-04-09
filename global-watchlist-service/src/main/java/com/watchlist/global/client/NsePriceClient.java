@@ -102,10 +102,20 @@ public class NsePriceClient {
             BigDecimal week52High   = null;
             BigDecimal week52Low    = null;
 
+            BigDecimal previousClose = null;
+            BigDecimal changeValue   = null;
+            BigDecimal pChange       = null;
+
             if (quoteBody != null && quoteBody.has("priceInfo")) {
                 JsonNode priceInfo = quoteBody.get("priceInfo");
                 if (priceInfo.has("lastPrice"))
                     currentPrice = priceInfo.get("lastPrice").decimalValue();
+                if (priceInfo.has("previousPrice"))
+                    previousClose = priceInfo.get("previousPrice").decimalValue();
+                if (priceInfo.has("change"))
+                    changeValue = priceInfo.get("change").decimalValue();
+                if (priceInfo.has("pChange"))
+                    pChange = priceInfo.get("pChange").decimalValue();
                 if (priceInfo.has("weekHighLow")) {
                     JsonNode whl = priceInfo.get("weekHighLow");
                     if (whl.has("max")) week52High = whl.get("max").decimalValue();
@@ -124,8 +134,9 @@ public class NsePriceClient {
                     tradedVolume = tradeInfo.get("totalTradedVolume").decimalValue();
             }
 
-            logger.debug("Fetched price for '{}': currentPrice={}", symbol, currentPrice);
-            return new PriceData(currentPrice, week52Low, week52High, week52Low, week52High, tradedVolume);
+            logger.debug("Fetched price for '{}': currentPrice={}, pChange={}", symbol, currentPrice, pChange);
+            return new PriceData(currentPrice, week52Low, week52High, week52Low, week52High, tradedVolume,
+                                 previousClose, changeValue, pChange);
 
         } catch (Exception e) {
             logger.error("Failed to fetch price for '{}': {}", symbol, e.getMessage());
@@ -180,42 +191,37 @@ public class NsePriceClient {
         /** Total traded volume for the latest session. */
         private final BigDecimal tradedVolume;
 
-        /**
-         * Constructs an immutable price data snapshot.
-         *
-         * @param currentPrice latest traded price
-         * @param week52Low    52-week low
-         * @param week52High   52-week high
-         * @param allTimeLow   all-time low
-         * @param allTimeHigh  all-time high
-         * @param tradedVolume total traded volume
-         */
+        /** Previous closing price. */
+        private final BigDecimal previousClose;
+
+        /** Absolute change from previous close. */
+        private final BigDecimal changeValue;
+
+        /** Percentage change from previous close. */
+        private final BigDecimal pChange;
+
         public PriceData(BigDecimal currentPrice, BigDecimal week52Low, BigDecimal week52High,
-                         BigDecimal allTimeLow, BigDecimal allTimeHigh, BigDecimal tradedVolume) {
-            this.currentPrice = currentPrice;
-            this.week52Low    = week52Low;
-            this.week52High   = week52High;
-            this.allTimeLow   = allTimeLow;
-            this.allTimeHigh  = allTimeHigh;
-            this.tradedVolume = tradedVolume;
+                         BigDecimal allTimeLow, BigDecimal allTimeHigh, BigDecimal tradedVolume,
+                         BigDecimal previousClose, BigDecimal changeValue, BigDecimal pChange) {
+            this.currentPrice  = currentPrice;
+            this.week52Low     = week52Low;
+            this.week52High    = week52High;
+            this.allTimeLow    = allTimeLow;
+            this.allTimeHigh   = allTimeHigh;
+            this.tradedVolume  = tradedVolume;
+            this.previousClose = previousClose;
+            this.changeValue   = changeValue;
+            this.pChange       = pChange;
         }
 
-        /** @return the latest traded price */
         public BigDecimal getCurrentPrice()  { return currentPrice; }
-
-        /** @return the 52-week low price */
         public BigDecimal getWeek52Low()     { return week52Low; }
-
-        /** @return the 52-week high price */
         public BigDecimal getWeek52High()    { return week52High; }
-
-        /** @return the all-time low price */
-        public BigDecimal getAllTimeLow()    { return allTimeLow; }
-
-        /** @return the all-time high price */
-        public BigDecimal getAllTimeHigh()   { return allTimeHigh; }
-
-        /** @return the total traded volume */
+        public BigDecimal getAllTimeLow()     { return allTimeLow; }
+        public BigDecimal getAllTimeHigh()    { return allTimeHigh; }
         public BigDecimal getTradedVolume()  { return tradedVolume; }
+        public BigDecimal getPreviousClose() { return previousClose; }
+        public BigDecimal getChangeValue()   { return changeValue; }
+        public BigDecimal getPChange()       { return pChange; }
     }
 }
