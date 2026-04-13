@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import SectorSelector from '../components/market/SectorSelector';
 import FastMoversTable from '../components/market/FastMoversTable';
+import CompanyInsightsModal from '../components/watchlist/CompanyInsightsModal';
 import { fetchFastMovers } from '../services/fastMoversService';
+import { useWatchlist } from '../context/WatchlistContext';
 
 const RANGES = ['TODAY', '1D', '2D', '3D', '4D', '1W'];
 
@@ -30,7 +32,10 @@ const FastMoversPage = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedEntry, setSelectedEntry] = useState(null);
   const timerRef = useRef(null);
+
+  const { entries, addCompany, isActionLoading } = useWatchlist();
 
   const loadData = useCallback(async (range) => {
     setLoading(true);
@@ -53,6 +58,9 @@ const FastMoversPage = () => {
     timerRef.current = setInterval(() => loadData('TODAY'), AUTO_REFRESH_MS);
     return () => clearInterval(timerRef.current);
   }, [selectedRange, loadData]);
+
+  const isInWatchlist = (companyCode) =>
+    entries.some(e => e.companyCode === companyCode);
 
   return (
     <div className="page-container">
@@ -87,10 +95,19 @@ const FastMoversPage = () => {
 
       {!loading && !error && data && (
         <div className="market-content">
-          <FastMoversTable title="Top Gainers" data={data.gainers} type="gainers" />
-          <FastMoversTable title="Top Losers" data={data.losers} type="losers" />
+          <FastMoversTable title="Top Gainers" data={data.gainers} type="gainers" onCompanyClick={setSelectedEntry} />
+          <FastMoversTable title="Top Losers" data={data.losers} type="losers" onCompanyClick={setSelectedEntry} />
         </div>
       )}
+
+      <CompanyInsightsModal
+        isOpen={!!selectedEntry}
+        onClose={() => setSelectedEntry(null)}
+        entry={selectedEntry}
+        onAddToWatchlist={addCompany}
+        isInWatchlist={selectedEntry ? isInWatchlist(selectedEntry.companyCode) : false}
+        isAdding={isActionLoading}
+      />
     </div>
   );
 };

@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { fetchNifty50 } from '../services/nifty50Service';
+import CompanyInsightsModal from '../components/watchlist/CompanyInsightsModal';
+import { useWatchlist } from '../context/WatchlistContext';
 import './Nifty50Page.css';
 
 const PriceCell = ({ value, pct }) => {
@@ -17,6 +19,9 @@ const Nifty50Page = () => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedEntry, setSelectedEntry] = useState(null);
+
+  const { entries, addCompany, isActionLoading } = useWatchlist();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -33,8 +38,10 @@ const Nifty50Page = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  const fmt = (val) => (val != null ? Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—');
   const fmtVol = (val) => (val != null ? Number(val).toLocaleString('en-IN') : '—');
+
+  const isInWatchlist = (companyCode) =>
+    entries.some(e => e.companyCode === companyCode);
 
   return (
     <div className="page-container">
@@ -76,14 +83,18 @@ const Nifty50Page = () => {
                 </tr>
               ) : (
                 companies.map((c, i) => (
-                  <tr key={c.companyCode}>
+                  <tr
+                    key={c.companyCode}
+                    onClick={() => setSelectedEntry({ companyCode: c.companyCode, companyName: c.companyCode })}
+                    className="nifty-clickable-row"
+                  >
                     <td>{i + 1}</td>
                     <td><strong>{c.companyCode}</strong></td>
                     <td><PriceCell value={c.currentValue} pct={c.percentChange} /></td>
-                    <td>{fmt(c.week52High)}</td>
-                    <td>{fmt(c.week52Low)}</td>
-                    <td>{fmt(c.allTimeHigh)}</td>
-                    <td>{fmt(c.allTimeLow)}</td>
+                    <td>{c.week52High != null ? Number(c.week52High).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</td>
+                    <td>{c.week52Low != null ? Number(c.week52Low).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</td>
+                    <td>{c.allTimeHigh != null ? Number(c.allTimeHigh).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</td>
+                    <td>{c.allTimeLow != null ? Number(c.allTimeLow).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</td>
                     <td>{fmtVol(c.tradedVolume)}</td>
                   </tr>
                 ))
@@ -92,6 +103,15 @@ const Nifty50Page = () => {
           </table>
         </div>
       )}
+
+      <CompanyInsightsModal
+        isOpen={!!selectedEntry}
+        onClose={() => setSelectedEntry(null)}
+        entry={selectedEntry}
+        onAddToWatchlist={addCompany}
+        isInWatchlist={selectedEntry ? isInWatchlist(selectedEntry.companyCode) : false}
+        isAdding={isActionLoading}
+      />
     </div>
   );
 };
