@@ -2,6 +2,17 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { fetchNifty50 } from '../services/nifty50Service';
 import './Nifty50Page.css';
 
+const PriceCell = ({ value, pct }) => {
+  const formatted = value != null ? Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+  if (pct == null) return <span>{formatted}</span>;
+  const up = Number(pct) > 0;
+  const down = Number(pct) < 0;
+  const cls = up ? 'nifty-gain' : down ? 'nifty-loss' : '';
+  const arrow = up ? '▲' : down ? '▼' : '';
+  const sign = up ? '+' : '';
+  return <span className={cls}>{arrow} {formatted} ({sign}{Number(pct).toFixed(2)}%)</span>;
+};
+
 const Nifty50Page = () => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -68,7 +79,7 @@ const Nifty50Page = () => {
                   <tr key={c.companyCode}>
                     <td>{i + 1}</td>
                     <td><strong>{c.companyCode}</strong></td>
-                    <td>{fmt(c.currentValue)}</td>
+                    <td><PriceCell value={c.currentValue} pct={c.percentChange} /></td>
                     <td>{fmt(c.week52High)}</td>
                     <td>{fmt(c.week52Low)}</td>
                     <td>{fmt(c.allTimeHigh)}</td>

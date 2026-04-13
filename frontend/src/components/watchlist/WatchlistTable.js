@@ -21,6 +21,17 @@ const DeleteIcon = () => (
   </svg>
 );
 
+const PriceCell = ({ value, pct }) => {
+  const formatted = value != null ? Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
+  if (pct == null) return <span>{formatted}</span>;
+  const up = Number(pct) > 0;
+  const down = Number(pct) < 0;
+  const cls = up ? 'wl-price-up' : down ? 'wl-price-down' : '';
+  const arrow = up ? '▲' : down ? '▼' : '';
+  const sign = up ? '+' : '';
+  return <span className={cls}>{arrow} {formatted} ({sign}{Number(pct).toFixed(2)}%)</span>;
+};
+
 const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [searchQuery, setSearchQuery] = useState('');
@@ -162,7 +173,9 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                 <td className="wl-sno">{getSerialNumber(index)}</td>
                 {TABLE_COLUMNS.map(col => (
                   <td key={col.key} className={col.key === 'companyName' ? 'wl-company-name' : ''}>
-                    {formatCellValue(entry[col.key])}
+                    {col.key === 'currentValue'
+                      ? <PriceCell value={entry.currentValue} pct={entry.percentChange} />
+                      : formatCellValue(entry[col.key])}
                   </td>
                 ))}
                 <td className="wl-td-actions">

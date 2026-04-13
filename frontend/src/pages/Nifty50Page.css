@@ -58,11 +58,13 @@
   color: #667eea;
 }
 
+.nifty-table tbody td .nifty-gain,
 .nifty-gain {
   font-weight: 700;
   color: #16a34a;
 }
 
+.nifty-table tbody td .nifty-loss,
 .nifty-loss {
   font-weight: 700;
   color: #dc2626;
