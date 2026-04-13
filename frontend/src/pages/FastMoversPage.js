@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import SectorSelector from '../components/market/SectorSelector';
 import FastMoversTable from '../components/market/FastMoversTable';
 import { fetchFastMovers } from '../services/fastMoversService';
@@ -23,11 +23,14 @@ function formatLastUpdated(generatedAt) {
   return `${mins} min ago`;
 }
 
+const AUTO_REFRESH_MS = 60 * 60 * 1000; // 1 hour
+
 const FastMoversPage = () => {
   const [selectedRange, setSelectedRange] = useState('TODAY');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const timerRef = useRef(null);
 
   const loadData = useCallback(async (range) => {
     setLoading(true);
@@ -43,6 +46,13 @@ const FastMoversPage = () => {
   }, []);
 
   useEffect(() => { loadData(selectedRange); }, [selectedRange, loadData]);
+
+  // Auto-refresh every hour when on TODAY tab
+  useEffect(() => {
+    if (selectedRange !== 'TODAY') return;
+    timerRef.current = setInterval(() => loadData('TODAY'), AUTO_REFRESH_MS);
+    return () => clearInterval(timerRef.current);
+  }, [selectedRange, loadData]);
 
   return (
     <div className="page-container">
