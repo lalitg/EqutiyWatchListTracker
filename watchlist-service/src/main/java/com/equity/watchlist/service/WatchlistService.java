@@ -35,9 +35,6 @@ public class WatchlistService {
 
     private static final Logger logger = LogManager.getLogger(WatchlistService.class);
 
-    /** Default user ID used until multi-user auth is introduced. */
-    private static final Long DEFAULT_USER_ID = 1L;
-
     private final WatchlistRepository watchlistRepository;
     private final UserWatchlistRepository userWatchlistRepository;
     private final CompanyRepository companyRepository;
@@ -64,19 +61,19 @@ public class WatchlistService {
      * @return the created {@link UserWatchlistView}
      * @throws IllegalArgumentException if the name is blank or already exists
      */
-    public UserWatchlistView createWatchlist(UserWatchlistRequest request) {
+    public UserWatchlistView createWatchlist(Long userId, UserWatchlistRequest request) {
         if (request.getName() == null || request.getName().isBlank()) {
             throw new IllegalArgumentException("Watchlist name is required");
         }
         String name = request.getName().trim();
-        if (userWatchlistRepository.existsByUserIdAndName(DEFAULT_USER_ID, name)) {
+        if (userWatchlistRepository.existsByUserIdAndName(userId, name)) {
             throw new IllegalArgumentException("A watchlist named '" + name + "' already exists");
         }
         UserWatchlist entity = new UserWatchlist();
-        entity.setUserId(DEFAULT_USER_ID);
+        entity.setUserId(userId);
         entity.setName(name);
         UserWatchlist saved = userWatchlistRepository.save(entity);
-        logger.info("Created watchlist '{}' (id={}) for userId={}", name, saved.getId(), DEFAULT_USER_ID);
+        logger.info("Created watchlist '{}' (id={}) for userId={}", name, saved.getId(), userId);
         return toUserWatchlistView(saved);
     }
 
@@ -85,8 +82,8 @@ public class WatchlistService {
      *
      * @return list of {@link UserWatchlistView}, empty if user has no watchlists
      */
-    public List<UserWatchlistView> getWatchlistsForUser() {
-        return userWatchlistRepository.findByUserIdOrderByCreatedAtAsc(DEFAULT_USER_ID)
+    public List<UserWatchlistView> getWatchlistsForUser(Long userId) {
+        return userWatchlistRepository.findByUserIdOrderByCreatedAtAsc(userId)
                 .stream()
                 .map(this::toUserWatchlistView)
                 .collect(Collectors.toList());
@@ -99,8 +96,8 @@ public class WatchlistService {
      * @throws IllegalArgumentException if the watchlist does not belong to the current user
      */
     @Transactional
-    public void deleteWatchlist(Long userWatchlistId) {
-        userWatchlistRepository.findByUserIdAndId(DEFAULT_USER_ID, userWatchlistId)
+    public void deleteWatchlist(Long userId, Long userWatchlistId) {
+        userWatchlistRepository.findByUserIdAndId(userId, userWatchlistId)
                 .orElseThrow(() -> new IllegalArgumentException("Watchlist not found: " + userWatchlistId));
         watchlistRepository.deleteByUserWatchlistId(userWatchlistId);
         userWatchlistRepository.deleteById(userWatchlistId);
@@ -122,13 +119,13 @@ public class WatchlistService {
      * @return a {@link WatchlistView} with live price data
      * @throws IllegalArgumentException if the company code is blank
      */
-    public WatchlistView addCompany(WatchlistRequest request) {
+    public WatchlistView addCompany(Long userId, WatchlistRequest request) {
         if (request.getCompanyCode() == null || request.getCompanyCode().isBlank()) {
             throw new IllegalArgumentException("Company code is required");
         }
 
         String code = request.getCompanyCode().toUpperCase().trim();
-        Long userWatchlistId = resolveWatchlistId(request.getUserWatchlistId());
+        Long userWatchlistId = resolveWatchlistId(userId, request.getUserWatchlistId());
         logger.info("Adding company '{}' to watchlist id={}", code, userWatchlistId);
 
         if (watchlistRepository.findByUserWatchlistIdAndCompanyCode(userWatchlistId, code).isPresent()) {
@@ -156,8 +153,8 @@ public class WatchlistService {
      * @param userWatchlistId the watchlist to fetch; if null, defaults to the first watchlist for the current user
      * @return list of {@link WatchlistView} with live price data
      */
-    public List<WatchlistView> getWatchlist(Long userWatchlistId) {
-        Long resolvedId = resolveWatchlistId(userWatchlistId);
+    public List<WatchlistView> getWatchlist(Long userId, Long userWatchlistId) {
+        Long resolvedId = resolveWatchlistId(userId, userWatchlistId);
         logger.debug("Fetching watchlist entries for userWatchlistId={}", resolvedId);
 
         UserWatchlist watchlist = userWatchlistRepository.findById(resolvedId).orElse(null);
@@ -185,8 +182,8 @@ public class WatchlistService {
      * @return the updated {@link WatchlistView} with live price data
      * @throws IllegalArgumentException if no entry exists for the given company code
      */
-    public WatchlistView updateCompany(String companyCode, Long userWatchlistId, WatchlistRequest request) {
-        Long resolvedId = resolveWatchlistId(userWatchlistId);
+    public WatchlistView updateCompany(Long userId, String companyCode, Long userWatchlistId, WatchlistRequest request) {
+        Long resolvedId = resolveWatchlistId(userId, userWatchlistId);
         logger.info("Updating entry for company '{}' in watchlist id={}", companyCode, resolvedId);
 
         Watchlist entity = watchlistRepository
@@ -210,8 +207,8 @@ public class WatchlistService {
      * @param userWatchlistId the watchlist to remove from (null → defaults to first)
      */
     @Transactional
-    public void removeCompany(String companyCode, Long userWatchlistId) {
-        Long resolvedId = resolveWatchlistId(userWatchlistId);
+    public void removeCompany(Long userId, String companyCode, Long userWatchlistId) {
+        Long resolvedId = resolveWatchlistId(userId, userWatchlistId);
         logger.info("Removing company '{}' from watchlist id={}", companyCode, resolvedId);
         watchlistRepository.findByUserWatchlistIdAndCompanyCode(resolvedId, companyCode)
                 .orElseThrow(() -> new IllegalArgumentException("Company '" + companyCode + "' not found in this watchlist"));
@@ -229,8 +226,8 @@ public class WatchlistService {
      * @param userWatchlistId the watchlist to import into (null → defaults to first)
      * @return summary map with keys {@code imported}, {@code skipped}, {@code failed}
      */
-    public Map<String, Object> importCompanies(List<String> companyCodes, Long userWatchlistId) {
-        Long resolvedId = resolveWatchlistId(userWatchlistId);
+    public Map<String, Object> importCompanies(Long userId, List<String> companyCodes, Long userWatchlistId) {
+        Long resolvedId = resolveWatchlistId(userId, userWatchlistId);
         int imported = 0, skipped = 0, failed = 0;
         List<String> failedCodes = new ArrayList<>();
 
@@ -280,8 +277,8 @@ public class WatchlistService {
      * @param userWatchlistId the watchlist to count (null → defaults to first)
      * @return the number of company entries
      */
-    public long getCount(Long userWatchlistId) {
-        Long resolvedId = resolveWatchlistId(userWatchlistId);
+    public long getCount(Long userId, Long userWatchlistId) {
+        Long resolvedId = resolveWatchlistId(userId, userWatchlistId);
         long count = watchlistRepository.countByUserWatchlistId(resolvedId);
         logger.debug("Watchlist count for userWatchlistId={}: {}", resolvedId, count);
         return count;
@@ -299,14 +296,14 @@ public class WatchlistService {
      * @param userWatchlistId the requested watchlist ID, may be null
      * @return a valid watchlist ID
      */
-    private Long resolveWatchlistId(Long userWatchlistId) {
+    private Long resolveWatchlistId(Long userId, Long userWatchlistId) {
         if (userWatchlistId != null) return userWatchlistId;
-        return userWatchlistRepository.findFirstByUserIdOrderByCreatedAtAsc(DEFAULT_USER_ID)
+        return userWatchlistRepository.findFirstByUserIdOrderByCreatedAtAsc(userId)
                 .map(UserWatchlist::getId)
                 .orElseGet(() -> {
-                    logger.info("No watchlist found for userId={} — creating default", DEFAULT_USER_ID);
+                    logger.info("No watchlist found for userId={} — creating default", userId);
                     UserWatchlist defaultList = new UserWatchlist();
-                    defaultList.setUserId(DEFAULT_USER_ID);
+                    defaultList.setUserId(userId);
                     defaultList.setName("My Watchlist");
                     return userWatchlistRepository.save(defaultList).getId();
                 });

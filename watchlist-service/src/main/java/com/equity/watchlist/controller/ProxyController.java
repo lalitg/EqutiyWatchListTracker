@@ -31,6 +31,14 @@ public class ProxyController {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    /** Base URL of the auth microservice (default: {@code http://localhost:8088}). */
+    @Value("${auth.service.url:http://localhost:8088}")
+    private String authServiceUrl;
+
+    /** Base URL of the user microservice (default: {@code http://localhost:8087}). */
+    @Value("${user.service.url:http://localhost:8087}")
+    private String userServiceUrl;
+
     /** Base URL of the news microservice (default: {@code http://localhost:8084}). */
     @Value("${news.service.url:http://localhost:8084}")
     private String newsServiceUrl;
@@ -46,6 +54,28 @@ public class ProxyController {
     /** Base URL of the fast-movers microservice (default: {@code http://localhost:8081}). */
     @Value("${fast.movers.service.url:http://localhost:8081}")
     private String fastMoversServiceUrl;
+
+    /**
+     * Proxies all {@code /api/auth/**} requests to auth-service.
+     * Path remapping: /api/auth/signup → /api/v1/auth/signup
+     */
+    @RequestMapping("/api/auth/**")
+    public ResponseEntity<String> proxyAuth(HttpServletRequest request) throws URISyntaxException, IOException {
+        logger.info("Proxying auth request: {} {}", request.getMethod(), request.getRequestURI());
+        String suffix = request.getRequestURI().substring("/api/auth".length());
+        return proxyWithPath(request, authServiceUrl, "/api/v1/auth" + suffix);
+    }
+
+    /**
+     * Proxies all {@code /api/user/**} requests to user-service.
+     * Path remapping: /api/user/me → /api/v1/users/me
+     */
+    @RequestMapping("/api/user/**")
+    public ResponseEntity<String> proxyUser(HttpServletRequest request) throws URISyntaxException, IOException {
+        logger.info("Proxying user request: {} {}", request.getMethod(), request.getRequestURI());
+        String suffix = request.getRequestURI().substring("/api/user".length());
+        return proxyWithPath(request, userServiceUrl, "/api/v1/users" + suffix);
+    }
 
     /**
      * Proxies all {@code /api/news/**} requests to the news microservice.
@@ -144,6 +174,37 @@ public class ProxyController {
         logger.debug("Proxy response status: {}", response.getStatusCode());
 
         // Strip hop-by-hop headers (Transfer-Encoding, Connection) that should not be forwarded
+        HttpHeaders cleaned = new HttpHeaders();
+        response.getHeaders().forEach((name, values) -> {
+            String lower = name.toLowerCase();
+            if (!lower.equals("transfer-encoding") && !lower.equals("connection")) {
+                cleaned.addAll(name, values);
+            }
+        });
+        return ResponseEntity.status(response.getStatusCode()).headers(cleaned).body(response.getBody());
+    }
+
+    /** Proxy with an explicit downstream path — used when the path prefix must be remapped. */
+    private ResponseEntity<String> proxyWithPath(HttpServletRequest request, String targetBase, String downstreamPath)
+            throws URISyntaxException, IOException {
+        String queryString = request.getQueryString();
+        String targetUrl = targetBase + downstreamPath + (queryString != null ? "?" + queryString : "");
+        logger.debug("Forwarding to: {}", targetUrl);
+
+        String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+
+        HttpHeaders headers = new HttpHeaders();
+        java.util.Collections.list(request.getHeaderNames()).forEach(name -> {
+            String lower = name.toLowerCase();
+            if (!lower.equals("host") && !lower.equals("transfer-encoding") && !lower.equals("connection")) {
+                headers.set(name, request.getHeader(name));
+            }
+        });
+
+        HttpEntity<String> entity = new HttpEntity<>(body.isEmpty() ? null : body, headers);
+        ResponseEntity<String> response = restTemplate.exchange(
+                new URI(targetUrl), HttpMethod.valueOf(request.getMethod()), entity, String.class);
+
         HttpHeaders cleaned = new HttpHeaders();
         response.getHeaders().forEach((name, values) -> {
             String lower = name.toLowerCase();

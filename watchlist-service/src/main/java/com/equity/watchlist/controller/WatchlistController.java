@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -51,9 +52,10 @@ public class WatchlistController {
      * @return {@code 201 Created} with the created {@link UserWatchlistView}
      */
     @PostMapping("/lists")
-    public ResponseEntity<UserWatchlistView> createWatchlist(@RequestBody UserWatchlistRequest request) {
+    public ResponseEntity<UserWatchlistView> createWatchlist(Authentication authentication, @RequestBody UserWatchlistRequest request) {
         logger.info("POST /api/v1/watchlist/lists — creating watchlist '{}'", request.getName());
-        UserWatchlistView created = watchlistService.createWatchlist(request);
+        Long userId = (Long) authentication.getPrincipal();
+        UserWatchlistView created = watchlistService.createWatchlist(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -63,9 +65,10 @@ public class WatchlistController {
      * @return {@code 200 OK} with a list of {@link UserWatchlistView}
      */
     @GetMapping("/lists")
-    public ResponseEntity<List<UserWatchlistView>> getWatchlists() {
+    public ResponseEntity<List<UserWatchlistView>> getWatchlists(Authentication authentication) {
         logger.info("GET /api/v1/watchlist/lists — fetching all watchlists");
-        return ResponseEntity.ok(watchlistService.getWatchlistsForUser());
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(watchlistService.getWatchlistsForUser(userId));
     }
 
     /**
@@ -75,9 +78,10 @@ public class WatchlistController {
      * @return {@code 204 No Content} on success
      */
     @DeleteMapping("/lists/{id}")
-    public ResponseEntity<Void> deleteWatchlist(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteWatchlist(Authentication authentication, @PathVariable Long id) {
         logger.info("DELETE /api/v1/watchlist/lists/{} — deleting watchlist", id);
-        watchlistService.deleteWatchlist(id);
+        Long userId = (Long) authentication.getPrincipal();
+        watchlistService.deleteWatchlist(userId, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -94,9 +98,10 @@ public class WatchlistController {
      * @return {@code 201 Created} with the {@link WatchlistView} including live prices
      */
     @PostMapping({"", "/addCompany"})
-    public ResponseEntity<WatchlistView> addCompany(@RequestBody WatchlistRequest request) {
-        logger.info("POST /api/v1/watchlist — adding company '{}'", request.getCompanyCode());
-        WatchlistView created = watchlistService.addCompany(request);
+    public ResponseEntity<WatchlistView> addCompany(Authentication authentication, @RequestBody WatchlistRequest request) {
+        Long userId = (Long) authentication.getPrincipal();
+        logger.info("POST /api/v1/watchlist — adding company '{}' for userId={}", request.getCompanyCode(), userId);
+        WatchlistView created = watchlistService.addCompany(userId, request);
         logger.info("Company '{}' added successfully", created.getCompanyCode());
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -108,10 +113,11 @@ public class WatchlistController {
      * @return {@code 200 OK} with a list of {@link WatchlistView} entries
      */
     @GetMapping({"", "/getAllCompanies"})
-    public ResponseEntity<List<WatchlistView>> getWatchlist(
+    public ResponseEntity<List<WatchlistView>> getWatchlist(Authentication authentication,
             @RequestParam(required = false) Long watchlistId) {
-        logger.info("GET /api/v1/watchlist — fetching all entries for watchlistId={}", watchlistId);
-        List<WatchlistView> entries = watchlistService.getWatchlist(watchlistId);
+        Long userId = (Long) authentication.getPrincipal();
+        logger.info("GET /api/v1/watchlist — fetching all entries for userId={}, watchlistId={}", userId, watchlistId);
+        List<WatchlistView> entries = watchlistService.getWatchlist(userId, watchlistId);
         logger.debug("Returning {} watchlist entries", entries.size());
         return ResponseEntity.ok(entries);
     }
@@ -125,12 +131,13 @@ public class WatchlistController {
      * @return {@code 200 OK} with the updated {@link WatchlistView}
      */
     @PutMapping({"/{companyCode}", "/updateCompany/{companyCode}"})
-    public ResponseEntity<WatchlistView> updateCompany(
+    public ResponseEntity<WatchlistView> updateCompany(Authentication authentication,
             @PathVariable String companyCode,
             @RequestParam(required = false) Long watchlistId,
             @RequestBody WatchlistRequest request) {
-        logger.info("PUT /api/v1/watchlist/{} — updating entry", companyCode);
-        WatchlistView updated = watchlistService.updateCompany(companyCode, watchlistId, request);
+        Long userId = (Long) authentication.getPrincipal();
+        logger.info("PUT /api/v1/watchlist/{} — updating entry for userId={}", companyCode, userId);
+        WatchlistView updated = watchlistService.updateCompany(userId, companyCode, watchlistId, request);
         return ResponseEntity.ok(updated);
     }
 
@@ -142,11 +149,12 @@ public class WatchlistController {
      * @return {@code 204 No Content} on success
      */
     @DeleteMapping({"/{companyCode}", "/deleteCompany/{companyCode}"})
-    public ResponseEntity<Void> removeCompany(
+    public ResponseEntity<Void> removeCompany(Authentication authentication,
             @PathVariable String companyCode,
             @RequestParam(required = false) Long watchlistId) {
-        logger.info("DELETE /api/v1/watchlist/{} — removing entry", companyCode);
-        watchlistService.removeCompany(companyCode, watchlistId);
+        Long userId = (Long) authentication.getPrincipal();
+        logger.info("DELETE /api/v1/watchlist/{} — removing entry for userId={}", companyCode, userId);
+        watchlistService.removeCompany(userId, companyCode, watchlistId);
         return ResponseEntity.noContent().build();
     }
 
@@ -157,7 +165,7 @@ public class WatchlistController {
      * @return {@code 200 OK} with summary map: {@code imported}, {@code skipped}, {@code failed}
      */
     @PostMapping("/import")
-    public ResponseEntity<Map<String, Object>> importCompanies(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> importCompanies(Authentication authentication, @RequestBody Map<String, Object> body) {
         @SuppressWarnings("unchecked")
         List<String> companyCodes = (List<String>) body.get("companyCodes");
         if (companyCodes == null || companyCodes.isEmpty()) {
@@ -168,7 +176,8 @@ public class WatchlistController {
                 ? Long.valueOf(body.get("userWatchlistId").toString())
                 : null;
         logger.info("POST /api/v1/watchlist/import — importing {} codes into watchlistId={}", companyCodes.size(), userWatchlistId);
-        Map<String, Object> result = watchlistService.importCompanies(companyCodes, userWatchlistId);
+        Long userId = (Long) authentication.getPrincipal();
+        Map<String, Object> result = watchlistService.importCompanies(userId, companyCodes, userWatchlistId);
         logger.info("Import complete — result: {}", result);
         return ResponseEntity.ok(result);
     }
@@ -180,10 +189,11 @@ public class WatchlistController {
      * @return {@code 200 OK} with a map containing key {@code "count"}
      */
     @GetMapping("/getCount")
-    public ResponseEntity<Map<String, Long>> getCount(
+    public ResponseEntity<Map<String, Long>> getCount(Authentication authentication,
             @RequestParam(required = false) Long watchlistId) {
-        logger.debug("GET /api/v1/watchlist/getCount for watchlistId={}", watchlistId);
-        long count = watchlistService.getCount(watchlistId);
+        Long userId = (Long) authentication.getPrincipal();
+        logger.debug("GET /api/v1/watchlist/getCount for userId={}, watchlistId={}", userId, watchlistId);
+        long count = watchlistService.getCount(userId, watchlistId);
         return ResponseEntity.ok(Map.of("count", count));
     }
 }
