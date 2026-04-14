@@ -60,6 +60,10 @@ export function WatchlistProvider({ children }) {
   }, [isLoggedIn]);
 
   const addCompany = useCallback(async (companyCode) => {
+    if (!isLoggedIn) {
+      alert('Please log in to add companies to your watchlist.');
+      return;
+    }
     dispatch({ type: ACTIONS.ACTION_START });
     try {
       await watchlistService.addCompany(companyCode);
@@ -70,7 +74,7 @@ export function WatchlistProvider({ children }) {
     } finally {
       dispatch({ type: ACTIONS.ACTION_END });
     }
-  }, [fetchEntries]);
+  }, [fetchEntries, isLoggedIn]);
 
   const updateCompany = useCallback(async (oldCode, newCode) => {
     dispatch({ type: ACTIONS.ACTION_START });
