@@ -40,6 +40,12 @@ public class WatchlistView {
     /** Total traded volume for the latest session (fetched live from global_watchlist). */
     private BigDecimal tradedVolume;
 
+    /** Percentage change from previous close (fetched live from global_watchlist). */
+    private BigDecimal percentChange;
+
+    /** Absolute price change from previous close (fetched live from global_watchlist). */
+    private BigDecimal changeValue;
+
     public String getCompanyCode() { return companyCode; }
     public void setCompanyCode(String companyCode) { this.companyCode = companyCode; }
 
@@ -69,4 +75,10 @@ public class WatchlistView {
 
     public BigDecimal getTradedVolume() { return tradedVolume; }
     public void setTradedVolume(BigDecimal tradedVolume) { this.tradedVolume = tradedVolume; }
+
+    public BigDecimal getPercentChange() { return percentChange; }
+    public void setPercentChange(BigDecimal percentChange) { this.percentChange = percentChange; }
+
+    public BigDecimal getChangeValue() { return changeValue; }
+    public void setChangeValue(BigDecimal changeValue) { this.changeValue = changeValue; }
 }

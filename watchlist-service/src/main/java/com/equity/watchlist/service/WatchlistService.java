@@ -334,6 +334,8 @@ public class WatchlistService {
             view.setAllTimeLow(entry.getAllTimeLow());
             view.setAllTimeHigh(entry.getAllTimeHigh());
             view.setTradedVolume(entry.getTradedVolume());
+            view.setPercentChange(entry.getPercentChange());
+            view.setChangeValue(entry.getChangeValue());
         }
         return view;
     }
