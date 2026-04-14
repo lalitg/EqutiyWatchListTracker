@@ -11,21 +11,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 public class SpaController {
 
-    @RequestMapping(value = {
-        "/",
-        "/watchlist",
-        "/watchlist/**",
-        "/global-watchlist",
-        "/global-watchlist/**",
-        "/fast-movers",
-        "/fast-movers/**",
-        "/nifty50",
-        "/nifty50/**",
-        "/domestic",
-        "/domestic/**",
-        "/global",
-        "/global/**"
-    })
+    /**
+     * Catch-all for any path that isn't under /api/** or a static resource.
+     * Spring Boot's static resource handler takes priority for actual files
+     * (index.html, JS, CSS), so this only fires for unknown paths like /market/nifty50.
+     */
+    @RequestMapping(value = "/{path:[^\\.]*}/**")
     public String forward(HttpServletRequest request) {
         return "forward:/index.html";
     }
