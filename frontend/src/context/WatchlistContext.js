@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useReducer, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import * as watchlistService from '../services/watchlistService';
 import { notifySymbolAdded } from '../services/newsService';
+import { useAuth } from './AuthContext';
 
 const WatchlistContext = createContext();
 
@@ -14,7 +15,7 @@ const ACTIONS = {
 
 const initialState = {
   entries: [],
-  isLoading: true,
+  isLoading: false,
   error: null,
   isActionLoading: false,
 };
@@ -38,8 +39,17 @@ function reducer(state, action) {
 
 export function WatchlistProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const { isLoggedIn } = useAuth();
+
+  // Clear entries when user logs out
+  useEffect(() => {
+    if (!isLoggedIn) {
+      dispatch({ type: ACTIONS.FETCH_SUCCESS, payload: [] });
+    }
+  }, [isLoggedIn]);
 
   const fetchEntries = useCallback(async () => {
+    if (!isLoggedIn) return;
     dispatch({ type: ACTIONS.FETCH_START });
     try {
       const data = await watchlistService.fetchEntries();
@@ -47,7 +57,7 @@ export function WatchlistProvider({ children }) {
     } catch (err) {
       dispatch({ type: ACTIONS.FETCH_ERROR, payload: 'Failed to load data. Please make sure the backend server is running.' });
     }
-  }, []);
+  }, [isLoggedIn]);
 
   const addCompany = useCallback(async (companyCode) => {
     dispatch({ type: ACTIONS.ACTION_START });
