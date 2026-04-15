@@ -85,6 +85,28 @@
   border-color: #667eea;
 }
 
+.login-select {
+  padding: 10px 14px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1f2937;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.login-select:focus {
+  border-color: #667eea;
+}
+
+.login-hint {
+  font-size: 11px;
+  color: #6b7280;
+  margin: 2px 0 0;
+}
+
 .login-btn {
   margin-top: 4px;
   padding: 12px;

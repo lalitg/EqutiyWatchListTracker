@@ -17,6 +17,8 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
+  const [investmentYears, setInvestmentYears] = useState('');
+  const [investmentAmount, setInvestmentAmount] = useState('');
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -53,6 +55,8 @@ const LoginPage = () => {
         email: email || undefined,
         phoneNumber: phone || undefined,
         password: signupPassword,
+        investmentYears: investmentYears || undefined,
+        investmentAmount: investmentAmount || undefined,
       });
       setSuccessMsg('Account created! Please log in.');
       setTab('login');
@@ -162,6 +166,35 @@ const LoginPage = () => {
               />
             </div>
             <div className="login-field">
+              <label>Years of Investment Experience</label>
+              <select
+                value={investmentYears}
+                onChange={e => setInvestmentYears(e.target.value)}
+                className="login-select"
+              >
+                <option value="">Select (optional)</option>
+                <option value="ZERO_TO_FIVE">0 – 5 years</option>
+                <option value="FIVE_TO_TEN">5 – 10 years</option>
+                <option value="TEN_TO_FIFTEEN">10 – 15 years</option>
+                <option value="FIFTEEN_PLUS">15+ years</option>
+              </select>
+            </div>
+            <div className="login-field">
+              <label>Investment Amount Range</label>
+              <select
+                value={investmentAmount}
+                onChange={e => setInvestmentAmount(e.target.value)}
+                className="login-select"
+              >
+                <option value="">Select (optional)</option>
+                <option value="ZERO_TO_5L">Up to ₹5 Lakh</option>
+                <option value="FIVE_TO_10L">₹5L – ₹10L</option>
+                <option value="TEN_TO_20L">₹10L – ₹20L</option>
+                <option value="TWENTY_TO_50L">₹20L – ₹50L</option>
+                <option value="FIFTY_PLUS">₹50L+</option>
+              </select>
+            </div>
+            <div className="login-field">
               <label>Password</label>
               <input
                 type="password"
@@ -170,6 +203,9 @@ const LoginPage = () => {
                 placeholder="Choose a password"
                 required
               />
+              <p className="login-hint">
+                Min 8 characters · 1 uppercase · 1 number · 1 special character (@$!%*?&)
+              </p>
             </div>
             <button className="login-btn" type="submit" disabled={loading}>
               {loading ? 'Creating account...' : 'Create Account'}

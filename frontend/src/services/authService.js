@@ -13,11 +13,11 @@ export async function login(identifier, password) {
   return res.json(); // { accessToken, refreshToken, userType, expiresIn }
 }
 
-export async function signup({ username, name, email, phoneNumber, password }) {
+export async function signup({ username, name, email, phoneNumber, password, investmentYears, investmentAmount }) {
   const res = await fetch(`${AUTH_BASE}/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, name, email, phoneNumber, password }),
+    body: JSON.stringify({ username, name, email, phoneNumber, password, investmentYears, investmentAmount }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
