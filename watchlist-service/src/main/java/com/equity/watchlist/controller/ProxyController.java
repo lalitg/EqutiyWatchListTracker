@@ -9,7 +9,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
@@ -59,7 +61,7 @@ public class ProxyController {
      * Proxies all {@code /api/auth/**} requests to auth-service.
      * Path remapping: /api/auth/signup → /api/v1/auth/signup
      */
-    @RequestMapping("/api/auth/**")
+    @RequestMapping(value = "/api/auth/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public ResponseEntity<String> proxyAuth(HttpServletRequest request) throws URISyntaxException, IOException {
         logger.info("Proxying auth request: {} {}", request.getMethod(), request.getRequestURI());
         String suffix = request.getRequestURI().substring("/api/auth".length());
@@ -70,7 +72,7 @@ public class ProxyController {
      * Proxies all {@code /api/user/**} requests to user-service.
      * Path remapping: /api/user/me → /api/v1/users/me
      */
-    @RequestMapping("/api/user/**")
+    @RequestMapping(value = "/api/user/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public ResponseEntity<String> proxyUser(HttpServletRequest request) throws URISyntaxException, IOException {
         logger.info("Proxying user request: {} {}", request.getMethod(), request.getRequestURI());
         String suffix = request.getRequestURI().substring("/api/user".length());
@@ -84,7 +86,7 @@ public class ProxyController {
      * @return the response from the news microservice
      * @throws URISyntaxException if the constructed target URL is malformed
      */
-    @RequestMapping("/api/news/**")
+    @RequestMapping(value = "/api/news/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public ResponseEntity<String> proxyNews(HttpServletRequest request) throws URISyntaxException, IOException {
         logger.info("Proxying news request: {} {}", request.getMethod(), request.getRequestURI());
         return proxy(request, newsServiceUrl);
@@ -97,7 +99,7 @@ public class ProxyController {
      * @return the response from the events microservice
      * @throws URISyntaxException if the constructed target URL is malformed
      */
-    @RequestMapping("/api/events/**")
+    @RequestMapping(value = "/api/events/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public ResponseEntity<String> proxyEvents(HttpServletRequest request) throws URISyntaxException, IOException {
         logger.info("Proxying events request: {} {}", request.getMethod(), request.getRequestURI());
         return proxy(request, eventsServiceUrl);
@@ -110,7 +112,7 @@ public class ProxyController {
      * @return the response from the global-watchlist microservice
      * @throws URISyntaxException if the constructed target URL is malformed
      */
-    @RequestMapping("/api/global-watchlist/**")
+    @RequestMapping(value = "/api/global-watchlist/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public ResponseEntity<String> proxyGlobalWatchlist(HttpServletRequest request) throws URISyntaxException, IOException {
         logger.info("Proxying global-watchlist request: {} {}", request.getMethod(), request.getRequestURI());
         return proxy(request, globalWatchlistServiceUrl);
@@ -123,7 +125,7 @@ public class ProxyController {
      * @return the response from the fast-movers microservice
      * @throws URISyntaxException if the constructed target URL is malformed
      */
-    @RequestMapping("/api/fast-movers/**")
+    @RequestMapping(value = "/api/fast-movers/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public ResponseEntity<String> proxyFastMovers(HttpServletRequest request) throws URISyntaxException, IOException {
         logger.info("Proxying fast-movers request: {} {}", request.getMethod(), request.getRequestURI());
         return proxy(request, fastMoversServiceUrl);
@@ -137,7 +139,7 @@ public class ProxyController {
      * @return the response from the news microservice
      * @throws URISyntaxException if the constructed target URL is malformed
      */
-    @RequestMapping("/api/internal/**")
+    @RequestMapping(value = "/api/internal/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public ResponseEntity<String> proxyInternal(HttpServletRequest request) throws URISyntaxException, IOException {
         logger.info("Proxying internal request: {} {}", request.getMethod(), request.getRequestURI());
         return proxy(request, newsServiceUrl);
@@ -168,20 +170,21 @@ public class ProxyController {
         headers.set("Content-Type", "application/json");
 
         HttpEntity<String> entity = new HttpEntity<>(body.isEmpty() ? null : body, headers);
-        ResponseEntity<String> response = restTemplate.exchange(
-                new URI(targetUrl), HttpMethod.valueOf(request.getMethod()), entity, String.class);
-
-        logger.debug("Proxy response status: {}", response.getStatusCode());
-
-        // Strip hop-by-hop headers (Transfer-Encoding, Connection) that should not be forwarded
-        HttpHeaders cleaned = new HttpHeaders();
-        response.getHeaders().forEach((name, values) -> {
-            String lower = name.toLowerCase();
-            if (!lower.equals("transfer-encoding") && !lower.equals("connection")) {
-                cleaned.addAll(name, values);
-            }
-        });
-        return ResponseEntity.status(response.getStatusCode()).headers(cleaned).body(response.getBody());
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    new URI(targetUrl), HttpMethod.valueOf(request.getMethod()), entity, String.class);
+            logger.debug("Proxy response status: {}", response.getStatusCode());
+            HttpHeaders cleaned = new HttpHeaders();
+            response.getHeaders().forEach((name, values) -> {
+                String lower = name.toLowerCase();
+                if (!lower.equals("transfer-encoding") && !lower.equals("connection")) {
+                    cleaned.addAll(name, values);
+                }
+            });
+            return ResponseEntity.status(response.getStatusCode()).headers(cleaned).body(response.getBody());
+        } catch (HttpStatusCodeException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAsString());
+        }
     }
 
     /** Proxy with an explicit downstream path — used when the path prefix must be remapped. */
@@ -202,16 +205,19 @@ public class ProxyController {
         });
 
         HttpEntity<String> entity = new HttpEntity<>(body.isEmpty() ? null : body, headers);
-        ResponseEntity<String> response = restTemplate.exchange(
-                new URI(targetUrl), HttpMethod.valueOf(request.getMethod()), entity, String.class);
-
-        HttpHeaders cleaned = new HttpHeaders();
-        response.getHeaders().forEach((name, values) -> {
-            String lower = name.toLowerCase();
-            if (!lower.equals("transfer-encoding") && !lower.equals("connection")) {
-                cleaned.addAll(name, values);
-            }
-        });
-        return ResponseEntity.status(response.getStatusCode()).headers(cleaned).body(response.getBody());
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    new URI(targetUrl), HttpMethod.valueOf(request.getMethod()), entity, String.class);
+            HttpHeaders cleaned = new HttpHeaders();
+            response.getHeaders().forEach((name, values) -> {
+                String lower = name.toLowerCase();
+                if (!lower.equals("transfer-encoding") && !lower.equals("connection")) {
+                    cleaned.addAll(name, values);
+                }
+            });
+            return ResponseEntity.status(response.getStatusCode()).headers(cleaned).body(response.getBody());
+        } catch (HttpStatusCodeException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAsString());
+        }
     }
 }
