@@ -34,6 +34,9 @@ public class GlobalWatchlistEntry {
     /** Total traded volume for the latest session. */
     private BigDecimal tradedVolume;
 
+    /** Whether this company is part of the NIFTY 50 index. */
+    private boolean nifty50;
+
     /** Timestamp of the last in-memory price update. */
     private LocalDateTime lastUpdated;
 
@@ -71,6 +74,11 @@ public class GlobalWatchlistEntry {
     public BigDecimal getTradedVolume() { return tradedVolume; }
     /** @param tradedVolume the total traded volume */
     public void setTradedVolume(BigDecimal tradedVolume) { this.tradedVolume = tradedVolume; }
+
+    /** @return true if this company is part of the NIFTY 50 index */
+    public boolean isNifty50() { return nifty50; }
+    /** @param nifty50 true if this company is part of the NIFTY 50 index */
+    public void setNifty50(boolean nifty50) { this.nifty50 = nifty50; }
 
     /** @return the timestamp of the last in-memory price update */
     public LocalDateTime getLastUpdated() { return lastUpdated; }

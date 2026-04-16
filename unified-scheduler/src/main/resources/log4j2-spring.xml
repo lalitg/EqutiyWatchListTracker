@@ -4,7 +4,7 @@
 
     Log4j2 is a JVM-level singleton — it is initialised ONCE by whichever
     Spring context boots first, and subsequent contexts' logging.config values
-    are silently ignored. This file is the authoritative config for all 4 services
+    are silently ignored. This file is the authoritative config for all 5 services
     running inside unified-scheduler.
 
     UnifiedSchedulerApplication.main() pins this file via:
@@ -22,6 +22,7 @@
       com.companycode.nse     — nse-code-service
       com.nseevents           — nse-events-scheduler
       com.companynews         — nse-news-scheduler
+      com.equity.fastmovers   — fast-movers-service
       com.unified             — this launcher
 
     Framework loggers (WARN — suppress noise):
@@ -113,6 +114,12 @@
 
         <!-- nse-news-scheduler -->
         <Logger name="com.companynews" level="INFO" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- fast-movers-service -->
+        <Logger name="com.equity.fastmovers" level="INFO" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>

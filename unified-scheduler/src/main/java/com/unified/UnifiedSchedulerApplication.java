@@ -2,6 +2,7 @@ package com.unified;
 
 import com.companynews.newsscheduler.NseNewsSchedulerApplication;
 import com.companycode.nse.NseEnterpriseSchedulerApplication;
+import com.equity.fastmovers.FastMoversApplication;
 import com.nseevents.nse_events_scheduler.NseEventsSchedulerApplication;
 import com.watchlist.global.GlobalWatchlistApplication;
 import org.apache.logging.log4j.LogManager;
@@ -11,7 +12,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * Single-JVM launcher for all 4 equity watchlist scheduler services.
+ * Single-JVM launcher for all 5 equity watchlist scheduler services.
  *
  * <p><b>Approach — Multi-Context Bootstrap:</b> Each service is started via
  * {@link SpringApplicationBuilder} on its own dedicated thread. Spring creates
@@ -25,14 +26,15 @@ import java.util.concurrent.CountDownLatch;
  * {@code spring.config.name=application-{service}}, so Spring Boot loads the
  * named properties file from this module's classpath instead of the default
  * {@code application.properties}. This avoids classpath config collisions when
- * all 4 service JARs are on the same classpath.
+ * all 5 service JARs are on the same classpath.
  *
  * <p><b>Port assignment:</b>
  * <ul>
  *   <li>global-watchlist  → 8083</li>
- *   <li>nse-code          → 8086</li>
+ *   <li>nse-code          → 8082</li>
  *   <li>nse-events        → 8085</li>
  *   <li>nse-news          → 8084 (watchlist-service expects nse-news on 8084)</li>
+ *   <li>fast-movers       → 8081</li>
  * </ul>
  *
  * <p><b>This class is intentionally NOT a {@code @SpringBootApplication}.</b>
@@ -66,13 +68,13 @@ public class UnifiedSchedulerApplication {
          */
         System.setProperty("logging.config", "classpath:log4j2-spring.xml");
 
-        log.info("=== Unified Scheduler starting — launching 4 service contexts ===");
+        log.info("=== Unified Scheduler starting — launching 5 service contexts ===");
 
         startService("global-watchlist", GlobalWatchlistApplication.class,
                 "application-global-watchlist", "8083");
 
         startService("nse-code", NseEnterpriseSchedulerApplication.class,
-                "application-nse-code", "8086");
+                "application-nse-code", "8082");
 
         startService("nse-events", NseEventsSchedulerApplication.class,
                 "application-nse-events", "8085");
@@ -80,7 +82,10 @@ public class UnifiedSchedulerApplication {
         startService("nse-news", NseNewsSchedulerApplication.class,
                 "application-nse-news", "8084");
 
-        log.info("=== All 4 service threads launched — JVM will stay alive ===");
+        startService("fast-movers", FastMoversApplication.class,
+                "application-fast-movers", "8081");
+
+        log.info("=== All 5 service threads launched — JVM will stay alive ===");
 
         /*
          * Block the main thread forever. The JVM stays alive because each
