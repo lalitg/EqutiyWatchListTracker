@@ -24,8 +24,8 @@ public class FastMoversScheduler {
         fastMoversService.refreshTodayMovers();
     }
 
-    /** Persist end-of-day close prices for all companies at 3:30 PM on weekdays. */
-    @Scheduled(cron = "0 30 15 * * MON-FRI")
+    /** Persist previous trading day's close prices at 9:30 AM on weekdays. */
+    @Scheduled(cron = "0 30 9 * * MON-FRI")
     public void persistDailyClose() {
         logger.info("Scheduler: persistDailyClose triggered");
         fastMoversService.persistDailyClose();
