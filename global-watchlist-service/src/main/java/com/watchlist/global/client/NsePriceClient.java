@@ -8,10 +8,12 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 
 /**
  * HTTP client for fetching live price data for individual NSE stocks.
@@ -94,8 +96,9 @@ public class NsePriceClient {
      */
     public PriceData fetchPrice(String symbol, String cookies) {
         try {
+            String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
             // Call 1: current price and 52-week range
-            String quoteJson = get(QUOTE_URL + symbol, cookies);
+            String quoteJson = get(QUOTE_URL + encodedSymbol, cookies);
             JsonNode quoteBody = objectMapper.readTree(quoteJson);
 
             BigDecimal currentPrice = null;
@@ -125,7 +128,7 @@ public class NsePriceClient {
 
             // Call 2: traded volume
             BigDecimal tradedVolume = null;
-            String tradeJson = get(String.format(TRADE_INFO_URL, symbol), cookies);
+            String tradeJson = get(String.format(TRADE_INFO_URL, encodedSymbol), cookies);
             JsonNode tradeBody = objectMapper.readTree(tradeJson);
 
             if (tradeBody != null && tradeBody.has("marketDeptOrderBook")) {
