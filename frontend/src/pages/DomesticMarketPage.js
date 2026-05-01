@@ -2,6 +2,8 @@ import React, { useEffect, useCallback } from 'react';
 import SectorSelector from '../components/market/SectorSelector';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
+import SectorPerformanceGrid from '../components/market/SectorPerformanceGrid';
+import DomesticIndicesGrid from '../components/market/DomesticIndicesGrid';
 import { useMarket } from '../context/MarketContext';
 
 const SECTORS = [
@@ -106,6 +108,13 @@ const DomesticMarketPage = () => {
           <p>{domesticError}</p>
           <button onClick={() => fetchDomestic(selectedSector)} className="btn btn-primary" style={{ marginTop: 16 }}>Retry</button>
         </div>
+      )}
+
+      {selectedSector === 'All' && (
+        <>
+          <DomesticIndicesGrid />
+          <SectorPerformanceGrid />
+        </>
       )}
 
       {!domesticLoading && !domesticError && domestic && (

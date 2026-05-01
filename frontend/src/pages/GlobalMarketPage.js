@@ -2,6 +2,7 @@ import React, { useEffect, useCallback } from 'react';
 import SectorSelector from '../components/market/SectorSelector';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
+import GlobalIndicesTable from '../components/market/GlobalIndicesTable';
 import { useMarket } from '../context/MarketContext';
 
 /**
@@ -126,6 +127,8 @@ const GlobalMarketPage = () => {
           </button>
         </div>
       )}
+
+      <GlobalIndicesTable />
 
       {!globalLoading && !globalError && currentData && (
         <div className="market-content">

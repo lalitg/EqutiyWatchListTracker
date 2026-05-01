@@ -6,6 +6,9 @@ import GlobalMarketPage from './pages/GlobalMarketPage';
 import DomesticMarketPage from './pages/DomesticMarketPage';
 import FastMoversPage from './pages/FastMoversPage';
 import Nifty50Page from './pages/Nifty50Page';
+import IndexCompaniesPage from './pages/IndexCompaniesPage';
+import SectorCompaniesPage from './pages/SectorCompaniesPage';
+import CompanyDetailPage from './pages/CompanyDetailPage';
 import LoginPage from './pages/LoginPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WatchlistProvider } from './context/WatchlistContext';
@@ -37,6 +40,9 @@ function App() {
                   <Route path="/market/domestic" element={<DomesticMarketPage />} />
                   <Route path="/market/fast-movers" element={<FastMoversPage />} />
                   <Route path="/market/nifty50" element={<Nifty50Page />} />
+                  <Route path="/market/domestic/index/:indexKey" element={<IndexCompaniesPage />} />
+                  <Route path="/market/domestic/sector/:sectorKey" element={<SectorCompaniesPage />} />
+                  <Route path="/company/:symbol" element={<CompanyDetailPage />} />
                 </Routes>
               </main>
             </div>
