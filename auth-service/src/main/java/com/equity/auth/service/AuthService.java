@@ -3,28 +3,35 @@ package com.equity.auth.service;
 import com.equity.auth.client.UserServiceClient;
 import com.equity.auth.dto.AuthResponse;
 import com.equity.auth.dto.LoginRequest;
+import com.equity.auth.dto.ResetPasswordRequest;
 import com.equity.auth.dto.SignupRequest;
 import com.equity.auth.entity.RefreshToken;
 import com.equity.auth.exception.InvalidCredentialsException;
 import com.equity.auth.exception.UserBlockedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Core business logic for all auth flows: signup, login, refresh, logout.
+ * Core business logic for all auth flows: signup, login, refresh, logout,
+ * forgot-password, and reset-password.
  *
- * AuthService orchestrates three collaborators:
- *   UserServiceClient   — HTTP calls to user-service (create user, validate credentials)
- *   JwtService          — signs and issues JWT access tokens
- *   RefreshTokenService — creates, validates, rotates, and revokes refresh tokens
+ * AuthService orchestrates four collaborators:
+ *   UserServiceClient    — HTTP calls to user-service (create user, validate credentials,
+ *                          reset password)
+ *   JwtService           — signs and issues JWT access tokens
+ *   RefreshTokenService  — creates, validates, rotates, and revokes refresh tokens
+ *   PasswordResetService — creates and validates one-time password reset tokens
  *
  * AuthService does NOT directly access the users table.
- * All user data lives in user-service. This service only owns refresh_tokens.
+ * All user data lives in user-service. This service only owns refresh_tokens
+ * and password_reset_tokens.
  */
 @Service
 @Transactional
@@ -36,15 +43,26 @@ public class AuthService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordResetService passwordResetService;
+
+    /**
+     * When true, the raw reset token is included in the /forgot-password response.
+     * Set to true for development (no email service available).
+     * Set to false in production — the token should be emailed instead.
+     */
+    @Value("${auth.forgot-password.return-token-in-response:true}")
+    private boolean returnTokenInResponse;
 
     public AuthService(UserServiceClient userServiceClient,
                        JwtService jwtService,
                        RefreshTokenService refreshTokenService,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       PasswordResetService passwordResetService) {
         this.userServiceClient   = userServiceClient;
         this.jwtService          = jwtService;
         this.refreshTokenService = refreshTokenService;
         this.passwordEncoder     = passwordEncoder;
+        this.passwordResetService = passwordResetService;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -228,5 +246,76 @@ public class AuthService {
         RefreshToken token = refreshTokenService.validateRefreshToken(rawRefreshToken);
         refreshTokenService.revokeAllForUser(token.getUserId());
         logger.info("Logout: all tokens revoked for userId={}", token.getUserId());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Forgot Password
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Step 1 of the forgot-password flow: generates and returns a reset token.
+     *
+     * Steps:
+     *   1. Normalize the email (lowercase, trim).
+     *   2. Generate a one-time reset token via PasswordResetService.
+     *      The token is stored as a SHA-256 hash in password_reset_tokens.
+     *   3. Return the raw token in the response (development mode).
+     *      In production: email the token link to the user and return only
+     *      the generic success message (set auth.forgot-password.return-token-in-response=false).
+     *
+     * Security: this endpoint always returns HTTP 200 with the same message
+     * regardless of whether the email is registered. This prevents an attacker
+     * from using this endpoint to discover which emails are registered.
+     * The token is valid for 15 minutes (configurable).
+     *
+     * @param email the email address submitted by the user
+     * @return map with "message" and optionally "resetToken" (dev mode only)
+     */
+    public Map<String, Object> forgotPassword(String email) {
+        String normalizedEmail = email.toLowerCase().trim();
+        String rawToken = passwordResetService.createResetToken(normalizedEmail);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message",
+            "If an account with this email exists, a password reset token has been generated. " +
+            "It expires in 15 minutes and can only be used once.");
+
+        if (returnTokenInResponse) {
+            response.put("resetToken", rawToken);
+        }
+
+        logger.info("Forgot-password requested for email={}", normalizedEmail);
+        return response;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Reset Password
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Step 2 of the forgot-password flow: validates the token and resets the password.
+     *
+     * Steps:
+     *   1. Validate the reset token via PasswordResetService:
+     *      - Looks up the token hash in password_reset_tokens.
+     *      - Checks it is not expired and not already used.
+     *      - Marks the token as used (single-use enforcement).
+     *      - Returns the email the token was issued for.
+     *   2. Call user-service POST /api/v1/internal/users/reset-password
+     *      with the email + new plain password.
+     *      user-service BCrypt-hashes the new password and saves it.
+     *   3. If user-service returns 404 (email not registered): throw InvalidCredentialsException.
+     *   4. If user-service returns 403 (account blocked): throw UserBlockedException.
+     *
+     * After this call, the user can log in with their new password.
+     * All existing refresh tokens remain valid — the user is NOT logged out.
+     * (Optional enhancement: revoke all refresh tokens for the user here.)
+     *
+     * @param request contains the reset token string and the new password
+     */
+    public void resetPassword(ResetPasswordRequest request) {
+        String email = passwordResetService.validateAndConsume(request.getToken());
+        userServiceClient.resetUserPassword(email, request.getNewPassword());
+        logger.info("Password reset successful for email={}", email);
     }
 }

@@ -1,6 +1,8 @@
 package com.equity.auth.client;
 
 import com.equity.auth.dto.SignupRequest;
+import com.equity.auth.exception.InvalidCredentialsException;
+import com.equity.auth.exception.UserBlockedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +21,7 @@ import java.util.Map;
 /**
  * HTTP client for all calls from auth-service → user-service.
  *
- * Two operations:
+ * Three operations:
  *
  * 1. registerUser(SignupRequest)
  *    Called during signup. Forwards the request to user-service
@@ -31,6 +33,13 @@ import java.util.Map;
  *    POST /api/v1/internal/users/validate with the X-Internal-Api-Key header.
  *    Returns: { userId, username, passwordHash, userType, status, investorCategory }
  *    auth-service uses passwordHash to verify the password with BCrypt.
+ *
+ * 3. resetUserPassword(email, newPassword)
+ *    Called during the reset-password flow. Calls user-service internal
+ *    POST /api/v1/internal/users/reset-password with the X-Internal-Api-Key header.
+ *    user-service BCrypt-hashes the new password and saves it.
+ *    Throws InvalidCredentialsException if email not found (404).
+ *    Throws UserBlockedException if account is blocked (403).
  *
  * Why RestTemplate and not WebClient?
  * RestTemplate is synchronous and simpler. The login flow is sequential
@@ -122,6 +131,45 @@ public class UserServiceClient {
         } catch (HttpClientErrorException.NotFound ex) {
             // user-service returned 404 — user does not exist
             return null;
+        }
+    }
+
+    /**
+     * Calls user-service internal /reset-password to update a user's password by email.
+     *
+     * Calls: POST http://localhost:8087/api/v1/internal/users/reset-password
+     *        Header: X-Internal-Api-Key: <internal-dev-key>
+     *        Body: { "email": "...", "newPassword": "..." }
+     *
+     * user-service looks up the user by email, BCrypt-hashes the new password, and saves.
+     * The plain newPassword is safe to send here because this call is over localhost
+     * (internal service-to-service, never crosses the public network).
+     *
+     * @param email       the email address of the account to reset
+     * @param newPassword the new plain-text password (user-service will BCrypt it)
+     * @throws InvalidCredentialsException if no account with this email exists (404)
+     * @throws UserBlockedException        if the account is blocked (403)
+     */
+    public void resetUserPassword(String email, String newPassword) {
+        String url = userServiceUrl + "/api/v1/internal/users/reset-password";
+
+        Map<String, String> body = new HashMap<>();
+        body.put("email", email);
+        body.put("newPassword", newPassword);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Internal-Api-Key", internalApiKey);
+
+        HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            restTemplate.exchange(url, HttpMethod.POST, entity, Void.class);
+            logger.info("Password reset via user-service for email={}", email);
+        } catch (HttpClientErrorException.NotFound ex) {
+            throw new InvalidCredentialsException("No account found with this email address");
+        } catch (HttpClientErrorException.Forbidden ex) {
+            throw new UserBlockedException("This account is blocked. Password reset is not allowed. Please contact support.");
         }
     }
 }
