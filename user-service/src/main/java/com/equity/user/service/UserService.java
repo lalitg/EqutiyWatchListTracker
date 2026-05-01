@@ -1,5 +1,6 @@
 package com.equity.user.service;
 
+import com.equity.user.exception.UserBlockedException;
 import com.equity.user.dto.ChangePasswordRequest;
 import com.equity.user.dto.InternalValidateResponse;
 import com.equity.user.dto.RegisterRequest;
@@ -8,6 +9,7 @@ import com.equity.user.dto.UpdateProfileRequest;
 import com.equity.user.dto.UserResponse;
 import com.equity.user.entity.User;
 import com.equity.user.enums.InvestorCategory;
+import com.equity.user.enums.UserStatus;
 import com.equity.user.exception.InvalidPasswordException;
 import com.equity.user.exception.UserAlreadyExistsException;
 import com.equity.user.exception.UserNotFoundException;
@@ -275,5 +277,34 @@ public class UserService {
         }
 
         return user;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Password reset (called by auth-service via /internal/users/reset-password)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Resets a user's password by their email address.
+     * Called by auth-service after validating the one-time reset token.
+     *
+     * @param email       the registered email of the account
+     * @param newPassword the new plain-text password (BCrypt-hashed here before saving)
+     * @throws UserNotFoundException   if no active user with this email exists
+     * @throws UserBlockedException    if the account is blocked (contact support)
+     */
+    public void resetPasswordByEmail(String email, String newPassword) {
+        User user = userRepository.findByEmail(email.toLowerCase().trim())
+                .orElseThrow(() -> new UserNotFoundException("No account found with email: " + email));
+
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new UserNotFoundException("No account found with email: " + email);
+        }
+        if (user.getStatus() == UserStatus.BLOCKED) {
+            throw new UserBlockedException("Account is blocked. Password reset is not allowed.");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        logger.info("Password reset via forgot-password flow for userId={}", user.getId());
     }
 }

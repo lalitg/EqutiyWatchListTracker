@@ -95,6 +95,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    /** Blocked account — 403 */
+    @ExceptionHandler(UserBlockedException.class)
+    public ResponseEntity<Map<String, Object>> handleUserBlocked(UserBlockedException ex) {
+        logger.warn("UserBlockedException: {}", ex.getMessage());
+        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
     // ─── Catch-all ────────────────────────────────────────────────────────
 
     /**

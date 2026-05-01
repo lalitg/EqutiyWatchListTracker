@@ -1,5 +1,6 @@
 package com.equity.user.controller;
 
+import com.equity.user.dto.InternalResetPasswordRequest;
 import com.equity.user.dto.InternalValidateRequest;
 import com.equity.user.dto.InternalValidateResponse;
 import com.equity.user.service.UserService;
@@ -84,5 +85,31 @@ public class InternalUserController {
 
         InternalValidateResponse response = userService.validateUserInternal(request.getUsername());
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * POST /api/v1/internal/users/reset-password
+     *
+     * Called by auth-service after validating the one-time reset token.
+     * Looks up the user by email, BCrypt-hashes the new password, and saves.
+     *
+     * Security: X-Internal-Api-Key header required (same as /validate).
+     *
+     * Returns: 204 No Content on success
+     *          403 if account is blocked
+     *          404 if no account found with this email
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(
+            @RequestHeader(value = "X-Internal-Api-Key", required = false) String apiKey,
+            @Valid @RequestBody InternalResetPasswordRequest request) {
+
+        if (apiKey == null || !apiKey.equals(internalApiKey)) {
+            logger.warn("Internal /reset-password called with invalid or missing API key");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        userService.resetPasswordByEmail(request.getEmail(), request.getNewPassword());
+        return ResponseEntity.noContent().build();
     }
 }
