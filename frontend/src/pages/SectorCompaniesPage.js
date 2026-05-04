@@ -21,16 +21,27 @@ function PriceCell({ value, pct }) {
 }
 
 const SECTOR_DESCRIPTIONS = {
-  'NIFTY BANK':               'Tracks the 12 most liquid and large-cap Indian banking stocks listed on NSE.',
-  'NIFTY IT':                 'Top IT & software services companies — India\'s globally-competitive tech exporters.',
-  'NIFTY AUTO':               'Leading automobile manufacturers and auto-component makers listed on NSE.',
-  'NIFTY PHARMA':             'Major pharmaceutical and drug companies — covers both domestic and export-focused firms.',
-  'NIFTY FMCG':               'Fast-moving consumer goods companies selling everyday products like food, hygiene, and beverages.',
-  'NIFTY FINANCIAL SERVICES': 'Broad financial sector index covering banks, NBFCs, insurance, and housing finance companies.',
-  'NIFTY METAL':              'Steel, aluminium, copper, and mining companies — tied closely to global commodity cycles.',
-  'NIFTY REALTY':             'Real estate developers and construction companies listed on NSE.',
-  'NIFTY ENERGY':             'Oil & gas, refining, and power companies that form the backbone of India\'s energy sector.',
-  'NIFTY PSU BANK':           'Public sector (government-owned) banks — larger book sizes but government-linked credit cycles.',
+  'NIFTY BANK':                        'Tracks the 12 most liquid and large-cap Indian banking stocks listed on NSE.',
+  'NIFTY PRIVATE BANK':                'Top private-sector banks — faster-growing but more market-sensitive than their PSU peers.',
+  'NIFTY PSU BANK':                    'Government-owned banks — larger loan books, but credit cycles tied to policy and elections.',
+  'NIFTY IT':                          'Top IT & software services companies — India\'s globally-competitive tech exporters.',
+  'NIFTY AUTO':                        'Leading automobile manufacturers and auto-component makers listed on NSE.',
+  'NIFTY PHARMA':                      'Major pharmaceutical and drug companies — covers both domestic and export-focused firms.',
+  'NIFTY HEALTHCARE INDEX':            'Broader than Pharma — includes hospitals, diagnostics, and health-tech alongside drug makers.',
+  'NIFTY FMCG':                        'Fast-moving consumer goods companies selling everyday products like food, hygiene, and beverages.',
+  'NIFTY FINANCIAL SERVICES':          'Broad financial sector index covering banks, NBFCs, insurance, and housing finance companies.',
+  'NIFTY FINANCIAL SERVICES 25 50':    'A capped variant of the Financial Services index, limiting any single stock to 25% weight.',
+  'NIFTY FINANCIAL SERVICES EX-BANK':  'Financial services companies excluding banks — NBFCs, insurance, brokers, and housing finance.',
+  'NIFTY METAL':                       'Steel, aluminium, copper, and mining companies — tied closely to global commodity cycles.',
+  'NIFTY REALTY':                      'Real estate developers and construction companies listed on NSE.',
+  'NIFTY ENERGY':                      'Oil & gas, refining, and power companies that form the backbone of India\'s energy sector.',
+  'NIFTY OIL AND GAS':                 'Focused on oil exploration, refining, and gas distribution companies listed on NSE.',
+  'NIFTY CONSUMER DURABLES':           'Makers of long-lasting household products — electronics, appliances, and home goods.',
+  'NIFTY CHEMICALS':                   'Specialty and commodity chemical companies — a key beneficiary of China+1 supply-chain shifts.',
+  'NIFTY MEDIA':                       'Broadcasting, publishing, OTT, and entertainment companies listed on NSE.',
+  'NIFTY MIDSMALL HEALTHCARE':         'Mid and small-cap healthcare companies — higher growth potential with smaller scale.',
+  'NIFTY MIDSMALL IT & TELECOM':       'Emerging IT services and telecom players outside the large-cap tier.',
+  'NIFTY MIDSMALL FINANCIAL SERVICES': 'Mid and small-cap financial services firms — faster-growing but higher-risk than large-cap peers.',
 };
 
 const SectorCompaniesPage = () => {
