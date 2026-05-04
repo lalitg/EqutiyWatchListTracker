@@ -32,16 +32,27 @@ public class DomesticIndexService {
 
     // Ordered list of sectoral indices
     private static final List<String[]> SECTOR_INDICES = List.of(
-        new String[]{"NIFTY BANK",                "Banking",           "true"},
-        new String[]{"NIFTY IT",                  "IT",                "true"},
-        new String[]{"NIFTY AUTO",                "Auto",              "true"},
-        new String[]{"NIFTY PHARMA",              "Pharma",            "true"},
-        new String[]{"NIFTY FMCG",               "FMCG",              "true"},
-        new String[]{"NIFTY FINANCIAL SERVICES",  "Financial Services","true"},
-        new String[]{"NIFTY METAL",               "Metal",             "true"},
-        new String[]{"NIFTY REALTY",              "Realty",            "true"},
-        new String[]{"NIFTY ENERGY",              "Energy",            "true"},
-        new String[]{"NIFTY PSU BANK",            "PSU Bank",          "true"}
+        new String[]{"NIFTY BANK",                       "Banking",              "true"},
+        new String[]{"NIFTY PRIVATE BANK",               "Pvt Bank",             "true"},
+        new String[]{"NIFTY PSU BANK",                   "PSU Bank",             "true"},
+        new String[]{"NIFTY IT",                         "IT",                   "true"},
+        new String[]{"NIFTY AUTO",                       "Auto",                 "true"},
+        new String[]{"NIFTY PHARMA",                     "Pharma",               "true"},
+        new String[]{"NIFTY HEALTHCARE INDEX",           "Healthcare",           "true"},
+        new String[]{"NIFTY FMCG",                       "FMCG",                 "true"},
+        new String[]{"NIFTY FINANCIAL SERVICES",         "Financial Services",   "true"},
+        new String[]{"NIFTY FINANCIAL SERVICES 25 50",   "Fin Services 25/50",   "true"},
+        new String[]{"NIFTY FINANCIAL SERVICES EX-BANK", "Fin Services Ex-Bank", "true"},
+        new String[]{"NIFTY METAL",                      "Metal",                "true"},
+        new String[]{"NIFTY REALTY",                     "Realty",               "true"},
+        new String[]{"NIFTY ENERGY",                     "Energy",               "true"},
+        new String[]{"NIFTY OIL AND GAS",                "Oil & Gas",            "true"},
+        new String[]{"NIFTY CONSUMER DURABLES",          "Consumer Durables",    "true"},
+        new String[]{"NIFTY CHEMICALS",                  "Chemicals",            "true"},
+        new String[]{"NIFTY MEDIA",                      "Media",                "true"},
+        new String[]{"NIFTY MIDSMALL HEALTHCARE",        "MidSmall Health",      "true"},
+        new String[]{"NIFTY MIDSMALL IT & TELECOM",      "MidSmall IT",          "true"},
+        new String[]{"NIFTY MIDSMALL FINANCIAL SERVICES","MidSmall FinServ",     "true"}
     );
 
     private final NseClient nseClient;
