@@ -104,7 +104,7 @@ const IndexCompaniesPage = () => {
                   <tr
                     key={c.symbol}
                     className="nifty-clickable-row"
-                    onClick={() => navigate(`/company/${encodeURIComponent(c.symbol)}`)}
+                    onClick={() => navigate(`/company/${encodeURIComponent(c.symbol)}`, { state: { index: displayName } })}
                   >
                     <td>{i + 1}</td>
                     <td><strong className="nifty-symbol">{c.symbol}</strong></td>
