@@ -1,10 +1,11 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import SectorSelector from '../components/market/SectorSelector';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import SectorPerformanceGrid from '../components/market/SectorPerformanceGrid';
 import DomesticIndicesGrid from '../components/market/DomesticIndicesGrid';
 import { useMarket } from '../context/MarketContext';
+import { fetchSectorIndices } from '../services/indicesService';
 
 const SECTORS = [
   'All',
@@ -29,6 +30,29 @@ const SECTORS = [
   'NIFTY500 HEALTHCARE',
 ];
 
+const SECTOR_SHORT_NAMES = {
+  'All': 'All',
+  'NIFTY AUTO': 'Auto',
+  'NIFTY CHEMICALS': 'Chemicals',
+  'NIFTY CONSUMER DURABLES': 'Consumer Durables',
+  'NIFTY FINANCIAL SERVICES 25/50': 'Fin Services 25/50',
+  'NIFTY FINANCIAL SERVICES EX-BANK': 'Fin Services Ex-Bank',
+  'NIFTY FMCG': 'FMCG',
+  'NIFTY HEALTHCARE INDEX': 'Healthcare',
+  'NIFTY IT': 'IT',
+  'NIFTY MEDIA': 'Media',
+  'NIFTY METAL': 'Metal',
+  'NIFTY MIDSMALL FINANCIAL SERVICES': 'MidSmall FinServ',
+  'NIFTY MIDSMALL HEALTHCARE': 'MidSmall Health',
+  'NIFTY MIDSMALL IT & TELECOM': 'MidSmall IT',
+  'NIFTY OIL & GAS': 'Oil & Gas',
+  'NIFTY PHARMA': 'Pharma',
+  'NIFTY PRIVATE BANK': 'Pvt Bank',
+  'NIFTY PSU BANK': 'PSU Bank',
+  'NIFTY REALTY': 'Realty',
+  'NIFTY500 HEALTHCARE': 'Nifty500 Health',
+};
+
 /** Auto-refresh interval — 15 minutes. */
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
 
@@ -38,6 +62,18 @@ const DomesticMarketPage = () => {
     selectedSector, setSector, fetchDomestic, refreshDomestic,
     STALE_FOCUS_MS,
   } = useMarket();
+
+  const [sectorPcts, setSectorPcts] = useState({});
+
+  useEffect(() => {
+    fetchSectorIndices()
+      .then(data => {
+        const map = {};
+        data.forEach(s => { map[s.nseParam] = s.changePercent; });
+        setSectorPcts(map);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => { fetchDomestic(selectedSector); }, [selectedSector, fetchDomestic]);
 
@@ -78,6 +114,25 @@ const DomesticMarketPage = () => {
     setSector(sector);
   };
 
+  const sectorLabels = {};
+  SECTORS.forEach(sector => {
+    const shortName = SECTOR_SHORT_NAMES[sector] || sector;
+    const pct = sectorPcts[sector];
+    if (pct != null) {
+      const n = Number(pct);
+      const arrow = n > 0 ? '▲' : n < 0 ? '▼' : '';
+      const cls = n > 0 ? 'sector-tab-pct gain' : n < 0 ? 'sector-tab-pct loss' : 'sector-tab-pct';
+      sectorLabels[sector] = (
+        <span>
+          {shortName}
+          <span className={cls}> {arrow}{Math.abs(n).toFixed(2)}%</span>
+        </span>
+      );
+    } else {
+      sectorLabels[sector] = shortName;
+    }
+  });
+
   /**
    * Formats the fetchedAt timestamp into a human-readable "X min ago" string.
    * Returns null if no timestamp is available yet.
@@ -97,7 +152,7 @@ const DomesticMarketPage = () => {
         <button className="btn btn-secondary" onClick={() => fetchDomestic(selectedSector)}>Refresh</button>
       </div>
 
-      <SectorSelector options={SECTORS} selected={selectedSector} onSelect={handleSectorChange} />
+      <SectorSelector options={SECTORS} selected={selectedSector} onSelect={handleSectorChange} labels={sectorLabels} />
 
       {domesticLoading && (
         <div className="page-loading"><p>Loading domestic insights...</p></div>

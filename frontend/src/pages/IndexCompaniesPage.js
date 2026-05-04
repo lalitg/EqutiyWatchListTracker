@@ -20,6 +20,16 @@ function PriceCell({ value, pct }) {
   return <span className={cls}>{arrow} {formatted} ({sign}{n.toFixed(2)}%)</span>;
 }
 
+const INDEX_DESCRIPTIONS = {
+  'NIFTY 50':            'The 50 largest and most traded companies on NSE, representing ~66% of India\'s total market cap.',
+  'NIFTY 100':           'Top 100 large-cap companies on NSE — the Nifty 50 plus the next 50 most liquid stocks.',
+  'NIFTY 200':           'Top 200 companies by market cap, covering both the large-cap and upper mid-cap segments.',
+  'NIFTY 500':           'The 500 largest companies on NSE, together representing about 96% of total market capitalisation.',
+  'NIFTY MIDCAP 100':    '100 mid-sized companies ranked 101–200 by market cap — the growth engine between large and small caps.',
+  'NIFTY LARGEMIDCAP 250': 'A combined index of the top 100 large-cap and top 150 mid-cap companies on NSE.',
+  'NIFTY SMLCAP 100':    '100 small-cap companies ranked outside the top 250 — higher risk, higher potential growth.',
+};
+
 const IndexCompaniesPage = () => {
   const { indexKey }  = useParams();
   const navigate      = useNavigate();
@@ -30,6 +40,7 @@ const IndexCompaniesPage = () => {
   const { entries, addCompany, isActionLoading } = useWatchlist();
 
   const displayName = decodeURIComponent(indexKey);
+  const description = INDEX_DESCRIPTIONS[displayName];
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -57,6 +68,11 @@ const IndexCompaniesPage = () => {
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
+      {description && (
+        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 20, marginTop: -8 }}>
+          {description}
+        </p>
+      )}
 
       {loading && <div className="page-loading"><p>Loading companies…</p></div>}
       {error && (

@@ -20,6 +20,19 @@ function PriceCell({ value, pct }) {
   return <span className={cls}>{arrow} {formatted} ({sign}{n.toFixed(2)}%)</span>;
 }
 
+const SECTOR_DESCRIPTIONS = {
+  'NIFTY BANK':               'Tracks the 12 most liquid and large-cap Indian banking stocks listed on NSE.',
+  'NIFTY IT':                 'Top IT & software services companies — India\'s globally-competitive tech exporters.',
+  'NIFTY AUTO':               'Leading automobile manufacturers and auto-component makers listed on NSE.',
+  'NIFTY PHARMA':             'Major pharmaceutical and drug companies — covers both domestic and export-focused firms.',
+  'NIFTY FMCG':               'Fast-moving consumer goods companies selling everyday products like food, hygiene, and beverages.',
+  'NIFTY FINANCIAL SERVICES': 'Broad financial sector index covering banks, NBFCs, insurance, and housing finance companies.',
+  'NIFTY METAL':              'Steel, aluminium, copper, and mining companies — tied closely to global commodity cycles.',
+  'NIFTY REALTY':             'Real estate developers and construction companies listed on NSE.',
+  'NIFTY ENERGY':             'Oil & gas, refining, and power companies that form the backbone of India\'s energy sector.',
+  'NIFTY PSU BANK':           'Public sector (government-owned) banks — larger book sizes but government-linked credit cycles.',
+};
+
 const SectorCompaniesPage = () => {
   const { sectorKey } = useParams();
   const navigate      = useNavigate();
@@ -30,6 +43,7 @@ const SectorCompaniesPage = () => {
   const { entries, addCompany, isActionLoading } = useWatchlist();
 
   const displayName = decodeURIComponent(sectorKey);
+  const description = SECTOR_DESCRIPTIONS[displayName];
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -57,6 +71,11 @@ const SectorCompaniesPage = () => {
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
+      {description && (
+        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 20, marginTop: -8 }}>
+          {description}
+        </p>
+      )}
 
       {loading && <div className="page-loading"><p>Loading companies…</p></div>}
       {error && (
