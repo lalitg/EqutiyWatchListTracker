@@ -182,9 +182,13 @@ public class GlobalWatchlistController {
 
     @GetMapping("/company/{symbol}")
     public ResponseEntity<GlobalWatchlistEntry> getCompanyDetail(@PathVariable String symbol) {
-        logger.debug("GET /api/global-watchlist/company/{}", symbol);
-        GlobalWatchlistEntry entry = service.getEntry(symbol.toUpperCase());
-        if (entry == null) throw new CompanyNotFoundException(symbol);
+        String upperSymbol = symbol.toUpperCase();
+        logger.debug("GET /api/global-watchlist/company/{}", upperSymbol);
+        GlobalWatchlistEntry entry = service.getEntry(upperSymbol);
+        if (entry == null) {
+            logger.info("Company '{}' not in cache — fetching live from NSE", upperSymbol);
+            entry = service.addCompany(upperSymbol);
+        }
         return ResponseEntity.ok(entry);
     }
 }
