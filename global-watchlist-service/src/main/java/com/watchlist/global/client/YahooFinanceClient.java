@@ -1,11 +1,12 @@
 package com.watchlist.global.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.watchlist.global.model.GlobalIndexEntry;
 import com.watchlist.global.model.GlobalIndexEntry.Region;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -19,65 +20,74 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Calls the local Python yfinance wrapper (yfinance_wrapper.py) to get live
+ * global index data. The Python wrapper handles Yahoo Finance auth internally
+ * via the yfinance library — no API key or cookie management needed here.
+ *
+ * <p>Start the wrapper before this service:
+ * <pre>  python yfinance_wrapper.py   # listens on port 5002</pre>
+ */
 @Component
 public class YahooFinanceClient {
 
     private static final Logger logger = LogManager.getLogger(YahooFinanceClient.class);
 
-    private static final String YAHOO_URL =
-        "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" +
-        "%5EDJI,%5EGSPC,%5EIXIC,%5EFTSE,%5EFCHI,%5EGDAXI,%5EN225,%5EHSI,%5ESTI,%5EKS11";
+    private static final Map<String, Region> REGION_MAP = Map.of(
+        "US_MARKETS",        Region.US_MARKETS,
+        "EUROPEAN_MARKETS",  Region.EUROPEAN_MARKETS,
+        "ASIAN_MARKETS",     Region.ASIAN_MARKETS
+    );
 
     private final HttpClient   httpClient   = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final String       baseUrl;
 
-    // symbol → (display name, flag emoji, region)
-    private static final Map<String, Object[]> INDEX_META = Map.of(
-        "^DJI",   new Object[]{"Dow Jones",    "🇺🇸", Region.US_MARKETS},
-        "^GSPC",  new Object[]{"S&P 500",      "🇺🇸", Region.US_MARKETS},
-        "^IXIC",  new Object[]{"Nasdaq",        "🇺🇸", Region.US_MARKETS},
-        "^FTSE",  new Object[]{"FTSE 100",      "🇬🇧", Region.EUROPEAN_MARKETS},
-        "^FCHI",  new Object[]{"CAC 40",        "🇫🇷", Region.EUROPEAN_MARKETS},
-        "^GDAXI", new Object[]{"DAX",           "🇩🇪", Region.EUROPEAN_MARKETS},
-        "^N225",  new Object[]{"Nikkei 225",    "🇯🇵", Region.ASIAN_MARKETS},
-        "^HSI",   new Object[]{"Hang Seng",     "🇭🇰", Region.ASIAN_MARKETS},
-        "^STI",   new Object[]{"Straits Times", "🇸🇬", Region.ASIAN_MARKETS},
-        "^KS11",  new Object[]{"Kospi",         "🇰🇷", Region.ASIAN_MARKETS}
-    );
+    public YahooFinanceClient(
+            @Value("${yfinance.wrapper.base-url:http://localhost:5002}") String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
 
     public List<GlobalIndexEntry> fetchAll() {
         List<GlobalIndexEntry> result = new ArrayList<>();
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(YAHOO_URL))
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .uri(URI.create(baseUrl + "/global-indices"))
                     .header("Accept", "application/json")
-                    .GET()
-                    .build();
+                    .GET().build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            JsonNode root = objectMapper.readTree(response.body());
-            JsonNode items = root.path("quoteResponse").path("result");
+            List<Map<String, Object>> rows = objectMapper.readValue(
+                response.body(), new TypeReference<List<Map<String, Object>>>() {});
 
-            for (JsonNode item : items) {
-                String symbol = item.path("symbol").asText();
-                Object[] meta = INDEX_META.get(symbol);
-                if (meta == null) continue;
+            for (Map<String, Object> row : rows) {
+                String  sym    = str(row, "symbol");
+                String  name   = str(row, "name");
+                String  flag   = str(row, "flagEmoji");
+                Region  region = REGION_MAP.getOrDefault(str(row, "region"), Region.US_MARKETS);
 
-                GlobalIndexEntry entry = new GlobalIndexEntry(symbol, (String) meta[0], (String) meta[1], (Region) meta[2]);
-                if (item.has("regularMarketPrice"))
-                    entry.setLtp(item.get("regularMarketPrice").decimalValue());
-                if (item.has("regularMarketChange"))
-                    entry.setChange(item.get("regularMarketChange").decimalValue());
-                if (item.has("regularMarketChangePercent"))
-                    entry.setChangePercent(item.get("regularMarketChangePercent").decimalValue());
+                GlobalIndexEntry entry = new GlobalIndexEntry(sym, name, flag, region);
+                entry.setLtp(decimal(row, "ltp"));
+                entry.setChange(decimal(row, "change"));
+                entry.setChangePercent(decimal(row, "changePercent"));
                 entry.setLastUpdated(LocalDateTime.now());
                 result.add(entry);
             }
-            logger.info("Yahoo Finance: fetched {} global indices", result.size());
+            logger.info("yfinance wrapper: fetched {} global indices", result.size());
         } catch (Exception e) {
-            logger.error("Failed to fetch global indices from Yahoo Finance: {}", e.getMessage());
+            logger.error("Failed to fetch global indices from yfinance wrapper: {}", e.getMessage());
         }
         return result;
+    }
+
+    private String str(Map<String, Object> map, String key) {
+        Object v = map.get(key);
+        return v == null ? null : v.toString();
+    }
+
+    private BigDecimal decimal(Map<String, Object> map, String key) {
+        Object v = map.get(key);
+        if (v == null) return null;
+        try { return new BigDecimal(v.toString()); } catch (NumberFormatException e) { return null; }
     }
 }

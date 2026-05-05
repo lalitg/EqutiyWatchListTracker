@@ -33,7 +33,7 @@ public class GlobalIndexService {
             cache = fresh;
             logger.info("Global index cache refreshed — {} entries", fresh.size());
         } else {
-            logger.warn("Yahoo Finance returned empty result — keeping stale cache");
+            logger.warn("yfinance wrapper returned empty result — keeping stale cache");
         }
     }
 
