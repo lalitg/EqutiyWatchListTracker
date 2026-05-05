@@ -113,8 +113,8 @@ public class NsePriceClient {
                 JsonNode priceInfo = quoteBody.get("priceInfo");
                 if (priceInfo.has("lastPrice"))
                     currentPrice = priceInfo.get("lastPrice").decimalValue();
-                if (priceInfo.has("previousPrice"))
-                    previousClose = priceInfo.get("previousPrice").decimalValue();
+                if (priceInfo.has("previousClose"))
+                    previousClose = priceInfo.get("previousClose").decimalValue();
                 if (priceInfo.has("change"))
                     changeValue = priceInfo.get("change").decimalValue();
                 if (priceInfo.has("pChange"))
