@@ -4,6 +4,7 @@ import { fetchDomesticIndexCompanies } from '../services/indicesService';
 import { useWatchlist } from '../context/WatchlistContext';
 import CompanyInsightsModal from '../components/watchlist/CompanyInsightsModal';
 import '../pages/Nifty50Page.css';
+import './CompaniesPage.css';
 
 function fmt(val) {
   if (val == null) return '—';
@@ -21,14 +22,29 @@ function PriceCell({ value, pct }) {
 }
 
 const INDEX_DESCRIPTIONS = {
-  'NIFTY 50':            'The 50 largest and most traded companies on NSE, representing ~66% of India\'s total market cap.',
-  'NIFTY 100':           'Top 100 large-cap companies on NSE — the Nifty 50 plus the next 50 most liquid stocks.',
-  'NIFTY 200':           'Top 200 companies by market cap, covering both the large-cap and upper mid-cap segments.',
-  'NIFTY 500':           'The 500 largest companies on NSE, together representing about 96% of total market capitalisation.',
-  'NIFTY MIDCAP 100':    '100 mid-sized companies ranked 101–200 by market cap — the growth engine between large and small caps.',
+  'NIFTY 50':              'The 50 largest and most traded companies on NSE, representing ~66% of India\'s total market cap.',
+  'NIFTY 100':             'Top 100 large-cap companies on NSE — the Nifty 50 plus the next 50 most liquid stocks.',
+  'NIFTY 200':             'Top 200 companies by market cap, covering both the large-cap and upper mid-cap segments.',
+  'NIFTY 500':             'The 500 largest companies on NSE, together representing about 96% of total market capitalisation.',
+  'NIFTY MIDCAP 100':      '100 mid-sized companies ranked 101–200 by market cap — the growth engine between large and small caps.',
   'NIFTY LARGEMIDCAP 250': 'A combined index of the top 100 large-cap and top 150 mid-cap companies on NSE.',
-  'NIFTY SMLCAP 100':    '100 small-cap companies ranked outside the top 250 — higher risk, higher potential growth.',
+  'NIFTY SMLCAP 100':      '100 small-cap companies ranked outside the top 250 — higher risk, higher potential growth.',
 };
+
+const SORT_OPTIONS = [
+  { value: 'gainers', label: '▲ Top Gainers' },
+  { value: 'losers',  label: '▼ Top Losers'  },
+  { value: 'default', label: 'Default'        },
+];
+
+function sortCompanies(companies, order) {
+  if (order === 'default') return companies;
+  return [...companies].sort((a, b) => {
+    const pa = a.changePercent != null ? Number(a.changePercent) : -Infinity;
+    const pb = b.changePercent != null ? Number(b.changePercent) : -Infinity;
+    return order === 'gainers' ? pb - pa : pa - pb;
+  });
+}
 
 const IndexCompaniesPage = () => {
   const { indexKey }  = useParams();
@@ -36,6 +52,7 @@ const IndexCompaniesPage = () => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
+  const [sortOrder, setSortOrder] = useState('gainers');
   const [selectedEntry, setSelectedEntry] = useState(null);
   const { entries, addCompany, isActionLoading } = useWatchlist();
 
@@ -56,6 +73,7 @@ const IndexCompaniesPage = () => {
   useEffect(() => { load(); }, [load]);
 
   const isInWatchlist = (code) => entries.some(e => e.companyCode === code);
+  const displayed = sortCompanies(companies, sortOrder);
 
   return (
     <div className="page-container">
@@ -68,11 +86,26 @@ const IndexCompaniesPage = () => {
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
+
       {description && (
-        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 20, marginTop: -8 }}>
-          {description}
-        </p>
+        <p className="cp-description">{description}</p>
       )}
+
+      <div className="cp-sort-bar">
+        <span className="cp-sort-label">Sort by</span>
+        {SORT_OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            className={`cp-sort-btn ${sortOrder === opt.value ? 'active' : ''}`}
+            onClick={() => setSortOrder(opt.value)}
+          >
+            {opt.label}
+          </button>
+        ))}
+        {companies.length > 0 && (
+          <span className="cp-count">{companies.length} companies</span>
+        )}
+      </div>
 
       {loading && <div className="page-loading"><p>Loading companies…</p></div>}
       {error && (
@@ -97,10 +130,10 @@ const IndexCompaniesPage = () => {
               </tr>
             </thead>
             <tbody>
-              {companies.length === 0 ? (
+              {displayed.length === 0 ? (
                 <tr><td colSpan={7} className="nifty-empty">No data available</td></tr>
               ) : (
-                companies.map((c, i) => (
+                displayed.map((c, i) => (
                   <tr
                     key={c.symbol}
                     className="nifty-clickable-row"

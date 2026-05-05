@@ -4,6 +4,7 @@ import { fetchSectorCompanies } from '../services/indicesService';
 import { useWatchlist } from '../context/WatchlistContext';
 import CompanyInsightsModal from '../components/watchlist/CompanyInsightsModal';
 import '../pages/Nifty50Page.css';
+import './CompaniesPage.css';
 
 function fmt(val) {
   if (val == null) return '—';
@@ -44,12 +45,28 @@ const SECTOR_DESCRIPTIONS = {
   'NIFTY MIDSMALL FINANCIAL SERVICES': 'Mid and small-cap financial services firms — faster-growing but higher-risk than large-cap peers.',
 };
 
+const SORT_OPTIONS = [
+  { value: 'gainers', label: '▲ Top Gainers' },
+  { value: 'losers',  label: '▼ Top Losers'  },
+  { value: 'default', label: 'Default'        },
+];
+
+function sortCompanies(companies, order) {
+  if (order === 'default') return companies;
+  return [...companies].sort((a, b) => {
+    const pa = a.changePercent != null ? Number(a.changePercent) : -Infinity;
+    const pb = b.changePercent != null ? Number(b.changePercent) : -Infinity;
+    return order === 'gainers' ? pb - pa : pa - pb;
+  });
+}
+
 const SectorCompaniesPage = () => {
   const { sectorKey } = useParams();
   const navigate      = useNavigate();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
+  const [sortOrder, setSortOrder] = useState('gainers');
   const [selectedEntry, setSelectedEntry] = useState(null);
   const { entries, addCompany, isActionLoading } = useWatchlist();
 
@@ -70,6 +87,7 @@ const SectorCompaniesPage = () => {
   useEffect(() => { load(); }, [load]);
 
   const isInWatchlist = (code) => entries.some(e => e.companyCode === code);
+  const displayed = sortCompanies(companies, sortOrder);
 
   return (
     <div className="page-container">
@@ -82,11 +100,26 @@ const SectorCompaniesPage = () => {
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
+
       {description && (
-        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 20, marginTop: -8 }}>
-          {description}
-        </p>
+        <p className="cp-description">{description}</p>
       )}
+
+      <div className="cp-sort-bar">
+        <span className="cp-sort-label">Sort by</span>
+        {SORT_OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            className={`cp-sort-btn ${sortOrder === opt.value ? 'active' : ''}`}
+            onClick={() => setSortOrder(opt.value)}
+          >
+            {opt.label}
+          </button>
+        ))}
+        {companies.length > 0 && (
+          <span className="cp-count">{companies.length} companies</span>
+        )}
+      </div>
 
       {loading && <div className="page-loading"><p>Loading companies…</p></div>}
       {error && (
@@ -111,10 +144,10 @@ const SectorCompaniesPage = () => {
               </tr>
             </thead>
             <tbody>
-              {companies.length === 0 ? (
+              {displayed.length === 0 ? (
                 <tr><td colSpan={7} className="nifty-empty">No data available</td></tr>
               ) : (
-                companies.map((c, i) => (
+                displayed.map((c, i) => (
                   <tr
                     key={c.symbol}
                     className="nifty-clickable-row"
