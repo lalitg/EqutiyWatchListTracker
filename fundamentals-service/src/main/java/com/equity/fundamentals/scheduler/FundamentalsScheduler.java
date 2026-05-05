@@ -3,6 +3,7 @@ package com.equity.fundamentals.scheduler;
 import com.equity.fundamentals.repository.GlobalWatchlistRepository;
 import com.equity.fundamentals.repository.QuarterlyResultRepository;
 import com.equity.fundamentals.service.BalanceSheetService;
+import com.equity.fundamentals.service.PeSnapshotService;
 import com.equity.fundamentals.service.QuarterlyResultsService;
 import com.equity.fundamentals.service.ResultsSeasonUtil;
 import org.slf4j.Logger;
@@ -63,6 +64,7 @@ public class FundamentalsScheduler {
     private final ResultsSeasonUtil resultsSeasonUtil;
     private final GlobalWatchlistRepository globalWatchlistRepo;
     private final QuarterlyResultRepository quarterlyResultRepo;
+    private final PeSnapshotService peSnapshotService;
 
     private final AtomicBoolean startupDone = new AtomicBoolean(false);
 
@@ -70,12 +72,14 @@ public class FundamentalsScheduler {
                                   BalanceSheetService balanceSheetService,
                                   ResultsSeasonUtil resultsSeasonUtil,
                                   GlobalWatchlistRepository globalWatchlistRepo,
-                                  QuarterlyResultRepository quarterlyResultRepo) {
+                                  QuarterlyResultRepository quarterlyResultRepo,
+                                  PeSnapshotService peSnapshotService) {
         this.quarterlyResultsService = quarterlyResultsService;
         this.balanceSheetService     = balanceSheetService;
         this.resultsSeasonUtil       = resultsSeasonUtil;
         this.globalWatchlistRepo     = globalWatchlistRepo;
         this.quarterlyResultRepo     = quarterlyResultRepo;
+        this.peSnapshotService       = peSnapshotService;
     }
 
     /**
@@ -88,9 +92,10 @@ public class FundamentalsScheduler {
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         if (!startupDone.compareAndSet(false, true)) return;
-        log.info("=== fundamentals-service started — quarterly and balance-sheet jobs scheduled ===");
+        log.info("=== fundamentals-service started — quarterly, balance-sheet and P/E jobs scheduled ===");
         log.info("Results season active: {}", resultsSeasonUtil.isResultsSeason());
         log.info("New-company detection job polls every 5 minutes");
+        log.info("Daily P/E snapshot job runs Mon–Fri at 4:30 PM IST");
     }
 
     /**
@@ -143,6 +148,29 @@ public class FundamentalsScheduler {
     public void scheduledBalanceSheetFetch() {
         log.info("Balance sheet fetch starting");
         balanceSheetService.fetchForAllCompanies();
+    }
+
+    /**
+     * Every weekday at 4:30 PM IST — calculates P/E ratio for all watchlist companies.
+     *
+     * Runs Monday–Friday only (NSE is closed on weekends).
+     * 4:30 PM IST gives a 1-hour buffer after NSE closes at 3:30 PM, ensuring
+     * Yahoo Finance has published the official closing price before we fetch it.
+     *
+     * For each company:
+     *   1. Sums EPS from last 4 rows in quarterly_results → TTM EPS
+     *   2. Fetches previous close from yfinance wrapper GET /closing-price
+     *   3. Calculates trailing_pe = closing_price / ttm_eps
+     *   4. Upserts a row in company_pe_snapshot for (symbol, trade_date)
+     *
+     * Companies with no EPS data yet (newly added) are silently skipped.
+     * detectAndFetchNewCompanies() will fetch their quarterly data first;
+     * their P/E will be calculated from the next day's job run.
+     */
+    @Scheduled(cron = "${fundamentals.pe-snapshot.cron:0 30 16 * * MON-FRI}")
+    public void dailyPeSnapshotJob() {
+        log.info("Daily P/E snapshot job starting");
+        peSnapshotService.processAllCompanies();
     }
 
     /**

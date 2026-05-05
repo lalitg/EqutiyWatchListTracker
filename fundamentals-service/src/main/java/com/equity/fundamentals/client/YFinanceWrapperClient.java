@@ -1,6 +1,7 @@
 package com.equity.fundamentals.client;
 
 import com.equity.fundamentals.dto.BalanceSheetDto;
+import com.equity.fundamentals.dto.ClosingPriceDto;
 import com.equity.fundamentals.dto.QuarterlyResultDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -103,6 +104,26 @@ public class YFinanceWrapperClient {
         } catch (Exception e) {
             log.warn("yfinance balance-sheet fetch failed for {}: {}", nseSymbol, e.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Fetches the previous trading day's closing price for the given NSE symbol.
+     *
+     * Calls: GET {baseUrl}/closing-price?symbol={symbol}.NS
+     *
+     * @param nseSymbol NSE symbol without suffix — e.g. "RELIANCE"
+     * @return ClosingPriceDto with date and closingPrice; null on any error
+     */
+    public ClosingPriceDto getClosingPrice(String nseSymbol) {
+        String url = baseUrl + "/closing-price?symbol=" + nseSymbol + ".NS";
+        try {
+            String json = restTemplate.getForObject(url, String.class);
+            if (json == null || json.isBlank()) return null;
+            return objectMapper.readValue(json, ClosingPriceDto.class);
+        } catch (Exception e) {
+            log.warn("yfinance closing-price fetch failed for {}: {}", nseSymbol, e.getMessage());
+            return null;
         }
     }
 
