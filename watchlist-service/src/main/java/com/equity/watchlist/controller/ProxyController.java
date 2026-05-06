@@ -57,6 +57,10 @@ public class ProxyController {
     @Value("${fast.movers.service.url:http://localhost:8081}")
     private String fastMoversServiceUrl;
 
+    /** Base URL of the fundamentals microservice (default: {@code http://localhost:8086}). */
+    @Value("${fundamentals.service.url:http://localhost:8086}")
+    private String fundamentalsServiceUrl;
+
     /**
      * Proxies all {@code /api/auth/**} requests to auth-service.
      * Path remapping: /api/auth/signup → /api/v1/auth/signup
@@ -129,6 +133,15 @@ public class ProxyController {
     public ResponseEntity<String> proxyFastMovers(HttpServletRequest request) throws URISyntaxException, IOException {
         logger.info("Proxying fast-movers request: {} {}", request.getMethod(), request.getRequestURI());
         return proxy(request, fastMoversServiceUrl);
+    }
+
+    /**
+     * Proxies all {@code /api/fundamentals/**} requests to the fundamentals microservice.
+     */
+    @RequestMapping(value = "/api/fundamentals/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
+    public ResponseEntity<String> proxyFundamentals(HttpServletRequest request) throws URISyntaxException, IOException {
+        logger.info("Proxying fundamentals request: {} {}", request.getMethod(), request.getRequestURI());
+        return proxy(request, fundamentalsServiceUrl);
     }
 
     /**
