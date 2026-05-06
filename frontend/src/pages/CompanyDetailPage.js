@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { fetchCompanyDetail } from '../services/indicesService';
+import { fetchCompanyDetail, fetchQuarterlyResults, fetchBalanceSheet, fetchPeSnapshot } from '../services/indicesService';
 import './CompanyDetailPage.css';
 
 function fmt(val) {
@@ -16,13 +16,35 @@ function fmtVolume(val) {
   return n.toLocaleString('en-IN');
 }
 
+function fmtCr(val) {
+  if (val == null) return '—';
+  const n = Number(val);
+  if (Math.abs(n) >= 1e7) return '₹' + (n / 1e7).toFixed(2) + ' Cr';
+  if (Math.abs(n) >= 1e5) return '₹' + (n / 1e5).toFixed(2) + ' L';
+  return '₹' + n.toLocaleString('en-IN');
+}
+
+function fmtPe(val) {
+  if (val == null) return null;
+  const n = Number(val);
+  if (n <= 0) return null;
+  return n.toFixed(2) + 'x';
+}
+
 const CompanyDetailPage = () => {
   const { symbol }   = useParams();
   const navigate     = useNavigate();
   const location     = useLocation();
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+
+  const [data,        setData]        = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState(null);
+
+  const [quarterly,   setQuarterly]   = useState([]);
+  const [balSheet,    setBalSheet]    = useState([]);
+  const [pe,          setPe]          = useState(null);
+  const [fundLoading, setFundLoading] = useState(true);
+  const [activeTab,   setActiveTab]   = useState('quarterly');
 
   const fromSector = location.state?.sector;
   const fromIndex  = location.state?.index;
@@ -32,6 +54,16 @@ const CompanyDetailPage = () => {
       .then(setData)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
+
+    Promise.allSettled([
+      fetchQuarterlyResults(symbol),
+      fetchBalanceSheet(symbol),
+      fetchPeSnapshot(symbol),
+    ]).then(([qRes, bRes, pRes]) => {
+      if (qRes.status === 'fulfilled') setQuarterly(qRes.value || []);
+      if (bRes.status === 'fulfilled') setBalSheet(bRes.value || []);
+      if (pRes.status === 'fulfilled') setPe(pRes.value);
+    }).finally(() => setFundLoading(false));
   }, [symbol]);
 
   if (loading) return (
@@ -61,6 +93,8 @@ const CompanyDetailPage = () => {
     ? Math.min(100, Math.max(0, ((ltp - lo52) / (hi52 - lo52)) * 100))
     : null;
 
+  const peLabel = pe ? fmtPe(pe.trailingPe) : null;
+
   return (
     <div className="cdp-container">
       <button className="cdp-back-btn" onClick={() => navigate(-1)}>← Back</button>
@@ -81,6 +115,7 @@ const CompanyDetailPage = () => {
             {arrow} {fmt(Math.abs(chg))}&nbsp;({sign}{pct.toFixed(2)}%)
           </div>
         )}
+        {peLabel && <div className="cdp-pe-inline">P/E {peLabel}</div>}
         {data.lastUpdated && (
           <div className="cdp-updated">
             {new Date(data.lastUpdated).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
@@ -131,8 +166,109 @@ const CompanyDetailPage = () => {
         </div>
       </div>
 
-      <div className="cdp-coming-soon">
-        Balance sheet, quarterly results &amp; financials — coming soon.
+      {/* ── Fundamentals ─────────────────────────────────────────────────── */}
+      <div className="cdp-fundamentals">
+        <div className="cdp-fund-tabs">
+          <button
+            className={`cdp-fund-tab ${activeTab === 'quarterly' ? 'active' : ''}`}
+            onClick={() => setActiveTab('quarterly')}
+          >
+            Quarterly Results
+          </button>
+          <button
+            className={`cdp-fund-tab ${activeTab === 'balsheet' ? 'active' : ''}`}
+            onClick={() => setActiveTab('balsheet')}
+          >
+            Balance Sheet
+          </button>
+        </div>
+
+        {fundLoading && <div className="cdp-fund-loading">Loading financials…</div>}
+
+        {!fundLoading && activeTab === 'quarterly' && (
+          quarterly.length === 0
+            ? <div className="cdp-fund-empty">No quarterly data available yet — will populate overnight.</div>
+            : (
+              <div className="cdp-fund-table-wrap">
+                <table className="cdp-fund-table">
+                  <thead>
+                    <tr>
+                      <th>Quarter</th>
+                      <th>Revenue</th>
+                      <th>Gross Profit</th>
+                      <th>Op. Profit</th>
+                      <th>Net Profit</th>
+                      <th>EPS (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {quarterly.map((q, i) => {
+                      const npPositive = q.netProfit != null && Number(q.netProfit) >= 0;
+                      return (
+                        <tr key={i}>
+                          <td className="cdp-fund-quarter">{q.quarter || q.periodEndDate}</td>
+                          <td>{fmtCr(q.revenue)}</td>
+                          <td>{fmtCr(q.grossProfit)}</td>
+                          <td>{fmtCr(q.operatingProfit)}</td>
+                          <td className={npPositive ? 'cdp-fund-gain' : 'cdp-fund-loss'}>
+                            {fmtCr(q.netProfit)}
+                          </td>
+                          <td>{q.eps != null ? Number(q.eps).toFixed(2) : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+        )}
+
+        {!fundLoading && activeTab === 'balsheet' && (
+          balSheet.length === 0
+            ? <div className="cdp-fund-empty">No balance sheet data available yet — will populate overnight.</div>
+            : (
+              <div className="cdp-fund-table-wrap">
+                <table className="cdp-fund-table">
+                  <thead>
+                    <tr>
+                      <th>Year</th>
+                      <th>Total Assets</th>
+                      <th>Total Debt</th>
+                      <th>Shareholders Equity</th>
+                      <th>Cash</th>
+                      <th>Total Liabilities</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {balSheet.map((b, i) => (
+                      <tr key={i}>
+                        <td className="cdp-fund-quarter">{b.fiscalYear || b.periodEndDate}</td>
+                        <td>{fmtCr(b.totalAssets)}</td>
+                        <td className="cdp-fund-loss">{fmtCr(b.totalDebt)}</td>
+                        <td className="cdp-fund-gain">{fmtCr(b.shareholdersEquity)}</td>
+                        <td>{fmtCr(b.cashAndEquivalents)}</td>
+                        <td>{fmtCr(b.totalLiabilities)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {balSheet[0] && (
+                  <div className="cdp-bs-breakdown">
+                    <div className="cdp-bs-title">{balSheet[0].fiscalYear} — Key Figures</div>
+                    <div className="cdp-bs-grid">
+                      <div className="cdp-bs-item"><span>Current Assets</span><strong>{fmtCr(balSheet[0].currentAssets)}</strong></div>
+                      <div className="cdp-bs-item"><span>Fixed Assets</span><strong>{fmtCr(balSheet[0].fixedAssets)}</strong></div>
+                      <div className="cdp-bs-item"><span>Investments</span><strong>{fmtCr(balSheet[0].totalInvestments)}</strong></div>
+                      <div className="cdp-bs-item"><span>Current Liab.</span><strong>{fmtCr(balSheet[0].currentLiabilities)}</strong></div>
+                      <div className="cdp-bs-item"><span>Long-Term Debt</span><strong>{fmtCr(balSheet[0].longTermDebt)}</strong></div>
+                      <div className="cdp-bs-item"><span>Retained Earnings</span><strong>{fmtCr(balSheet[0].retainedEarnings)}</strong></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+        )}
       </div>
     </div>
   );

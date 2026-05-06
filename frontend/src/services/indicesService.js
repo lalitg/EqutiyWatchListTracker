@@ -35,3 +35,23 @@ export async function fetchCompanyDetail(symbol) {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
+
+const FUND_BASE = '/api/fundamentals';
+
+export async function fetchQuarterlyResults(symbol) {
+  const res = await fetch(`${FUND_BASE}/${encodeURIComponent(symbol)}/quarterly-results`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function fetchBalanceSheet(symbol) {
+  const res = await fetch(`${FUND_BASE}/${encodeURIComponent(symbol)}/balance-sheet`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function fetchPeSnapshot(symbol) {
+  const res = await fetch(`${FUND_BASE}/${encodeURIComponent(symbol)}/pe`);
+  if (!res.ok) return null;
+  return res.json();
+}
