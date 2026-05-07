@@ -1,7 +1,10 @@
 package com.watchlist.global.controller;
 
+import com.watchlist.global.client.NseClient;
 import com.watchlist.global.dto.AddCompanyRequest;
 import com.watchlist.global.exception.CompanyNotFoundException;
+import com.watchlist.global.model.CompanyMembershipsResponse;
+import com.watchlist.global.model.CompanyMembershipsResponse.IndexLabel;
 import com.watchlist.global.model.GlobalIndexEntry;
 import com.watchlist.global.model.GlobalWatchlistEntry;
 import com.watchlist.global.model.IndexCompanyEntry;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -43,13 +47,16 @@ public class GlobalWatchlistController {
     private final GlobalWatchlistService service;
     private final GlobalIndexService     globalIndexService;
     private final DomesticIndexService   domesticIndexService;
+    private final NseClient              nseClient;
 
     public GlobalWatchlistController(GlobalWatchlistService service,
                                      GlobalIndexService globalIndexService,
-                                     DomesticIndexService domesticIndexService) {
+                                     DomesticIndexService domesticIndexService,
+                                     NseClient nseClient) {
         this.service              = service;
         this.globalIndexService   = globalIndexService;
         this.domesticIndexService = domesticIndexService;
+        this.nseClient            = nseClient;
     }
 
     /**
@@ -189,6 +196,35 @@ public class GlobalWatchlistController {
             logger.info("Company '{}' not in cache — fetching live from NSE", upperSymbol);
             entry = service.addCompany(upperSymbol);
         }
+        // Backfill companyName if not already set (companies seeded before this feature)
+        if (entry != null && entry.getCompanyName() == null) {
+            entry.setCompanyName(nseClient.fetchCompanyName(upperSymbol));
+        }
         return ResponseEntity.ok(entry);
+    }
+
+    /**
+     * Returns the full company name and all NSE indices/sectors the stock belongs to.
+     * Calls NSE's stock-indices API on every request (live, not cached) so the list
+     * is always accurate.
+     */
+    @GetMapping("/company/{symbol}/memberships")
+    public ResponseEntity<CompanyMembershipsResponse> getCompanyMemberships(@PathVariable String symbol) {
+        String upperSymbol = symbol.toUpperCase();
+        logger.info("GET /api/global-watchlist/company/{}/memberships", upperSymbol);
+
+        String companyName = nseClient.fetchCompanyName(upperSymbol);
+        List<String> nseKeys = nseClient.fetchStockIndexMemberships(upperSymbol);
+
+        List<IndexLabel> labels = new ArrayList<>();
+        for (String key : nseKeys) {
+            String displayName = domesticIndexService.getDisplayName(key);
+            String type        = domesticIndexService.resolveType(key);
+            if (displayName != null && type != null) {
+                labels.add(new IndexLabel(key, displayName, type));
+            }
+        }
+
+        return ResponseEntity.ok(new CompanyMembershipsResponse(upperSymbol, companyName, labels));
     }
 }

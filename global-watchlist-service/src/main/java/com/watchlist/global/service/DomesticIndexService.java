@@ -135,4 +135,29 @@ public class DomesticIndexService {
         // fall back to the key itself (already in correct form)
         return normalised;
     }
+
+    /**
+     * Returns the short display name for a given NSE index key
+     * (e.g. "NIFTY PSU BANK" → "PSU Bank"), or null if not in our lists.
+     */
+    public String getDisplayName(String nseKey) {
+        for (String[] meta : DOMESTIC_INDICES) {
+            if (meta[0].equalsIgnoreCase(nseKey)) return meta[1];
+        }
+        for (String[] meta : SECTOR_INDICES) {
+            if (meta[0].equalsIgnoreCase(nseKey)) return meta[1];
+        }
+        return null;
+    }
+
+    /** Returns "SECTOR" or "DOMESTIC" for a given NSE key, null if not in our lists. */
+    public String resolveType(String nseKey) {
+        for (String[] meta : DOMESTIC_INDICES) {
+            if (meta[0].equalsIgnoreCase(nseKey)) return "DOMESTIC";
+        }
+        for (String[] meta : SECTOR_INDICES) {
+            if (meta[0].equalsIgnoreCase(nseKey)) return "SECTOR";
+        }
+        return null;
+    }
 }

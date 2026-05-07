@@ -225,9 +225,12 @@ public class GlobalWatchlistService {
         }
         repository.save(entity);
 
+        String companyName = nseClient.fetchCompanyName(companyCode);
+
         GlobalWatchlistEntry entry = toEntry(entity);
+        entry.setCompanyName(companyName);
         globalMap.put(companyCode, entry);
-        logger.info("Company '{}' added to global watchlist successfully", companyCode);
+        logger.info("Company '{}' ({}) added to global watchlist successfully", companyCode, companyName);
 
         return entry;
     }

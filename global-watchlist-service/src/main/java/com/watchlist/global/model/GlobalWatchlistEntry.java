@@ -16,6 +16,9 @@ public class GlobalWatchlistEntry {
     /** NSE stock symbol (e.g. {@code "INFY"}). */
     private String companyCode;
 
+    /** Full registered company name. May be null if not yet fetched. */
+    private String companyName;
+
     /** Latest live traded price. */
     private BigDecimal currentValue;
 
@@ -53,6 +56,9 @@ public class GlobalWatchlistEntry {
     public String getCompanyCode() { return companyCode; }
     /** @param companyCode the NSE stock symbol */
     public void setCompanyCode(String companyCode) { this.companyCode = companyCode; }
+
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
 
     /** @return the latest live traded price */
     public BigDecimal getCurrentValue() { return currentValue; }
