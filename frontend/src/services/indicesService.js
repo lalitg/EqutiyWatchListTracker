@@ -55,3 +55,9 @@ export async function fetchPeSnapshot(symbol) {
   if (!res.ok) return null;
   return res.json();
 }
+
+export async function fetchCompanyMemberships(symbol) {
+  const res = await fetch(`/api/global-watchlist/company/${encodeURIComponent(symbol)}/memberships`);
+  if (!res.ok) return null;
+  return res.json();
+}

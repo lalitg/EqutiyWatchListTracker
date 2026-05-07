@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { fetchCompanyDetail, fetchQuarterlyResults, fetchBalanceSheet, fetchPeSnapshot } from '../services/indicesService';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  fetchCompanyDetail,
+  fetchQuarterlyResults,
+  fetchBalanceSheet,
+  fetchPeSnapshot,
+  fetchCompanyMemberships,
+} from '../services/indicesService';
 import './CompanyDetailPage.css';
 
 function fmt(val) {
@@ -32,9 +38,8 @@ function fmtPe(val) {
 }
 
 const CompanyDetailPage = () => {
-  const { symbol }   = useParams();
-  const navigate     = useNavigate();
-  const location     = useLocation();
+  const { symbol } = useParams();
+  const navigate   = useNavigate();
 
   const [data,        setData]        = useState(null);
   const [loading,     setLoading]     = useState(true);
@@ -43,11 +48,9 @@ const CompanyDetailPage = () => {
   const [quarterly,   setQuarterly]   = useState([]);
   const [balSheet,    setBalSheet]    = useState([]);
   const [pe,          setPe]          = useState(null);
+  const [memberships, setMemberships] = useState(null);
   const [fundLoading, setFundLoading] = useState(true);
   const [activeTab,   setActiveTab]   = useState('quarterly');
-
-  const fromSector = location.state?.sector;
-  const fromIndex  = location.state?.index;
 
   useEffect(() => {
     fetchCompanyDetail(symbol)
@@ -59,16 +62,18 @@ const CompanyDetailPage = () => {
       fetchQuarterlyResults(symbol),
       fetchBalanceSheet(symbol),
       fetchPeSnapshot(symbol),
-    ]).then(([qRes, bRes, pRes]) => {
+      fetchCompanyMemberships(symbol),
+    ]).then(([qRes, bRes, pRes, mRes]) => {
       if (qRes.status === 'fulfilled') setQuarterly(qRes.value || []);
       if (bRes.status === 'fulfilled') setBalSheet(bRes.value || []);
       if (pRes.status === 'fulfilled') setPe(pRes.value);
+      if (mRes.status === 'fulfilled') setMemberships(mRes.value);
     }).finally(() => setFundLoading(false));
   }, [symbol]);
 
   if (loading) return (
     <div className="cdp-container">
-      <div className="cdp-loading">Loading company data…</div>
+      <div className="cdp-loading">Loading…</div>
     </div>
   );
 
@@ -95,35 +100,53 @@ const CompanyDetailPage = () => {
 
   const peLabel = pe ? fmtPe(pe.trailingPe) : null;
 
+  const companyName    = memberships?.companyName || null;
+  const sectorBadges   = (memberships?.memberships || []).filter(m => m.type === 'SECTOR');
+  const domesticBadges = (memberships?.memberships || []).filter(m => m.type === 'DOMESTIC');
+
   return (
     <div className="cdp-container">
       <button className="cdp-back-btn" onClick={() => navigate(-1)}>← Back</button>
 
-      {/* Hero */}
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className={`cdp-hero ${positive ? 'cdp-hero--gain' : negative ? 'cdp-hero--loss' : ''}`}>
         <div className="cdp-hero-top">
-          <div className="cdp-symbol">{data.companyCode}</div>
-          <div className="cdp-badges">
-            {fromSector && <span className="cdp-badge cdp-badge--sector">{fromSector}</span>}
-            {fromIndex  && <span className="cdp-badge cdp-badge--index">{fromIndex}</span>}
-            {data.nifty50 && <span className="cdp-badge cdp-badge--nifty">Nifty 50</span>}
+          <div className="cdp-identity">
+            <div className="cdp-symbol">{data.companyCode}</div>
+            {companyName && <div className="cdp-company-name">{companyName}</div>}
           </div>
+          {peLabel && <div className="cdp-pe-pill">P/E {peLabel}</div>}
         </div>
-        <div className="cdp-ltp">₹{fmt(ltp)}</div>
-        {pct != null && (
-          <div className={`cdp-change ${positive ? 'gain' : negative ? 'loss' : ''}`}>
-            {arrow} {fmt(Math.abs(chg))}&nbsp;({sign}{pct.toFixed(2)}%)
-          </div>
-        )}
-        {peLabel && <div className="cdp-pe-inline">P/E {peLabel}</div>}
+
+        <div className="cdp-price-row">
+          <div className="cdp-ltp">₹{fmt(ltp)}</div>
+          {pct != null && (
+            <div className={`cdp-change ${positive ? 'gain' : negative ? 'loss' : ''}`}>
+              {arrow} {fmt(Math.abs(chg))} ({sign}{pct.toFixed(2)}%)
+            </div>
+          )}
+        </div>
+
         {data.lastUpdated && (
           <div className="cdp-updated">
             {new Date(data.lastUpdated).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
           </div>
         )}
+
+        {/* Sector + index membership badges — all of them, not just the one navigated from */}
+        {(sectorBadges.length > 0 || domesticBadges.length > 0 || data.nifty50) && (
+          <div className="cdp-badge-section">
+            {domesticBadges.map(m => (
+              <span key={m.nseKey} className="cdp-badge cdp-badge--index">{m.displayName}</span>
+            ))}
+            {sectorBadges.map(m => (
+              <span key={m.nseKey} className="cdp-badge cdp-badge--sector">{m.displayName}</span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* 52-week range bar */}
+      {/* ── 52-week range ─────────────────────────────────────────────────── */}
       {rangePos !== null && (
         <div className="cdp-range-section">
           <div className="cdp-range-header">52-Week Range</div>
@@ -138,7 +161,7 @@ const CompanyDetailPage = () => {
         </div>
       )}
 
-      {/* Stats grid */}
+      {/* ── Stats grid ────────────────────────────────────────────────────── */}
       <div className="cdp-stats-grid">
         <div className="cdp-stat">
           <div className="cdp-stat-label">Prev Close</div>
@@ -161,12 +184,12 @@ const CompanyDetailPage = () => {
           <div className="cdp-stat-value">₹{fmt(data.allTimeLow)}</div>
         </div>
         <div className="cdp-stat">
-          <div className="cdp-stat-label">Traded Volume</div>
+          <div className="cdp-stat-label">Volume</div>
           <div className="cdp-stat-value">{fmtVolume(data.tradedVolume)}</div>
         </div>
       </div>
 
-      {/* ── Fundamentals ─────────────────────────────────────────────────── */}
+      {/* ── Fundamentals ──────────────────────────────────────────────────── */}
       <div className="cdp-fundamentals">
         <div className="cdp-fund-tabs">
           <button
@@ -187,7 +210,7 @@ const CompanyDetailPage = () => {
 
         {!fundLoading && activeTab === 'quarterly' && (
           quarterly.length === 0
-            ? <div className="cdp-fund-empty">No quarterly data available yet — will populate overnight.</div>
+            ? <div className="cdp-fund-empty">No quarterly data yet — will populate overnight.</div>
             : (
               <div className="cdp-fund-table-wrap">
                 <table className="cdp-fund-table">
@@ -225,7 +248,7 @@ const CompanyDetailPage = () => {
 
         {!fundLoading && activeTab === 'balsheet' && (
           balSheet.length === 0
-            ? <div className="cdp-fund-empty">No balance sheet data available yet — will populate overnight.</div>
+            ? <div className="cdp-fund-empty">No balance sheet data yet — will populate overnight.</div>
             : (
               <div className="cdp-fund-table-wrap">
                 <table className="cdp-fund-table">
@@ -234,9 +257,9 @@ const CompanyDetailPage = () => {
                       <th>Year</th>
                       <th>Total Assets</th>
                       <th>Total Debt</th>
-                      <th>Shareholders Equity</th>
+                      <th>Equity</th>
                       <th>Cash</th>
-                      <th>Total Liabilities</th>
+                      <th>Liabilities</th>
                     </tr>
                   </thead>
                   <tbody>
