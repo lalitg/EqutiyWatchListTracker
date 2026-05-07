@@ -29,7 +29,6 @@ public class NseClient {
     private static final String NSE_HOME         = "https://www.nseindia.com";
     private static final String INDEX_URL_TPL    = "https://www.nseindia.com/api/equity-stockIndices?index=";
     private static final String QUOTE_EQUITY_URL = "https://www.nseindia.com/api/quote-equity?symbol=";
-    private static final String STOCK_INDICES_URL= "https://www.nseindia.com/api/stock-indices?symbol=";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -104,46 +103,50 @@ public class NseClient {
         }
     }
 
-    /** Returns the full registered company name from NSE's quote-equity API, or null on failure. */
-    public String fetchCompanyName(String symbol) {
+    /**
+     * Fetches company name and all index memberships for a symbol in a single NSE API call
+     * (quote-equity endpoint). Returns a two-element array: [companyName, List<String> indexKeys].
+     * Combines both fetches to avoid a double cookie handshake.
+     */
+    public CompanyInfo fetchCompanyInfo(String symbol) {
         try {
             HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
             String cookies = fetchSessionCookies(client);
             String encoded = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
             String json = fetchWithCookies(client, QUOTE_EQUITY_URL + encoded, cookies);
             JsonNode root = objectMapper.readTree(json);
+
             String name = root.path("info").path("companyName").asText(null);
-            logger.debug("Company name for '{}': {}", symbol, name);
-            return name;
+
+            // pdSectorIndAll is an array of all index keys the stock belongs to
+            List<String> indices = new ArrayList<>();
+            JsonNode indAll = root.path("metadata").path("pdSectorIndAll");
+            if (indAll.isArray()) {
+                for (JsonNode n : indAll) {
+                    String key = n.asText(null);
+                    if (key != null && !key.isBlank()) indices.add(key.toUpperCase());
+                }
+            }
+
+            logger.info("CompanyInfo for '{}': name={}, indices={}", symbol, name, indices.size());
+            return new CompanyInfo(name, indices);
         } catch (Exception e) {
-            logger.error("Failed to fetch company name for '{}': {}", symbol, e.getMessage());
-            return null;
+            logger.error("Failed to fetch company info for '{}': {}", symbol, e.getMessage());
+            return new CompanyInfo(null, Collections.emptyList());
         }
     }
 
-    /**
-     * Returns all NSE index keys (e.g. "NIFTY PSU BANK", "NIFTY 50") that the given
-     * stock belongs to, by calling NSE's stock-indices API.
-     */
-    public List<String> fetchStockIndexMemberships(String symbol) {
-        try {
-            HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
-            String cookies = fetchSessionCookies(client);
-            String encoded = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
-            String json = fetchWithCookies(client, STOCK_INDICES_URL + encoded, cookies);
-            JsonNode root = objectMapper.readTree(json);
-            JsonNode data = root.get("data");
-            if (data == null || !data.isArray()) return Collections.emptyList();
-            List<String> indices = new ArrayList<>();
-            for (JsonNode item : data) {
-                String key = item.path("indexSymbol").asText(null);
-                if (key != null && !key.isBlank()) indices.add(key.toUpperCase());
-            }
-            logger.info("Index memberships for '{}': {}", symbol, indices);
-            return indices;
-        } catch (Exception e) {
-            logger.error("Failed to fetch index memberships for '{}': {}", symbol, e.getMessage());
-            return Collections.emptyList();
+    /** Returns just the company name from NSE's quote-equity API. */
+    public String fetchCompanyName(String symbol) {
+        return fetchCompanyInfo(symbol).companyName;
+    }
+
+    public static class CompanyInfo {
+        public final String companyName;
+        public final List<String> indexKeys;
+        public CompanyInfo(String companyName, List<String> indexKeys) {
+            this.companyName = companyName;
+            this.indexKeys   = indexKeys;
         }
     }
 

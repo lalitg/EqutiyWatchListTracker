@@ -198,7 +198,7 @@ public class GlobalWatchlistController {
         }
         // Backfill companyName if not already set (companies seeded before this feature)
         if (entry != null && entry.getCompanyName() == null) {
-            entry.setCompanyName(nseClient.fetchCompanyName(upperSymbol));
+            entry.setCompanyName(nseClient.fetchCompanyInfo(upperSymbol).companyName);
         }
         return ResponseEntity.ok(entry);
     }
@@ -213,11 +213,10 @@ public class GlobalWatchlistController {
         String upperSymbol = symbol.toUpperCase();
         logger.info("GET /api/global-watchlist/company/{}/memberships", upperSymbol);
 
-        String companyName = nseClient.fetchCompanyName(upperSymbol);
-        List<String> nseKeys = nseClient.fetchStockIndexMemberships(upperSymbol);
+        NseClient.CompanyInfo info = nseClient.fetchCompanyInfo(upperSymbol);
 
         List<IndexLabel> labels = new ArrayList<>();
-        for (String key : nseKeys) {
+        for (String key : info.indexKeys) {
             String displayName = domesticIndexService.getDisplayName(key);
             String type        = domesticIndexService.resolveType(key);
             if (displayName != null && type != null) {
@@ -225,6 +224,6 @@ public class GlobalWatchlistController {
             }
         }
 
-        return ResponseEntity.ok(new CompanyMembershipsResponse(upperSymbol, companyName, labels));
+        return ResponseEntity.ok(new CompanyMembershipsResponse(upperSymbol, info.companyName, labels));
     }
 }

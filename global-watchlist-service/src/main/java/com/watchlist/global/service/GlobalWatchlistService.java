@@ -225,7 +225,7 @@ public class GlobalWatchlistService {
         }
         repository.save(entity);
 
-        String companyName = nseClient.fetchCompanyName(companyCode);
+        String companyName = nseClient.fetchCompanyInfo(companyCode).companyName;
 
         GlobalWatchlistEntry entry = toEntry(entity);
         entry.setCompanyName(companyName);
