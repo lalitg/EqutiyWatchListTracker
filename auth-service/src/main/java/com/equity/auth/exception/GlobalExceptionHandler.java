@@ -1,5 +1,6 @@
 package com.equity.auth.exception;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -8,6 +9,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -63,6 +65,23 @@ public class GlobalExceptionHandler {
         body.put("error", "Validation Failed");
         body.put("errors", fieldErrors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
+     * Propagates 4xx errors from downstream services (user-service) with the
+     * original status code and message instead of swallowing them as 500.
+     * e.g. user-service 409 Conflict → auth-service 409 to the client.
+     */
+    @ExceptionHandler(HttpClientErrorException.class)
+    public ResponseEntity<Map<String, Object>> handleDownstreamClientError(HttpClientErrorException ex) {
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        String message = status.getReasonPhrase();
+        try {
+            Map<?, ?> body = new ObjectMapper().readValue(ex.getResponseBodyAsString(), Map.class);
+            if (body.get("message") instanceof String m) message = m;
+        } catch (Exception ignored) {}
+        logger.warn("Downstream {} from user-service: {}", status.value(), message);
+        return buildResponse(status, message);
     }
 
     /** Safety net for any unhandled exception → 500 */
