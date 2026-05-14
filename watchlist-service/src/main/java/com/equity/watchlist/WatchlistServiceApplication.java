@@ -6,6 +6,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Main entry point for the Watchlist Service application.
@@ -15,6 +16,7 @@ import org.springframework.context.event.EventListener;
  * to accept requests.
  */
 @SpringBootApplication
+@EnableScheduling
 public class WatchlistServiceApplication {
 
     private static final Logger logger = LogManager.getLogger(WatchlistServiceApplication.class);
