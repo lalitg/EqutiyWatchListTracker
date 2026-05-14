@@ -10,6 +10,8 @@ import IndexCompaniesPage from './pages/IndexCompaniesPage';
 import SectorCompaniesPage from './pages/SectorCompaniesPage';
 import CompanyDetailPage from './pages/CompanyDetailPage';
 import LoginPage from './pages/LoginPage';
+import NseCalendarPage from './pages/NseCalendarPage';
+import MarketStatusBanner from './components/layout/MarketStatusBanner';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WatchlistProvider } from './context/WatchlistContext';
 import { MarketProvider } from './context/MarketContext';
@@ -29,6 +31,7 @@ function App() {
           <MarketProvider>
             <div className="App">
               <Navbar />
+              <MarketStatusBanner />
               <main className="app-main">
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
@@ -43,6 +46,7 @@ function App() {
                   <Route path="/market/domestic/index/:indexKey" element={<IndexCompaniesPage />} />
                   <Route path="/market/domestic/sector/:sectorKey" element={<SectorCompaniesPage />} />
                   <Route path="/company/:symbol" element={<CompanyDetailPage />} />
+                  <Route path="/market/calendar" element={<NseCalendarPage />} />
                 </Routes>
               </main>
             </div>

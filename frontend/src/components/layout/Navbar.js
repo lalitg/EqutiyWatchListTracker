@@ -34,6 +34,9 @@ const Navbar = () => {
           <NavLink to="/market/nifty50" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             Nifty 50
           </NavLink>
+          <NavLink to="/market/calendar" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            Calendar
+          </NavLink>
           {isLoggedIn ? (
             <div className="navbar-user">
               <span className="navbar-username">Hi, {user?.username}</span>
