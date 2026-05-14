@@ -18,20 +18,29 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Fetches NSE Event Calendar data from the NSE public API.
- * Single responsibility: HTTP call and JSON parsing only.
+ * Fetches NSE event data from three public NSE APIs and merges the results.
  *
- * NSE API: https://www.nseindia.com/api/event-calendar?index=equities
+ * APIs:
+ *   1. /api/event-calendar          — corporate event calendar
+ *   2. /api/corporate-board-meetings — board meeting announcements
+ *   3. /api/corporates-corporateActions — dividends, splits, buybacks, etc.
+ *
+ * NSE blocks non-browser clients, so all requests include browser-like headers.
+ * Each API may return either a JSON array at the root or a {"data": [...]} wrapper;
+ * fetchFromUrl() handles both formats transparently.
  */
 @Service
 public class NseEventFetchService {
 
     private static final Logger log = LoggerFactory.getLogger(NseEventFetchService.class);
 
-    private static final String NSE_EVENTS_URL =
+    private static final String EVENT_CALENDAR_URL =
         "https://www.nseindia.com/api/event-calendar?index=equities";
+    private static final String BOARD_MEETINGS_URL =
+        "https://www.nseindia.com/api/corporate-board-meetings?index=equities";
+    private static final String CORP_ACTIONS_URL =
+        "https://www.nseindia.com/api/corporates-corporateActions?index=equities";
 
-    /** Shared HTTP client — created once, reused across all requests. */
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
@@ -40,29 +49,44 @@ public class NseEventFetchService {
 
     public NseEventFetchService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
-        // Single instance — HttpClient is thread-safe and designed for reuse.
-        // Creating one per request is wasteful and skips connection pooling.
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
     }
 
     /**
-     * Fetches all events from the NSE Event Calendar API.
-     * Extracts: symbol, bm_desc (as event), purpose, date.
-     *
-     * <p>NSE blocks non-browser clients — browser headers are required.</p>
-     *
-     * @return list of {@link EventItem}; empty list on error or empty API response
+     * Fetches events from all three NSE APIs and returns a merged flat list.
+     * Deduplication across sources is handled in EventWorkerService before persisting.
      */
     public List<EventItem> fetchAllEvents() {
+        List<EventItem> all = new ArrayList<>();
+        all.addAll(fetchFromUrl(EVENT_CALENDAR_URL, "event-calendar"));
+        all.addAll(fetchFromUrl(BOARD_MEETINGS_URL, "board-meetings"));
+        all.addAll(fetchFromUrl(CORP_ACTIONS_URL, "corp-actions"));
+        log.info("Total events fetched from all 3 sources: {}", all.size());
+        return all;
+    }
+
+    /**
+     * Fetches and parses events from a single NSE API URL.
+     *
+     * Handles two response shapes:
+     *   - Direct JSON array:    [{...}, {...}]
+     *   - Wrapped JSON object:  {"data": [{...}, {...}]}
+     *
+     * Field name fallbacks per attribute (NSE field names differ across endpoints):
+     *   symbol  — "symbol", "bm_symbol", "sm_symbol"
+     *   date    — "date", "bm_date", "sm_date", "exDate"
+     *   event   — "bm_desc", "subject", "description", "desc"
+     *   purpose — "purpose", "bm_purpose", "sm_purpose"
+     */
+    private List<EventItem> fetchFromUrl(String url, String sourceName) {
         List<EventItem> result = new ArrayList<>();
 
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(NSE_EVENTS_URL))
+                .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(timeoutSeconds))
-                // NSE blocks requests that don't include browser-like headers
                 .header("User-Agent",
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
                     "AppleWebKit/537.36 (KHTML, like Gecko) " +
@@ -77,46 +101,72 @@ public class NseEventFetchService {
                 httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                log.error("NSE Events API returned HTTP {}", response.statusCode());
+                log.error("[{}] NSE API returned HTTP {}", sourceName, response.statusCode());
                 return result;
             }
 
-            List<Map<String, Object>> events = objectMapper.readValue(
-                response.body(),
-                new TypeReference<List<Map<String, Object>>>() {}
-            );
+            List<Map<String, Object>> rawRows = parseResponse(response.body(), sourceName);
 
-            for (Map<String, Object> event : events) {
-                String symbol  = getString(event, "symbol");
-                String bmDesc  = getString(event, "bm_desc");
-                String purpose = getString(event, "purpose");
-                String date    = getString(event, "date");
+            for (Map<String, Object> row : rawRows) {
+                String symbol  = firstNonNull(row, "symbol", "bm_symbol", "sm_symbol");
+                String date    = firstNonNull(row, "date", "bm_date", "sm_date", "exDate");
+                String event   = firstNonNull(row, "bm_desc", "subject", "description", "desc");
+                String purpose = firstNonNull(row, "purpose", "bm_purpose", "sm_purpose");
 
                 if (symbol == null || date == null) continue;
 
-                EventItem item = new EventItem(date, bmDesc, purpose);
+                EventItem item = new EventItem(date, event, purpose);
                 item.setSymbol(symbol);
+                item.setSource(sourceName);
                 result.add(item);
             }
 
-            log.info("NSE Events fetch complete — {} events retrieved", result.size());
+            log.info("[{}] {} events parsed", sourceName, result.size());
 
         } catch (Exception e) {
-            log.error("NSE Events API fetch failed: {}", e.getMessage());
+            log.error("[{}] fetch failed: {}", sourceName, e.getMessage());
         }
 
         return result;
     }
 
     /**
-     * Safely extracts a String value from the given map.
-     *
-     * @param map source map from the NSE API response
-     * @param key field name to extract
-     * @return string value, or {@code null} if the key is absent or value is null
+     * Parses the raw JSON body into a list of row maps.
+     * Tries direct-array format first; falls back to {"data": [...]} wrapper.
      */
-    private String getString(Map<String, Object> map, String key) {
-        Object val = map.get(key);
-        return val != null ? val.toString() : null;
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> parseResponse(String body, String sourceName) {
+        // Try direct array first (event-calendar format)
+        try {
+            return objectMapper.readValue(body,
+                new TypeReference<List<Map<String, Object>>>() {});
+        } catch (Exception ignored) {}
+
+        // Try {"data": [...]} wrapper (corp-actions / board-meetings format)
+        try {
+            Map<String, Object> wrapper = objectMapper.readValue(body,
+                new TypeReference<Map<String, Object>>() {});
+            Object data = wrapper.get("data");
+            if (data instanceof List) {
+                return objectMapper.convertValue(data,
+                    new TypeReference<List<Map<String, Object>>>() {});
+            }
+        } catch (Exception ex) {
+            log.error("[{}] could not parse response: {}", sourceName, ex.getMessage());
+        }
+
+        return List.of();
+    }
+
+    /**
+     * Returns the string value of the first key found in the map, or null.
+     * Skips blank strings — treats empty string the same as absent.
+     */
+    private String firstNonNull(Map<String, Object> map, String... keys) {
+        for (String key : keys) {
+            Object val = map.get(key);
+            if (val != null && !val.toString().isBlank()) return val.toString().trim();
+        }
+        return null;
     }
 }
