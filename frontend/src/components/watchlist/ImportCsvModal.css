@@ -65,6 +65,28 @@
   border-color: var(--accent, #3b82f6);
 }
 
+/* Mode toggle */
+.csv-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.csv-mode-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-primary, #e2e8f0);
+  cursor: pointer;
+}
+
+.csv-mode-option input[type="radio"] {
+  accent-color: var(--accent, #3b82f6);
+  cursor: pointer;
+}
+
 /* Preview */
 .csv-preview {
   font-size: 13px;

@@ -26,9 +26,9 @@ export function deleteCompany(companyCode) {
   });
 }
 
-export function importCompanies(companyCodes) {
+export function importCompanies(companyCodes, mode = 'SYMBOL') {
   return apiClient(`${BASE}/import`, {
     method: 'POST',
-    body: JSON.stringify({ companyCodes }),
+    body: JSON.stringify({ companyCodes, mode }),
   });
 }

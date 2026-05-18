@@ -114,10 +114,10 @@ export function WatchlistProvider({ children }) {
     }
   }, [fetchEntries]);
 
-  const importCompanies = useCallback(async (companyCodes) => {
+  const importCompanies = useCallback(async (companyCodes, mode) => {
     dispatch({ type: ACTIONS.ACTION_START });
     try {
-      const result = await watchlistService.importCompanies(companyCodes);
+      const result = await watchlistService.importCompanies(companyCodes, mode);
       companyCodes.forEach(notifySymbolAdded);
       await fetchEntries();
       return result;
