@@ -4,6 +4,13 @@
   padding: 24px 24px 48px;
 }
 
+.cdp-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
 .cdp-back-btn {
   background: none;
   border: none;
@@ -12,12 +19,36 @@
   font-weight: 600;
   cursor: pointer;
   padding: 0;
-  margin-bottom: 20px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 .cdp-back-btn:hover { color: #4f46e5; }
+
+.cdp-watchlist-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1.5px solid #667eea;
+  background: transparent;
+  color: #667eea;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cdp-watchlist-btn:hover:not(:disabled) {
+  background: #667eea;
+  color: #fff;
+}
+.cdp-watchlist-btn--added {
+  border-color: #16a34a;
+  color: #16a34a;
+  cursor: default;
+}
+.cdp-watchlist-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
 
 /* Hero */
 .cdp-hero {

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import SectorSelector from '../components/market/SectorSelector';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
@@ -29,8 +29,8 @@ const REGIONS = ['US', 'Europe', 'Asia', 'India', 'Global'];
  * The Refresh button force-fetches fresh data for the active tab only,
  * bypassing the cache.
  */
-/** Auto-refresh interval — 15 minutes. */
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
+const PRICE_REFRESH_MS = 5 * 60 * 1000;
 
 const GlobalMarketPage = () => {
   const {
@@ -38,6 +38,8 @@ const GlobalMarketPage = () => {
     selectedRegion, setRegion, fetchGlobal, refreshGlobal,
     STALE_FOCUS_MS,
   } = useMarket();
+
+  const [priceRefreshKey, setPriceRefreshKey] = useState(0);
 
   /** Data for the currently active region tab, or null if not yet loaded. */
   const currentData = globalCache[selectedRegion];
@@ -54,15 +56,19 @@ const GlobalMarketPage = () => {
    * Auto-refresh: silently re-fetches every 15 minutes.
    * Skips if a fetch is already in progress to prevent concurrent calls.
    */
+  // News/events auto-refresh every 15 min
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!globalLoading) {
-        console.log(`[GlobalMarketPage] Auto-refresh triggered for region '${selectedRegion}'`);
-        refreshGlobal(selectedRegion);
-      }
+      if (!globalLoading) refreshGlobal(selectedRegion);
     }, AUTO_REFRESH_MS);
     return () => clearInterval(interval);
   }, [selectedRegion, globalLoading, refreshGlobal]);
+
+  // Price auto-refresh every 5 min
+  useEffect(() => {
+    const interval = setInterval(() => setPriceRefreshKey(k => k + 1), PRICE_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, []);
 
   /**
    * Tab-focus refresh: re-fetches when the user returns to the browser tab
@@ -104,7 +110,10 @@ const GlobalMarketPage = () => {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Global Market Insights</h1>
-        <button className="btn btn-secondary" onClick={() => refreshGlobal(selectedRegion)}>
+        <button className="btn btn-secondary" onClick={() => {
+          refreshGlobal(selectedRegion);
+          setPriceRefreshKey(k => k + 1);
+        }}>
           Refresh
         </button>
       </div>
@@ -128,7 +137,7 @@ const GlobalMarketPage = () => {
         </div>
       )}
 
-      <GlobalIndicesTable />
+      <GlobalIndicesTable refreshKey={priceRefreshKey} />
 
       {!globalLoading && !globalError && currentData && (
         <div className="market-content">

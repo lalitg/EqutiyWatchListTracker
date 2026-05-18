@@ -70,7 +70,11 @@ const IndexCompaniesPage = () => {
     }
   }, [indexKey]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, [load]);
 
   const isInWatchlist = (code) => entries.some(e => e.companyCode === code);
   const displayed = sortCompanies(companies, sortOrder);

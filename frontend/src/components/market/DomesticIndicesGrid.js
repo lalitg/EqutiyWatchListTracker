@@ -8,18 +8,19 @@ function fmt(val) {
   return Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-const DomesticIndicesGrid = () => {
+const DomesticIndicesGrid = ({ refreshKey = 0 }) => {
   const [indices, setIndices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    setLoading(true);
     fetchDomesticIndices()
       .then(setIndices)
       .catch(() => setError('Could not load domestic indices'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshKey]);
 
   if (loading) return <div className="dig-loading">Loading indices…</div>;
   if (error)   return <div className="dig-error">{error}</div>;

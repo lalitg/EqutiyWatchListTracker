@@ -11,6 +11,7 @@ import { fetchNews } from '../services/newsService';
 import { fetchEvents } from '../services/eventsService';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
+import { useWatchlist } from '../context/WatchlistContext';
 import './CompanyDetailPage.css';
 
 function fmt(val) {
@@ -44,6 +45,8 @@ function fmtPe(val) {
 const CompanyDetailPage = () => {
   const { symbol } = useParams();
   const navigate   = useNavigate();
+  const { entries, activeId, addCompany, isActionLoading } = useWatchlist();
+  const isInWatchlist = entries.some(e => e.companyCode === symbol?.toUpperCase());
 
   const [data,        setData]        = useState(null);
   const [loading,     setLoading]     = useState(true);
@@ -86,6 +89,11 @@ const CompanyDetailPage = () => {
       if (nRes.status === 'fulfilled') setNews(nRes.value?.news ?? []);
       if (eRes.status === 'fulfilled') setEvents(eRes.value?.events ?? []);
     }).finally(() => setInsightsLoading(false));
+
+    const t = setInterval(() => {
+      fetchCompanyDetail(symbol).then(setData).catch(() => {});
+    }, 5 * 60 * 1000);
+    return () => clearInterval(t);
   }, [symbol]);
 
   if (loading) return (
@@ -96,7 +104,9 @@ const CompanyDetailPage = () => {
 
   if (error) return (
     <div className="cdp-container">
-      <button className="cdp-back-btn" onClick={() => navigate(-1)}>← Back</button>
+      <div className="cdp-top-bar">
+        <button className="cdp-back-btn" onClick={() => navigate(-1)}>← Back</button>
+      </div>
       <div className="cdp-error">{error}</div>
     </div>
   );
@@ -123,7 +133,16 @@ const CompanyDetailPage = () => {
 
   return (
     <div className="cdp-container">
-      <button className="cdp-back-btn" onClick={() => navigate(-1)}>← Back</button>
+      <div className="cdp-top-bar">
+        <button className="cdp-back-btn" onClick={() => navigate(-1)}>← Back</button>
+        <button
+          className={`cdp-watchlist-btn ${isInWatchlist ? 'cdp-watchlist-btn--added' : ''}`}
+          onClick={() => !isInWatchlist && addCompany(symbol?.toUpperCase(), activeId)}
+          disabled={isActionLoading || isInWatchlist}
+        >
+          {isInWatchlist ? '✓ In Watchlist' : isActionLoading ? 'Adding...' : '+ Add to Watchlist'}
+        </button>
+      </div>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className={`cdp-hero ${positive ? 'cdp-hero--gain' : negative ? 'cdp-hero--loss' : ''}`}>

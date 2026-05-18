@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { forgotPassword, resetPassword } from '../services/authService';
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -19,6 +20,11 @@ const LoginPage = () => {
   const [signupPassword, setSignupPassword] = useState('');
   const [investmentYears, setInvestmentYears] = useState('');
   const [investmentAmount, setInvestmentAmount] = useState('');
+
+  // Forgot / reset password state
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,6 +67,41 @@ const LoginPage = () => {
       setSuccessMsg('Account created! Please log in.');
       setTab('login');
       setIdentifier(username);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const data = await forgotPassword(forgotEmail);
+      setSuccessMsg(data.message || 'If this email is registered, a reset token has been sent.');
+      // In dev mode the token is returned in the response — pre-fill it for convenience
+      if (data.resetToken) {
+        setResetToken(data.resetToken);
+        setSuccessMsg(`Token: ${data.resetToken} — use it below to reset your password.`);
+      }
+      setTab('reset');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await resetPassword(resetToken, newPassword);
+      setSuccessMsg('Password reset successfully! Please log in.');
+      setTab('login');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -123,8 +164,15 @@ const LoginPage = () => {
             <button className="login-btn" type="submit" disabled={loading}>
               {loading ? 'Logging in...' : 'Login'}
             </button>
+            <button
+              type="button"
+              className="login-forgot-link"
+              onClick={() => switchTab('forgot')}
+            >
+              Forgot password?
+            </button>
           </form>
-        ) : (
+        ) : tab === 'signup' ? (
           <form className="login-form" onSubmit={handleSignup}>
             <div className="login-field">
               <label>Username</label>
@@ -211,7 +259,66 @@ const LoginPage = () => {
               {loading ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
-        )}
+        ) : tab === 'forgot' ? (
+          <form className="login-form" onSubmit={handleForgotPassword}>
+            <p className="login-hint" style={{ marginBottom: 12 }}>
+              Enter your registered email. We'll send you a reset token.
+            </p>
+            <div className="login-field">
+              <label>Email</label>
+              <input
+                type="email"
+                value={forgotEmail}
+                onChange={e => setForgotEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                autoFocus
+              />
+            </div>
+            <button className="login-btn" type="submit" disabled={loading}>
+              {loading ? 'Sending...' : 'Send Reset Token'}
+            </button>
+            <button type="button" className="login-forgot-link" onClick={() => switchTab('login')}>
+              Back to login
+            </button>
+          </form>
+        ) : tab === 'reset' ? (
+          <form className="login-form" onSubmit={handleResetPassword}>
+            <p className="login-hint" style={{ marginBottom: 12 }}>
+              Enter the reset token and your new password.
+            </p>
+            <div className="login-field">
+              <label>Reset Token</label>
+              <input
+                type="text"
+                value={resetToken}
+                onChange={e => setResetToken(e.target.value)}
+                placeholder="Paste your reset token"
+                required
+                autoFocus
+              />
+            </div>
+            <div className="login-field">
+              <label>New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="New password"
+                required
+              />
+              <p className="login-hint">
+                Min 8 characters · 1 uppercase · 1 number · 1 special character (@$!%*?&)
+              </p>
+            </div>
+            <button className="login-btn" type="submit" disabled={loading}>
+              {loading ? 'Resetting...' : 'Reset Password'}
+            </button>
+            <button type="button" className="login-forgot-link" onClick={() => switchTab('forgot')}>
+              Request a new token
+            </button>
+          </form>
+        ) : null}
       </div>
     </div>
   );

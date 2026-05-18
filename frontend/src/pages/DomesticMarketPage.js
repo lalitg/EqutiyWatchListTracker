@@ -8,6 +8,7 @@ import { useMarket } from '../context/MarketContext';
 import { fetchSectorIndices } from '../services/indicesService';
 
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
+const PRICE_REFRESH_MS = 5 * 60 * 1000;
 
 const DomesticMarketPage = () => {
   const {
@@ -18,6 +19,7 @@ const DomesticMarketPage = () => {
 
   const navigate = useNavigate();
   const [sectorTabs, setSectorTabs] = useState([]);
+  const [priceRefreshKey, setPriceRefreshKey] = useState(0);
 
   useEffect(() => { fetchDomestic('All'); }, [fetchDomestic]);
 
@@ -25,12 +27,22 @@ const DomesticMarketPage = () => {
     fetchSectorIndices().then(setSectorTabs).catch(() => {});
   }, []);
 
+  // News/events auto-refresh every 15 min
   useEffect(() => {
     const interval = setInterval(() => {
       if (!domesticLoading) refreshDomestic('All');
     }, AUTO_REFRESH_MS);
     return () => clearInterval(interval);
   }, [domesticLoading, refreshDomestic]);
+
+  // Price auto-refresh every 5 min
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPriceRefreshKey(k => k + 1);
+      fetchSectorIndices().then(setSectorTabs).catch(() => {});
+    }, PRICE_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleVisibilityChange = useCallback(() => {
     if (document.visibilityState === 'visible') {
@@ -72,7 +84,11 @@ const DomesticMarketPage = () => {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Domestic Market Insights</h1>
-        <button className="btn btn-secondary" onClick={() => fetchDomestic('All')}>Refresh</button>
+        <button className="btn btn-secondary" onClick={() => {
+          fetchDomestic('All');
+          setPriceRefreshKey(k => k + 1);
+          fetchSectorIndices().then(setSectorTabs).catch(() => {});
+        }}>Refresh</button>
       </div>
 
       {sectorTabs.length > 0 && (
@@ -84,7 +100,7 @@ const DomesticMarketPage = () => {
         />
       )}
 
-      <DomesticIndicesGrid />
+      <DomesticIndicesGrid refreshKey={priceRefreshKey} />
 
       {domesticLoading && (
         <div className="page-loading"><p>Loading domestic insights...</p></div>

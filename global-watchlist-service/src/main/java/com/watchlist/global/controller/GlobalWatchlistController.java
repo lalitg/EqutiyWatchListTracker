@@ -1,8 +1,16 @@
 package com.watchlist.global.controller;
 
+import com.watchlist.global.client.NseClient;
 import com.watchlist.global.dto.AddCompanyRequest;
 import com.watchlist.global.exception.CompanyNotFoundException;
+import com.watchlist.global.model.CompanyMembershipsResponse;
+import com.watchlist.global.model.CompanyMembershipsResponse.IndexLabel;
+import com.watchlist.global.model.GlobalIndexEntry;
 import com.watchlist.global.model.GlobalWatchlistEntry;
+import com.watchlist.global.model.IndexCompanyEntry;
+import com.watchlist.global.model.IndexSummary;
+import com.watchlist.global.service.DomesticIndexService;
+import com.watchlist.global.service.GlobalIndexService;
 import com.watchlist.global.service.GlobalWatchlistService;
 import jakarta.validation.Valid;
 import org.apache.logging.log4j.LogManager;
@@ -17,7 +25,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,14 +45,18 @@ public class GlobalWatchlistController {
     private static final Logger logger = LogManager.getLogger(GlobalWatchlistController.class);
 
     private final GlobalWatchlistService service;
+    private final GlobalIndexService     globalIndexService;
+    private final DomesticIndexService   domesticIndexService;
+    private final NseClient              nseClient;
 
-    /**
-     * Constructs the controller with the required service dependency.
-     *
-     * @param service the service managing the in-memory price cache
-     */
-    public GlobalWatchlistController(GlobalWatchlistService service) {
-        this.service = service;
+    public GlobalWatchlistController(GlobalWatchlistService service,
+                                     GlobalIndexService globalIndexService,
+                                     DomesticIndexService domesticIndexService,
+                                     NseClient nseClient) {
+        this.service              = service;
+        this.globalIndexService   = globalIndexService;
+        this.domesticIndexService = domesticIndexService;
+        this.nseClient            = nseClient;
     }
 
     /**
@@ -93,6 +107,17 @@ public class GlobalWatchlistController {
     }
 
     /**
+     * Returns all entries flagged as NIFTY 50 from the in-memory cache.
+     *
+     * @return {@code 200 OK} with a list of {@link GlobalWatchlistEntry} objects
+     */
+    @GetMapping("/nifty50")
+    public ResponseEntity<List<GlobalWatchlistEntry>> getNifty50() {
+        logger.debug("GET /api/global-watchlist/nifty50");
+        return ResponseEntity.ok(service.getNifty50());
+    }
+
+    /**
      * Adds a company to the global watchlist.
      *
      * <p>Called by watchlist-service when a user adds a company not yet tracked globally.
@@ -112,5 +137,93 @@ public class GlobalWatchlistController {
         GlobalWatchlistEntry entry = service.addCompany(companyCode);
         logger.info("Company '{}' added to global watchlist", companyCode);
         return ResponseEntity.status(HttpStatus.CREATED).body(entry);
+    }
+
+    // -------------------------------------------------------------------------
+    // Global indices (Yahoo Finance)
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/global-indices")
+    public ResponseEntity<Map<String, List<GlobalIndexEntry>>> getGlobalIndices() {
+        logger.debug("GET /api/global-watchlist/global-indices");
+        return ResponseEntity.ok(globalIndexService.getGroupedByRegion());
+    }
+
+    // -------------------------------------------------------------------------
+    // Domestic broad-market indices (NSE)
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/domestic-indices")
+    public ResponseEntity<List<IndexSummary>> getDomesticIndices() {
+        logger.debug("GET /api/global-watchlist/domestic-indices");
+        return ResponseEntity.ok(domesticIndexService.getAllDomesticIndices());
+    }
+
+    @GetMapping("/domestic-indices/{indexKey}/companies")
+    public ResponseEntity<List<IndexCompanyEntry>> getDomesticIndexCompanies(@PathVariable String indexKey) {
+        logger.info("GET /api/global-watchlist/domestic-indices/{}/companies", indexKey);
+        String nseParam = domesticIndexService.resolveNseParam(indexKey);
+        return ResponseEntity.ok(domesticIndexService.getIndexCompanies(nseParam));
+    }
+
+    // -------------------------------------------------------------------------
+    // Sector indices (NSE)
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/sector-indices")
+    public ResponseEntity<List<IndexSummary>> getSectorIndices() {
+        logger.debug("GET /api/global-watchlist/sector-indices");
+        return ResponseEntity.ok(domesticIndexService.getAllSectorIndices());
+    }
+
+    @GetMapping("/sector-indices/{sectorKey}/companies")
+    public ResponseEntity<List<IndexCompanyEntry>> getSectorCompanies(@PathVariable String sectorKey) {
+        logger.info("GET /api/global-watchlist/sector-indices/{}/companies", sectorKey);
+        String nseParam = domesticIndexService.resolveNseParam(sectorKey);
+        return ResponseEntity.ok(domesticIndexService.getIndexCompanies(nseParam));
+    }
+
+    // -------------------------------------------------------------------------
+    // Company detail
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/company/{symbol}")
+    public ResponseEntity<GlobalWatchlistEntry> getCompanyDetail(@PathVariable String symbol) {
+        String upperSymbol = symbol.toUpperCase();
+        logger.debug("GET /api/global-watchlist/company/{}", upperSymbol);
+        GlobalWatchlistEntry entry = service.getEntry(upperSymbol);
+        if (entry == null) {
+            logger.info("Company '{}' not in cache — fetching live from NSE", upperSymbol);
+            entry = service.addCompany(upperSymbol);
+        }
+        // Backfill companyName if not already set (companies seeded before this feature)
+        if (entry != null && entry.getCompanyName() == null) {
+            entry.setCompanyName(nseClient.fetchCompanyInfo(upperSymbol).companyName);
+        }
+        return ResponseEntity.ok(entry);
+    }
+
+    /**
+     * Returns the full company name and all NSE indices/sectors the stock belongs to.
+     * Calls NSE's stock-indices API on every request (live, not cached) so the list
+     * is always accurate.
+     */
+    @GetMapping("/company/{symbol}/memberships")
+    public ResponseEntity<CompanyMembershipsResponse> getCompanyMemberships(@PathVariable String symbol) {
+        String upperSymbol = symbol.toUpperCase();
+        logger.info("GET /api/global-watchlist/company/{}/memberships", upperSymbol);
+
+        NseClient.CompanyInfo info = nseClient.fetchCompanyInfo(upperSymbol);
+
+        List<IndexLabel> labels = new ArrayList<>();
+        for (String key : info.indexKeys) {
+            String displayName = domesticIndexService.getDisplayName(key);
+            String type        = domesticIndexService.resolveType(key);
+            if (displayName != null && type != null) {
+                labels.add(new IndexLabel(key, displayName, type));
+            }
+        }
+
+        return ResponseEntity.ok(new CompanyMembershipsResponse(upperSymbol, info.companyName, labels));
     }
 }

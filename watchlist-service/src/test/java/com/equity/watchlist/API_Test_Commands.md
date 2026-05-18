@@ -14,9 +14,7 @@ curl -X POST http://localhost:8080/api/v1/watchlist/addCompany \
     "allTimeLow": 1500.00,
     "allTimeHigh": 4200.00,
     "currentValue": 3950.00,
-    "trendSentiment": "Bullish",
-    "peRatio": 30.2,
-    "eps": 120.50
+    "tradedVolume": 1234567.00
   }'
 ```
 
@@ -38,9 +36,7 @@ curl -X PUT http://localhost:8080/api/v1/watchlist/updateCompany/TCS \
   -d '{
     "companyCode": "TCS",
     "currentValue": 4000.00,
-    "trendSentiment": "Strong Bullish",
-    "peRatio": 31.5,
-    "eps": 125.00
+    "tradedVolume": 2000000.00
   }'
 ```
 

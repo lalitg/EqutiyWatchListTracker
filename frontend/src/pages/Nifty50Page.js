@@ -36,7 +36,11 @@ const Nifty50Page = () => {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, [load]);
 
   const fmtVol = (val) => (val != null ? Number(val).toLocaleString('en-IN') : '—');
 

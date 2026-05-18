@@ -16,6 +16,9 @@ public class GlobalWatchlistEntry {
     /** NSE stock symbol (e.g. {@code "INFY"}). */
     private String companyCode;
 
+    /** Full registered company name. May be null if not yet fetched. */
+    private String companyName;
+
     /** Latest live traded price. */
     private BigDecimal currentValue;
 
@@ -34,6 +37,18 @@ public class GlobalWatchlistEntry {
     /** Total traded volume for the latest session. */
     private BigDecimal tradedVolume;
 
+    /** Previous closing price. */
+    private BigDecimal previousClose;
+
+    /** Absolute change from previous close. */
+    private BigDecimal changeValue;
+
+    /** Percentage change from previous close. */
+    private BigDecimal percentChange;
+
+    /** Whether this company is part of the NIFTY 50 index. */
+    private boolean nifty50;
+
     /** Timestamp of the last in-memory price update. */
     private LocalDateTime lastUpdated;
 
@@ -41,6 +56,9 @@ public class GlobalWatchlistEntry {
     public String getCompanyCode() { return companyCode; }
     /** @param companyCode the NSE stock symbol */
     public void setCompanyCode(String companyCode) { this.companyCode = companyCode; }
+
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
 
     /** @return the latest live traded price */
     public BigDecimal getCurrentValue() { return currentValue; }
@@ -71,6 +89,20 @@ public class GlobalWatchlistEntry {
     public BigDecimal getTradedVolume() { return tradedVolume; }
     /** @param tradedVolume the total traded volume */
     public void setTradedVolume(BigDecimal tradedVolume) { this.tradedVolume = tradedVolume; }
+
+    public BigDecimal getPreviousClose() { return previousClose; }
+    public void setPreviousClose(BigDecimal previousClose) { this.previousClose = previousClose; }
+
+    public BigDecimal getChangeValue() { return changeValue; }
+    public void setChangeValue(BigDecimal changeValue) { this.changeValue = changeValue; }
+
+    public BigDecimal getPercentChange() { return percentChange; }
+    public void setPercentChange(BigDecimal percentChange) { this.percentChange = percentChange; }
+
+    /** @return true if this company is part of the NIFTY 50 index */
+    public boolean isNifty50() { return nifty50; }
+    /** @param nifty50 true if this company is part of the NIFTY 50 index */
+    public void setNifty50(boolean nifty50) { this.nifty50 = nifty50; }
 
     /** @return the timestamp of the last in-memory price update */
     public LocalDateTime getLastUpdated() { return lastUpdated; }

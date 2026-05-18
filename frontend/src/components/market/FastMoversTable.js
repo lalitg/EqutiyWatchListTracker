@@ -6,14 +6,19 @@ const fmt = (val) =>
     ? Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '—';
 
-const FastMoversTable = ({ title, data, type, onCompanyClick }) => {
+const FastMoversTable = ({ title, data, type, range, onCompanyClick }) => {
   const isGainer = type === 'gainers';
+  const isHistorical = range && range !== 'TODAY' && range !== '1D';
 
   if (!data || data.length === 0) {
     return (
       <div className="fm-section">
         <h3 className="fm-section-title">{title}</h3>
-        <p className="fm-empty">Not enough data yet.</p>
+        <p className="fm-empty">
+          {isHistorical
+            ? 'Historical data not yet available. Populates automatically each trading day.'
+            : 'No data yet.'}
+        </p>
       </div>
     );
   }

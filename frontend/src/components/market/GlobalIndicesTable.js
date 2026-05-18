@@ -51,17 +51,18 @@ function IndexTable({ title, rows }) {
   );
 }
 
-const GlobalIndicesTable = () => {
+const GlobalIndicesTable = ({ refreshKey = 0 }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    setLoading(true);
     fetchGlobalIndices()
       .then(setData)
       .catch(() => setError('Could not load global indices'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshKey]);
 
   if (loading) return <div className="indices-loading">Loading global indices…</div>;
   if (error)   return <div className="indices-error">{error}</div>;
