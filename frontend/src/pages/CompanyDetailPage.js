@@ -7,6 +7,10 @@ import {
   fetchPeSnapshot,
   fetchCompanyMemberships,
 } from '../services/indicesService';
+import { fetchNews } from '../services/newsService';
+import { fetchEvents } from '../services/eventsService';
+import NewsList from '../components/market/NewsList';
+import EventsList from '../components/market/EventsList';
 import './CompanyDetailPage.css';
 
 function fmt(val) {
@@ -52,6 +56,11 @@ const CompanyDetailPage = () => {
   const [fundLoading, setFundLoading] = useState(true);
   const [activeTab,   setActiveTab]   = useState('quarterly');
 
+  const [news,        setNews]        = useState([]);
+  const [events,      setEvents]      = useState([]);
+  const [insightsTab, setInsightsTab] = useState('news');
+  const [insightsLoading, setInsightsLoading] = useState(true);
+
   useEffect(() => {
     fetchCompanyDetail(symbol)
       .then(setData)
@@ -69,6 +78,14 @@ const CompanyDetailPage = () => {
       if (pRes.status === 'fulfilled') setPe(pRes.value);
       if (mRes.status === 'fulfilled') setMemberships(mRes.value);
     }).finally(() => setFundLoading(false));
+
+    Promise.allSettled([
+      fetchNews(symbol),
+      fetchEvents(symbol),
+    ]).then(([nRes, eRes]) => {
+      if (nRes.status === 'fulfilled') setNews(nRes.value?.news ?? []);
+      if (eRes.status === 'fulfilled') setEvents(eRes.value?.events ?? []);
+    }).finally(() => setInsightsLoading(false));
   }, [symbol]);
 
   if (loading) return (
@@ -187,6 +204,35 @@ const CompanyDetailPage = () => {
           <div className="cdp-stat-label">Volume</div>
           <div className="cdp-stat-value">{fmtVolume(data.tradedVolume)}</div>
         </div>
+      </div>
+
+      {/* ── News & Events ─────────────────────────────────────────────────── */}
+      <div className="cdp-insights">
+        <div className="cdp-fund-tabs">
+          <button
+            className={`cdp-fund-tab ${insightsTab === 'news' ? 'active' : ''}`}
+            onClick={() => setInsightsTab('news')}
+          >
+            News
+          </button>
+          <button
+            className={`cdp-fund-tab ${insightsTab === 'events' ? 'active' : ''}`}
+            onClick={() => setInsightsTab('events')}
+          >
+            Events
+          </button>
+        </div>
+        {insightsLoading ? (
+          <div className="cdp-fund-loading">Loading…</div>
+        ) : insightsTab === 'news' ? (
+          news.length === 0
+            ? <div className="cdp-fund-empty">No news found for {symbol}.</div>
+            : <NewsList news={news} />
+        ) : (
+          events.length === 0
+            ? <div className="cdp-fund-empty">No events found for {symbol}.</div>
+            : <EventsList events={events} />
+        )}
       </div>
 
       {/* ── Fundamentals ──────────────────────────────────────────────────── */}

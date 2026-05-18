@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import WatchlistTable from '../components/watchlist/WatchlistTable';
 import AddCompanyModal from '../components/watchlist/AddCompanyModal';
 import ImportCsvModal from '../components/watchlist/ImportCsvModal';
-import CompanyInsightsModal from '../components/watchlist/CompanyInsightsModal';
 import { useWatchlist } from '../context/WatchlistContext';
 
 const WatchlistPage = () => {
+  const navigate = useNavigate();
   const {
     entries, isLoading, error, isActionLoading,
     fetchEntries, addCompany, bulkDelete, importCompanies,
@@ -13,7 +14,6 @@ const WatchlistPage = () => {
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [insightsEntry, setInsightsEntry] = useState(null);
 
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
 
@@ -49,7 +49,7 @@ const WatchlistPage = () => {
       {!isLoading && !error && (
         <WatchlistTable
           entries={entries}
-          onCompanyClick={(entry) => setInsightsEntry(entry)}
+          onCompanyClick={(entry) => navigate(`/company/${entry.companyCode}`)}
           onBulkDelete={bulkDelete}
         />
       )}
@@ -66,12 +66,6 @@ const WatchlistPage = () => {
         onClose={() => setImportModalOpen(false)}
         onImport={importCompanies}
         isLoading={isActionLoading}
-      />
-
-      <CompanyInsightsModal
-        isOpen={!!insightsEntry}
-        onClose={() => setInsightsEntry(null)}
-        entry={insightsEntry}
       />
     </div>
   );
