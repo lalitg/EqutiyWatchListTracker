@@ -217,49 +217,71 @@ public class WatchlistService {
     }
 
     /**
-     * Bulk-imports a list of company codes into a named watchlist.
+     * Bulk-imports a list of codes into a named watchlist.
      *
-     * <p>Skips duplicates (already in the watchlist). No price data is stored —
-     * prices are fetched live on every read.
+     * <p>When {@code mode} is {@code "ISIN"}, each value is looked up in
+     * {@code company_master.isin} to resolve the NSE symbol first. When mode
+     * is {@code "SYMBOL"} (or null), values are treated directly as NSE symbols.
+     * Skips duplicates already present in the watchlist.
      *
-     * @param companyCodes    the list of NSE symbols to import
+     * @param codes           the raw values from the CSV column (ISINs or NSE symbols)
+     * @param mode            {@code "ISIN"} or {@code "SYMBOL"} (null defaults to SYMBOL)
      * @param userWatchlistId the watchlist to import into (null → defaults to first)
-     * @return summary map with keys {@code imported}, {@code skipped}, {@code failed}
+     * @return summary map with keys {@code imported}, {@code skipped}, {@code failed}, {@code failedCodes}
      */
-    public Map<String, Object> importCompanies(Long userId, List<String> companyCodes, Long userWatchlistId) {
+    public Map<String, Object> importCompanies(Long userId, List<String> codes, String mode, Long userWatchlistId) {
         Long resolvedId = resolveWatchlistId(userId, userWatchlistId);
+        boolean byIsin = "ISIN".equalsIgnoreCase(mode);
         int imported = 0, skipped = 0, failed = 0;
         List<String> failedCodes = new ArrayList<>();
 
-        for (String raw : companyCodes) {
-            String code = raw.toUpperCase().trim();
-            if (code.isBlank()) continue;
+        for (String raw : codes) {
+            String value = raw.trim();
+            if (value.isBlank()) continue;
 
-            if (watchlistRepository.findByUserWatchlistIdAndCompanyCode(resolvedId, code).isPresent()) {
-                logger.debug("Import: '{}' already in watchlist — skipping", code);
+            // Resolve to NSE symbol
+            String symbol;
+            if (byIsin) {
+                String isin = value.toUpperCase();
+                symbol = companyRepository.findByIsin(isin)
+                        .map(com.equity.watchlist.entity.CompanyMaster::getSymbol)
+                        .orElse(null);
+                if (symbol == null) {
+                    logger.warn("Import: ISIN '{}' not found in company_master — skipping", isin);
+                    failed++;
+                    failedCodes.add(value);
+                    continue;
+                }
+                logger.debug("Import: ISIN '{}' resolved to symbol '{}'", isin, symbol);
+            } else {
+                symbol = value.toUpperCase();
+            }
+
+            if (watchlistRepository.findByUserWatchlistIdAndCompanyCode(resolvedId, symbol).isPresent()) {
+                logger.debug("Import: '{}' already in watchlist — skipping", symbol);
                 skipped++;
                 continue;
             }
 
-            GlobalWatchlistEntry entry = globalWatchlistClient.getEntry(code);
+            GlobalWatchlistEntry entry = globalWatchlistClient.getEntry(symbol);
             if (entry == null) {
-                logger.info("Import: '{}' not in global watchlist — triggering add", code);
-                entry = globalWatchlistClient.addCompany(code);
+                logger.info("Import: '{}' not in global watchlist — triggering add", symbol);
+                entry = globalWatchlistClient.addCompany(symbol);
             }
 
             if (entry == null) {
-                logger.warn("Import: failed to resolve price data for '{}' — skipping", code);
+                logger.warn("Import: failed to resolve price data for '{}' — skipping", symbol);
                 failed++;
-                failedCodes.add(code);
+                failedCodes.add(value);
                 continue;
             }
 
             Watchlist entity = new Watchlist();
             entity.setUserWatchlistId(resolvedId);
-            entity.setCompanyCode(code);
+            entity.setCompanyCode(symbol);
             watchlistRepository.save(entity);
             imported++;
-            logger.info("Import: '{}' added to watchlist id={}", code, resolvedId);
+            logger.info("Import: '{}' added to watchlist id={}", symbol, resolvedId);
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -267,7 +289,7 @@ public class WatchlistService {
         result.put("skipped", skipped);
         result.put("failed", failed);
         if (!failedCodes.isEmpty()) result.put("failedCodes", failedCodes);
-        logger.info("Import complete — imported={}, skipped={}, failed={}", imported, skipped, failed);
+        logger.info("Import complete (mode={}) — imported={}, skipped={}, failed={}", mode, imported, skipped, failed);
         return result;
     }
 

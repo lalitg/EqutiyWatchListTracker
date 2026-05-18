@@ -159,10 +159,11 @@ public class WatchlistController {
     }
 
     /**
-     * Bulk-imports company codes into a named watchlist, typically from a CSV upload.
+     * Bulk-imports codes into a named watchlist, typically from a CSV upload.
      *
-     * @param body JSON with {@code companyCodes} list and optional {@code userWatchlistId}
-     * @return {@code 200 OK} with summary map: {@code imported}, {@code skipped}, {@code failed}
+     * @param body JSON with {@code companyCodes} list, optional {@code mode} ("SYMBOL"|"ISIN"),
+     *             and optional {@code userWatchlistId}
+     * @return {@code 200 OK} with summary map: {@code imported}, {@code skipped}, {@code failed}, {@code failedCodes}
      */
     @PostMapping("/import")
     public ResponseEntity<Map<String, Object>> importCompanies(Authentication authentication, @RequestBody Map<String, Object> body) {
@@ -172,12 +173,13 @@ public class WatchlistController {
             logger.warn("POST /api/v1/watchlist/import — request body missing 'companyCodes'");
             return ResponseEntity.badRequest().build();
         }
+        String mode = body.containsKey("mode") ? body.get("mode").toString() : "SYMBOL";
         Long userWatchlistId = body.containsKey("userWatchlistId")
                 ? Long.valueOf(body.get("userWatchlistId").toString())
                 : null;
-        logger.info("POST /api/v1/watchlist/import — importing {} codes into watchlistId={}", companyCodes.size(), userWatchlistId);
+        logger.info("POST /api/v1/watchlist/import — mode={}, importing {} codes into watchlistId={}", mode, companyCodes.size(), userWatchlistId);
         Long userId = (Long) authentication.getPrincipal();
-        Map<String, Object> result = watchlistService.importCompanies(userId, companyCodes, userWatchlistId);
+        Map<String, Object> result = watchlistService.importCompanies(userId, companyCodes, mode, userWatchlistId);
         logger.info("Import complete — result: {}", result);
         return ResponseEntity.ok(result);
     }
