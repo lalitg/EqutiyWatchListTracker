@@ -26,7 +26,7 @@ public class NseHolidayClient {
     private static final String NSE_HOME    = "https://www.nseindia.com";
     private static final String HOLIDAY_URL = "https://www.nseindia.com/api/holiday-master?type=trading";
     private static final DateTimeFormatter NSE_DATE_FMT =
-            DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH);
+            DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
