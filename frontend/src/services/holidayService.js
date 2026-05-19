@@ -18,6 +18,7 @@ function loadFromCache(year) {
 }
 
 function saveToCache(year, data) {
+  if (!data || (Array.isArray(data) && data.length === 0)) return; // never cache empty results
   try {
     localStorage.setItem(cacheKey(year), JSON.stringify({ data, savedAt: Date.now() }));
   } catch {
