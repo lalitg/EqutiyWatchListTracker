@@ -50,7 +50,7 @@ function countTradingDaysLeft(holidays, year) {
 
 const NseCalendarPage = () => {
   const thisYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState(thisYear);
+  const selectedYear = thisYear;
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -68,7 +68,6 @@ const NseCalendarPage = () => {
   const grouped = groupByMonth(holidays);
   const upcoming = getUpcomingHolidays(holidays, 5);
   const tradingDaysLeft = countTradingDaysLeft(holidays, selectedYear);
-  const years = [thisYear - 1, thisYear, thisYear + 1].filter(y => y >= 2025);
 
   return (
     <div className="page-container">
@@ -78,15 +77,7 @@ const NseCalendarPage = () => {
           <p className="cal-subtitle">Official NSE trading holidays — Capital Markets segment</p>
         </div>
         <div className="cal-year-tabs">
-          {years.map(y => (
-            <button
-              key={y}
-              className={`cal-year-tab ${selectedYear === y ? 'active' : ''}`}
-              onClick={() => setSelectedYear(y)}
-            >
-              {y}
-            </button>
-          ))}
+          <button className="cal-year-tab active">{thisYear}</button>
         </div>
       </div>
 
