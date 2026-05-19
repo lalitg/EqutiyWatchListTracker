@@ -12,7 +12,7 @@ const TABLE_COLUMNS = [
   { key: 'tradedVolume', label: 'Traded Volume (Lakhs)', sortable: true },
 ];
 
-const ROWS_PER_PAGE = 10;
+const ROWS_PER_PAGE = 25;
 
 const DeleteIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -34,7 +34,6 @@ const PriceCell = ({ value, pct }) => {
 
 const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRowIds, setSelectedRowIds] = useState(new Set());
 
@@ -46,25 +45,16 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
     return value;
   };
 
-  const filteredEntries = useMemo(() => {
-    if (!searchQuery.trim()) return entries;
-    const q = searchQuery.toLowerCase();
-    return entries.filter(e =>
-      e.companyCode?.toLowerCase().includes(q) ||
-      e.companyName?.toLowerCase().includes(q)
-    );
-  }, [entries, searchQuery]);
-
   const sortedEntries = useMemo(() => {
-    if (!sortConfig.key) return filteredEntries;
-    return [...filteredEntries].sort((a, b) => {
+    if (!sortConfig.key) return entries;
+    return [...entries].sort((a, b) => {
       const av = a[sortConfig.key] ?? '';
       const bv = b[sortConfig.key] ?? '';
       if (av < bv) return sortConfig.direction === 'asc' ? -1 : 1;
       if (av > bv) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [filteredEntries, sortConfig]);
+  }, [entries, sortConfig]);
 
   const paginatedEntries = useMemo(() => {
     const start = (currentPage - 1) * ROWS_PER_PAGE;
@@ -84,9 +74,6 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
     if (sortConfig.key !== key) return '\u21D5';
     return sortConfig.direction === 'asc' ? '\u2191' : '\u2193';
   };
-
-  const handleSearchChange = (e) => { setSearchQuery(e.target.value); setCurrentPage(1); };
-  const handleSearchClear = () => setSearchQuery('');
 
   const handleRowSelectionToggle = (e, code) => {
     e.stopPropagation();
@@ -120,18 +107,6 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
     <div className="wl-table-container">
       <div className="wl-toolbar">
         <div className="wl-toolbar-left">
-          <div className="wl-search-box">
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="wl-search-input"
-            />
-            {searchQuery && (
-              <button className="wl-search-clear" onClick={handleSearchClear}>x</button>
-            )}
-          </div>
           <span className="wl-result-count">
             {sortedEntries.length} {sortedEntries.length === 1 ? 'company' : 'companies'}
           </span>

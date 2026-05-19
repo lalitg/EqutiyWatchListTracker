@@ -32,7 +32,7 @@ const initialState = {
   globalCache:    {},
   globalLoading:  false,
   globalError:    null,
-  selectedRegion: 'US',
+  selectedRegion: 'India',
   domestic:       null,
   domesticLoading: false,
   domesticError:  null,

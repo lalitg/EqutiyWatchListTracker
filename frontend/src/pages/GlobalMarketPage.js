@@ -16,7 +16,7 @@ import { useMarket } from '../context/MarketContext';
  * Note: the Domestic page covers India at sector level (IT, Banking, etc.).
  * The India tab here covers the macro/economy level.
  */
-const REGIONS = ['US', 'Europe', 'Asia', 'India', 'Global'];
+const REGIONS = ['India', 'Global', 'US', 'Asia', 'Europe'];
 
 /**
  * GlobalMarketPage displays aggregated news for global market regions.
@@ -144,7 +144,7 @@ const GlobalMarketPage = () => {
           {getLastUpdatedLabel() && (
             <p className="last-updated-label">{getLastUpdatedLabel()}</p>
           )}
-          <NewsList news={currentData.news?.slice(0, 5)} />
+          <NewsList news={currentData.news} />
           <EventsList events={currentData.events ?? []} />
         </div>
       )}

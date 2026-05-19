@@ -28,63 +28,27 @@ const SECTOR_KEYWORD_MAP = {
  * by the news service and cached in its DB for subsequent requests.
  */
 const REGION_KEYWORD_MAP = {
-  US: [
-    'US economy',
-    'Fed rate hike or cut',
-    'FOMC meeting',
-    'US inflation (CPI, PPI)',
-    'US job data (Nonfarm payrolls)',
-    'US Federal Reserve',
-    'Dollar index (DXY)',
-  ],
-  Europe: [
-    'Europe economy',
-  ],
-  Asia: [
-    'Asia markets',
-    'China economy',
-    'Japan economy',
-    'Singapore economy',
-  ],
   India: [
-    'RBI monetary policy',
-    'RBI policy / repo rate',
-    'Budget',
-    'Union Budget',
-    'Budget 2026',
-    'Fiscal deficit',
-    'GST changes',
-    'inflation India',
-    'Inflation (CPI/WPI India)',
-    'IIP data',
-    'Trade deficit',
-    'Economic survey',
-    'FII investment',
-    'Rupee vs Dollar',
-    'Nifty 50',
-    'Sensex',
-    'Bank Nifty',
-    'crude oil India',
-    'India election results',
+    'RBI Notifications',
+    'PIB India',
   ],
   Global: [
-    'GDP growth / recession',
-    'Interest rates',
-    'Bond yields (US 10Y yield)',
-    'Quantitative tightening (QT)',
-    'Quantitative easing (QE)',
-    'crude oil',
-    'gold price',
-    'silver price',
-    'OPEC oil',
-    'war commodity prices',
-    'War',
-    'Trade war',
-    'Military strike',
-    'Border tension',
-    'Sanctions',
-    'Terrorist attack',
-    'Political crisis',
+    'China tariffs',
+    'China tensions',
+    'Forex Reserves',
+    'BOJ Policy',
+  ],
+  US: [
+    'Nasdaq',
+    'Dow Jones',
+    'Global liquidity',
+    'Federal Reserve Economic Data',
+  ],
+  Asia: [
+    'BOJ Policy',
+  ],
+  Europe: [
+    'European Central Bank Policy',
   ],
 };
 
@@ -99,25 +63,33 @@ const REGION_KEYWORD_MAP = {
  * @param {string} region - The selected region tab ('US', 'Europe', 'Asia', 'India', 'Global').
  * @returns {Promise<{ news: Array }>} Combined and sorted news array for the region.
  */
-export async function fetchGlobalInsights(region = 'US') {
+export async function fetchGlobalInsights(region = 'India') {
   const keywords = REGION_KEYWORD_MAP[region] || [];
   console.log(`[marketService] Fetching global insights for region '${region}' — ${keywords.length} keywords`);
 
-  const results = await Promise.all(
-    keywords.map(kw =>
-      fetchNews(kw).catch(() => {
-        console.warn(`[marketService] Failed to fetch news for keyword '${kw}' — skipping`);
-        return { news: [] };
-      })
-    )
-  );
+  const [newsResults, eventsResults] = await Promise.all([
+    Promise.all(
+      keywords.map(kw =>
+        fetchNews(kw).catch(() => ({ news: [] }))
+      )
+    ),
+    Promise.all(
+      keywords.map(kw =>
+        fetchEvents(kw).catch(() => ({ events: [] }))
+      )
+    ),
+  ]);
 
-  const merged       = results.flatMap(r => r.news ?? []);
-  const deduplicated = [...new Map(merged.filter(n => n.link).map(n => [n.link, n])).values()];
-  deduplicated.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const mergedNews = newsResults.flatMap(r => r.news ?? []);
+  const dedupNews  = [...new Map(mergedNews.filter(n => n.link).map(n => [n.link, n])).values()];
+  dedupNews.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  console.log(`[marketService] Region '${region}' — ${merged.length} raw articles, ${deduplicated.length} after dedup`);
-  return { news: deduplicated };
+  const mergedEvents = eventsResults.flatMap(r => r.events ?? []);
+  const dedupEvents  = [...new Map(mergedEvents.filter(e => e.symbol).map(e => [e.symbol + e.date, e])).values()];
+  dedupEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  console.log(`[marketService] Region '${region}' — news: ${dedupNews.length}, events: ${dedupEvents.length}`);
+  return { news: dedupNews, events: dedupEvents };
 }
 
 /**
