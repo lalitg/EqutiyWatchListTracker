@@ -137,7 +137,7 @@ const GlobalMarketPage = () => {
         </div>
       )}
 
-      <GlobalIndicesTable refreshKey={priceRefreshKey} />
+      <GlobalIndicesTable refreshKey={priceRefreshKey} region={selectedRegion} />
 
       {!globalLoading && !globalError && currentData && (
         <div className="market-content">

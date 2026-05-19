@@ -51,7 +51,19 @@ function IndexTable({ title, rows }) {
   );
 }
 
-const GlobalIndicesTable = ({ refreshKey = 0 }) => {
+const REGION_SECTIONS = {
+  US:     (data) => [{ title: 'US Markets',       rows: data.usMarkets }],
+  Europe: (data) => [{ title: 'European Markets', rows: data.europeanMarkets }],
+  Asia:   (data) => [{ title: 'Asian Markets',    rows: data.asianMarkets }],
+  India:  (data) => [],
+  Global: (data) => [
+    { title: 'US Markets',       rows: data.usMarkets },
+    { title: 'European Markets', rows: data.europeanMarkets },
+    { title: 'Asian Markets',    rows: data.asianMarkets },
+  ],
+};
+
+const GlobalIndicesTable = ({ refreshKey = 0, region = 'Global' }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -68,11 +80,12 @@ const GlobalIndicesTable = ({ refreshKey = 0 }) => {
   if (error)   return <div className="indices-error">{error}</div>;
   if (!data)   return null;
 
+  const sections = (REGION_SECTIONS[region] || REGION_SECTIONS.Global)(data);
+  if (sections.length === 0) return null;
+
   return (
     <div>
-      <IndexTable title="US Markets"       rows={data.usMarkets} />
-      <IndexTable title="European Markets" rows={data.europeanMarkets} />
-      <IndexTable title="Asian Markets"    rows={data.asianMarkets} />
+      {sections.map(s => <IndexTable key={s.title} title={s.title} rows={s.rows} />)}
     </div>
   );
 };
