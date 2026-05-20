@@ -173,8 +173,8 @@ public class WatchlistController {
             logger.warn("POST /api/v1/watchlist/import — request body missing 'companyCodes'");
             return ResponseEntity.badRequest().build();
         }
-        String mode = body.containsKey("mode") ? body.get("mode").toString() : "SYMBOL";
-        Long userWatchlistId = body.containsKey("userWatchlistId")
+        String mode = (body.containsKey("mode") && body.get("mode") != null) ? body.get("mode").toString() : "SYMBOL";
+        Long userWatchlistId = (body.containsKey("userWatchlistId") && body.get("userWatchlistId") != null)
                 ? Long.valueOf(body.get("userWatchlistId").toString())
                 : null;
         logger.info("POST /api/v1/watchlist/import — mode={}, importing {} codes into watchlistId={}", mode, companyCodes.size(), userWatchlistId);
