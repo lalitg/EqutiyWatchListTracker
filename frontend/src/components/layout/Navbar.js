@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import CompanySearchBar from './CompanySearchBar';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -18,6 +19,7 @@ const Navbar = () => {
         <NavLink to="/watchlist" className="navbar-logo">
           Equity Watchlist Tracker
         </NavLink>
+        <CompanySearchBar />
         <div className="navbar-links">
           <NavLink to="/watchlist" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             Watchlist
