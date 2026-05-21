@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,8 +63,9 @@ public class DomesticIndexService {
     private final Map<String, IndexSummary> domesticCache = new ConcurrentHashMap<>();
     private final Map<String, IndexSummary> sectorCache   = new ConcurrentHashMap<>();
 
-    // Reverse map: symbol → all index/sector memberships, rebuilt during each refresh
-    private volatile Map<String, List<IndexLabel>> symbolMemberships = new ConcurrentHashMap<>();
+    // Separate reverse maps rebuilt independently so concurrent refreshes don't duplicate labels
+    private volatile Map<String, List<IndexLabel>> domesticMemberships = new ConcurrentHashMap<>();
+    private volatile Map<String, List<IndexLabel>> sectorMemberships   = new ConcurrentHashMap<>();
 
     public DomesticIndexService(NseClient nseClient) {
         this.nseClient = nseClient;
@@ -75,7 +77,7 @@ public class DomesticIndexService {
 
     public void refreshDomesticIndices() {
         logger.info("Refreshing domestic index headers...");
-        Map<String, List<IndexLabel>> memberships = new ConcurrentHashMap<>(symbolMemberships);
+        Map<String, List<IndexLabel>> memberships = new HashMap<>();
         for (String[] meta : DOMESTIC_INDICES) {
             IndexSummary summary = nseClient.fetchIndexHeader(meta[0]);
             if (summary != null) {
@@ -88,13 +90,13 @@ public class DomesticIndexService {
                 memberships.computeIfAbsent(company.getSymbol(), k -> new ArrayList<>()).add(label);
             }
         }
-        symbolMemberships = memberships;
+        domesticMemberships = new ConcurrentHashMap<>(memberships);
         logger.info("Domestic index headers refreshed — {} entries, {} symbols mapped", domesticCache.size(), memberships.size());
     }
 
     public void refreshSectorIndices() {
         logger.info("Refreshing sector index headers...");
-        Map<String, List<IndexLabel>> memberships = new ConcurrentHashMap<>(symbolMemberships);
+        Map<String, List<IndexLabel>> memberships = new HashMap<>();
         for (String[] meta : SECTOR_INDICES) {
             IndexSummary summary = nseClient.fetchIndexHeader(meta[0]);
             if (summary != null) {
@@ -107,7 +109,7 @@ public class DomesticIndexService {
                 memberships.computeIfAbsent(company.getSymbol(), k -> new ArrayList<>()).add(label);
             }
         }
-        symbolMemberships = memberships;
+        sectorMemberships = new ConcurrentHashMap<>(memberships);
         logger.info("Sector index headers refreshed — {} entries, {} symbols mapped", sectorCache.size(), memberships.size());
     }
 
@@ -190,6 +192,10 @@ public class DomesticIndexService {
      * last refresh. Avoids the broken per-symbol NSE quote-equity API.
      */
     public List<IndexLabel> getSymbolMemberships(String symbol) {
-        return symbolMemberships.getOrDefault(symbol.toUpperCase(), Collections.emptyList());
+        String upper = symbol.toUpperCase();
+        List<IndexLabel> result = new ArrayList<>();
+        result.addAll(domesticMemberships.getOrDefault(upper, Collections.emptyList()));
+        result.addAll(sectorMemberships.getOrDefault(upper, Collections.emptyList()));
+        return result;
     }
 }
