@@ -71,19 +71,6 @@
 			<scope>test</scope>
 		</dependency>
 		
-		<!-- Flyway — auto creates table on startup -->
-		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-core</artifactId>
-		</dependency>
-
-		<!-- Flyway PostgreSQL support — required for Spring Boot 3.x -->
-		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-database-postgresql</artifactId>
-			<version>10.10.0</version>
-		</dependency>
-
 		<!-- Jackson JSR310 — for LocalDateTime serialization -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.datatype</groupId>
@@ -96,14 +83,6 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<!--
-					    classifier=exec: produces nse-events-scheduler-0.0.1-SNAPSHOT-exec.jar
-					    (executable fat JAR) and keeps nse-events-scheduler-0.0.1-SNAPSHOT.jar
-					    as a plain JAR for use as a dependency in unified-scheduler.
-					-->
-					<classifier>exec</classifier>
-				</configuration>
 			</plugin>
 		</plugins>
 	</build>

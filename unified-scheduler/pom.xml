@@ -16,7 +16,9 @@
           2. nse-code-service          →  nse-enterprise-scheduler-1.0.0.jar
           3. nse-events-scheduler      →  nse-events-scheduler-0.0.1-SNAPSHOT.jar
           4. nse-news-scheduler        →  nse-news-scheduler-0.0.1-SNAPSHOT.jar
-          5. unified-scheduler         →  unified-scheduler-1.0.0.jar  (this module)
+          5. fast-movers-service       →  fast-movers-service-1.0.0.jar
+          6. fundamentals-service      →  fundamentals-service-0.0.1-SNAPSHOT.jar
+          7. unified-scheduler         →  unified-scheduler-1.0.0.jar  (this module)
     -->
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -28,7 +30,7 @@
     <artifactId>unified-scheduler</artifactId>
     <version>1.0.0</version>
     <name>unified-scheduler</name>
-    <description>Single-JVM launcher for all 5 equity watchlist scheduler services</description>
+    <description>Single-JVM launcher for all 6 equity watchlist scheduler services</description>
 
     <properties>
         <java.version>17</java.version>
@@ -93,6 +95,18 @@
             <groupId>com.equity</groupId>
             <artifactId>fast-movers-service</artifactId>
             <version>1.0.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.equity</groupId>
+            <artifactId>fundamentals-service</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.springframework.boot</groupId>

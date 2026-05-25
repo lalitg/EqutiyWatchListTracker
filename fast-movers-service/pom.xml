@@ -62,11 +62,6 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
 					<finalName>fast-movers-service-1.0.0</finalName>
-					<!--
-					    classifier=exec: produces fast-movers-service-1.0.0-exec.jar
-					    (executable standalone fat JAR) and keeps fast-movers-service-1.0.0.jar
-					    as a plain JAR (no Boot loader) for use as a dependency in unified-scheduler.
-					-->
 					<classifier>exec</classifier>
 				</configuration>
 			</plugin>

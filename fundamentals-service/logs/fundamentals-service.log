@@ -1,0 +1,213 @@
+2026-04-30 01:32:49.317  INFO [main] com.equity.fundamentals.FundamentalsApplication : Starting FundamentalsApplication v0.0.1-SNAPSHOT using Java 17.0.18 with PID 26100 (C:\Users\pc\Desktop\MainFolderWatchlist\EqutiyWatchListTracker\fundamentals-service\target\fundamentals-service-0.0.1-SNAPSHOT-exec.jar started by pc in C:\Users\pc\Desktop\MainFolderWatchlist\EqutiyWatchListTracker\fundamentals-service)
+2026-04-30 01:32:49.342  INFO [main] com.equity.fundamentals.FundamentalsApplication : No active profile set, falling back to 1 default profile: "default"
+2026-04-30 01:32:52.337  INFO [main] org.apache.coyote.http11.Http11NioProtocol : Initializing ProtocolHandler ["http-nio-8086"]
+2026-04-30 01:32:52.341  INFO [main] org.apache.catalina.core.StandardService : Starting service [Tomcat]
+2026-04-30 01:32:52.342  INFO [main] org.apache.catalina.core.StandardEngine : Starting Servlet engine: [Apache Tomcat/10.1.52]
+2026-04-30 01:32:52.427  INFO [main] org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] : Initializing Spring embedded WebApplicationContext
+2026-04-30 01:32:54.173  WARN [main] org.hibernate.orm.deprecation : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-04-30 01:32:58.555  INFO [main] org.apache.coyote.http11.Http11NioProtocol : Starting ProtocolHandler ["http-nio-8086"]
+2026-04-30 01:32:58.612  INFO [main] com.equity.fundamentals.FundamentalsApplication : Started FundamentalsApplication in 10.28 seconds (process running for 11.923)
+2026-04-30 01:32:58.619  INFO [main] com.equity.fundamentals.scheduler.FundamentalsScheduler : === fundamentals-service started — quarterly and balance-sheet jobs scheduled ===
+2026-04-30 01:32:58.625  INFO [main] com.equity.fundamentals.scheduler.FundamentalsScheduler : Results season active: false
+2026-04-30 01:32:58.626  INFO [main] com.equity.fundamentals.scheduler.FundamentalsScheduler : New-company detection job polls every 5 minutes
+2026-04-30 01:32:58.825  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : New companies detected in global_watchlist (no fundamentals data yet): [HDFCLIFE, ITC, RELIANCE, HINDUNILVR, TCS, TATASTEEL, LT, TMPV, ONGC, COALINDIA, BAJFINANCE, TECHM, ICICIBANK, MAXHEALTH, SUNPHARMA, BAJAJFINSV, BAJAJ-AUTO, GRASIM, TITAN, JIOFIN, ADANIENT, CIPLA, ULTRACEMCO, HDFCBANK, NTPC, HCLTECH, JSWSTEEL, DRREDDY, HINDALCO, WIPRO, TATACONSUM, NESTLEIND, KOTAKBANK, BEL, INDIGO, AXISBANK, M&M, INFY, ETERNAL, EICHERMOT, POWERGRID, MARUTI, SBIN, TRENT, ADANIPORTS, SHRIRAMFIN, SBILIFE, ASIANPAINT, BHARTIARTL, APOLLOHOSP]
+2026-04-30 01:32:58.827  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: HDFCLIFE
+2026-04-30 01:32:59.753  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for HDFCLIFE (4 quarters)
+2026-04-30 01:33:00.197  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for HDFCLIFE (3 years)
+2026-04-30 01:33:00.198  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: HDFCLIFE
+2026-04-30 01:33:00.199  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: ITC
+2026-04-30 01:33:00.540  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for ITC (4 quarters)
+2026-04-30 01:33:00.924  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for ITC (3 years)
+2026-04-30 01:33:00.932  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: ITC
+2026-04-30 01:33:00.933  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: RELIANCE
+2026-04-30 01:33:00.997  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for RELIANCE (4 quarters)
+2026-04-30 01:33:01.097  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for RELIANCE (3 years)
+2026-04-30 01:33:01.100  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: RELIANCE
+2026-04-30 01:33:01.100  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: HINDUNILVR
+2026-04-30 01:33:01.444  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for HINDUNILVR (4 quarters)
+2026-04-30 01:33:01.824  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for HINDUNILVR (3 years)
+2026-04-30 01:33:01.834  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: HINDUNILVR
+2026-04-30 01:33:01.834  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: TCS
+2026-04-30 01:33:02.186  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for TCS (4 quarters)
+2026-04-30 01:33:02.598  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for TCS (3 years)
+2026-04-30 01:33:02.607  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: TCS
+2026-04-30 01:33:02.608  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: TATASTEEL
+2026-04-30 01:33:02.944  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for TATASTEEL (4 quarters)
+2026-04-30 01:33:03.338  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for TATASTEEL (3 years)
+2026-04-30 01:33:03.348  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: TATASTEEL
+2026-04-30 01:33:03.348  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: LT
+2026-04-30 01:33:03.685  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for LT (4 quarters)
+2026-04-30 01:33:04.080  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for LT (3 years)
+2026-04-30 01:33:04.089  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: LT
+2026-04-30 01:33:04.089  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: TMPV
+2026-04-30 01:33:04.442  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for TMPV (4 quarters)
+2026-04-30 01:33:04.902  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for TMPV (3 years)
+2026-04-30 01:33:04.904  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: TMPV
+2026-04-30 01:33:04.904  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: ONGC
+2026-04-30 01:33:05.262  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for ONGC (4 quarters)
+2026-04-30 01:33:05.864  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for ONGC (3 years)
+2026-04-30 01:33:05.865  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: ONGC
+2026-04-30 01:33:05.865  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: COALINDIA
+2026-04-30 01:33:06.181  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for COALINDIA (4 quarters)
+2026-04-30 01:33:06.577  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for COALINDIA (3 years)
+2026-04-30 01:33:06.586  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: COALINDIA
+2026-04-30 01:33:06.587  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: BAJFINANCE
+2026-04-30 01:33:06.935  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for BAJFINANCE (4 quarters)
+2026-04-30 01:33:07.285  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for BAJFINANCE (3 years)
+2026-04-30 01:33:07.290  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: BAJFINANCE
+2026-04-30 01:33:07.290  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: TECHM
+2026-04-30 01:33:07.639  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for TECHM (4 quarters)
+2026-04-30 01:33:08.042  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for TECHM (3 years)
+2026-04-30 01:33:08.050  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: TECHM
+2026-04-30 01:33:08.051  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: ICICIBANK
+2026-04-30 01:33:08.391  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for ICICIBANK (4 quarters)
+2026-04-30 01:33:08.779  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for ICICIBANK (3 years)
+2026-04-30 01:33:08.798  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: ICICIBANK
+2026-04-30 01:33:08.798  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: MAXHEALTH
+2026-04-30 01:33:09.185  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for MAXHEALTH (4 quarters)
+2026-04-30 01:33:09.563  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for MAXHEALTH (3 years)
+2026-04-30 01:33:09.565  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: MAXHEALTH
+2026-04-30 01:33:09.565  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: SUNPHARMA
+2026-04-30 01:33:09.932  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for SUNPHARMA (4 quarters)
+2026-04-30 01:33:10.327  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for SUNPHARMA (3 years)
+2026-04-30 01:33:10.336  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: SUNPHARMA
+2026-04-30 01:33:10.336  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: BAJAJFINSV
+2026-04-30 01:33:10.706  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for BAJAJFINSV (4 quarters)
+2026-04-30 01:33:11.083  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for BAJAJFINSV (3 years)
+2026-04-30 01:33:11.091  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: BAJAJFINSV
+2026-04-30 01:33:11.091  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: BAJAJ-AUTO
+2026-04-30 01:33:11.455  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for BAJAJ-AUTO (4 quarters)
+2026-04-30 01:33:11.895  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for BAJAJ-AUTO (3 years)
+2026-04-30 01:33:11.902  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: BAJAJ-AUTO
+2026-04-30 01:33:11.903  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: GRASIM
+2026-04-30 01:33:12.278  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for GRASIM (4 quarters)
+2026-04-30 01:33:12.824  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for GRASIM (3 years)
+2026-04-30 01:33:12.832  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: GRASIM
+2026-04-30 01:33:12.832  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: TITAN
+2026-04-30 01:33:13.268  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for TITAN (4 quarters)
+2026-04-30 01:33:13.674  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for TITAN (3 years)
+2026-04-30 01:33:13.676  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: TITAN
+2026-04-30 01:33:13.676  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: JIOFIN
+2026-04-30 01:33:14.030  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for JIOFIN (4 quarters)
+2026-04-30 01:33:14.460  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for JIOFIN (3 years)
+2026-04-30 01:33:14.462  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: JIOFIN
+2026-04-30 01:33:14.463  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: ADANIENT
+2026-04-30 01:33:14.804  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for ADANIENT (4 quarters)
+2026-04-30 01:33:15.223  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for ADANIENT (3 years)
+2026-04-30 01:33:15.232  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: ADANIENT
+2026-04-30 01:33:15.232  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: CIPLA
+2026-04-30 01:33:15.639  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for CIPLA (4 quarters)
+2026-04-30 01:33:16.033  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for CIPLA (3 years)
+2026-04-30 01:33:16.042  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: CIPLA
+2026-04-30 01:33:16.042  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: ULTRACEMCO
+2026-04-30 01:33:16.414  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for ULTRACEMCO (4 quarters)
+2026-04-30 01:33:16.869  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for ULTRACEMCO (3 years)
+2026-04-30 01:33:16.870  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: ULTRACEMCO
+2026-04-30 01:33:16.870  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: HDFCBANK
+2026-04-30 01:33:17.247  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for HDFCBANK (4 quarters)
+2026-04-30 01:33:17.678  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for HDFCBANK (3 years)
+2026-04-30 01:33:17.687  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: HDFCBANK
+2026-04-30 01:33:17.688  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: NTPC
+2026-04-30 01:33:18.007  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for NTPC (4 quarters)
+2026-04-30 01:33:18.383  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for NTPC (3 years)
+2026-04-30 01:33:18.392  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: NTPC
+2026-04-30 01:33:18.393  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: HCLTECH
+2026-04-30 01:33:18.742  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for HCLTECH (4 quarters)
+2026-04-30 01:33:19.143  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for HCLTECH (3 years)
+2026-04-30 01:33:19.144  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: HCLTECH
+2026-04-30 01:33:19.145  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: JSWSTEEL
+2026-04-30 01:33:19.487  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for JSWSTEEL (4 quarters)
+2026-04-30 01:33:19.879  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for JSWSTEEL (3 years)
+2026-04-30 01:33:19.888  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: JSWSTEEL
+2026-04-30 01:33:19.889  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: DRREDDY
+2026-04-30 01:33:20.270  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for DRREDDY (4 quarters)
+2026-04-30 01:33:20.666  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for DRREDDY (3 years)
+2026-04-30 01:33:20.673  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: DRREDDY
+2026-04-30 01:33:20.674  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: HINDALCO
+2026-04-30 01:33:21.051  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for HINDALCO (4 quarters)
+2026-04-30 01:33:21.467  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for HINDALCO (3 years)
+2026-04-30 01:33:21.468  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: HINDALCO
+2026-04-30 01:33:21.468  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: WIPRO
+2026-04-30 01:33:21.818  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for WIPRO (4 quarters)
+2026-04-30 01:33:22.244  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for WIPRO (3 years)
+2026-04-30 01:33:22.252  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: WIPRO
+2026-04-30 01:33:22.252  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: TATACONSUM
+2026-04-30 01:33:22.618  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for TATACONSUM (4 quarters)
+2026-04-30 01:33:23.014  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for TATACONSUM (3 years)
+2026-04-30 01:33:23.021  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: TATACONSUM
+2026-04-30 01:33:23.022  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: NESTLEIND
+2026-04-30 01:33:23.357  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for NESTLEIND (4 quarters)
+2026-04-30 01:33:23.749  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for NESTLEIND (3 years)
+2026-04-30 01:33:23.758  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: NESTLEIND
+2026-04-30 01:33:23.758  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: KOTAKBANK
+2026-04-30 01:33:24.096  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for KOTAKBANK (4 quarters)
+2026-04-30 01:33:24.563  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for KOTAKBANK (3 years)
+2026-04-30 01:33:24.564  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: KOTAKBANK
+2026-04-30 01:33:24.565  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: BEL
+2026-04-30 01:33:24.914  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for BEL (4 quarters)
+2026-04-30 01:33:25.323  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for BEL (3 years)
+2026-04-30 01:33:25.332  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: BEL
+2026-04-30 01:33:25.332  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: INDIGO
+2026-04-30 01:33:25.679  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for INDIGO (4 quarters)
+2026-04-30 01:33:26.071  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for INDIGO (3 years)
+2026-04-30 01:33:26.074  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: INDIGO
+2026-04-30 01:33:26.074  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: AXISBANK
+2026-04-30 01:33:26.414  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for AXISBANK (4 quarters)
+2026-04-30 01:33:26.789  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for AXISBANK (3 years)
+2026-04-30 01:33:26.790  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: AXISBANK
+2026-04-30 01:33:26.791  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: M&M
+2026-04-30 01:33:27.150  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for M&M (4 quarters)
+2026-04-30 01:33:27.583  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for M&M (3 years)
+2026-04-30 01:33:27.591  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: M&M
+2026-04-30 01:33:27.592  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: INFY
+2026-04-30 01:33:27.973  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for INFY (4 quarters)
+2026-04-30 01:33:28.371  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for INFY (3 years)
+2026-04-30 01:33:28.379  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: INFY
+2026-04-30 01:33:28.380  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: ETERNAL
+2026-04-30 01:33:28.719  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for ETERNAL (4 quarters)
+2026-04-30 01:33:29.106  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for ETERNAL (3 years)
+2026-04-30 01:33:29.114  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: ETERNAL
+2026-04-30 01:33:29.114  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: EICHERMOT
+2026-04-30 01:33:29.506  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for EICHERMOT (4 quarters)
+2026-04-30 01:33:29.920  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for EICHERMOT (3 years)
+2026-04-30 01:33:29.929  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: EICHERMOT
+2026-04-30 01:33:29.930  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: POWERGRID
+2026-04-30 01:33:30.284  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for POWERGRID (4 quarters)
+2026-04-30 01:33:30.691  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for POWERGRID (3 years)
+2026-04-30 01:33:30.699  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: POWERGRID
+2026-04-30 01:33:30.699  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: MARUTI
+2026-04-30 01:33:31.074  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for MARUTI (4 quarters)
+2026-04-30 01:33:31.499  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for MARUTI (3 years)
+2026-04-30 01:33:31.500  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: MARUTI
+2026-04-30 01:33:31.501  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: SBIN
+2026-04-30 01:33:31.838  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for SBIN (4 quarters)
+2026-04-30 01:33:32.218  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for SBIN (3 years)
+2026-04-30 01:33:32.229  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: SBIN
+2026-04-30 01:33:32.230  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: TRENT
+2026-04-30 01:33:32.593  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for TRENT (4 quarters)
+2026-04-30 01:33:33.048  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for TRENT (3 years)
+2026-04-30 01:33:33.056  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: TRENT
+2026-04-30 01:33:33.056  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: ADANIPORTS
+2026-04-30 01:33:33.409  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for ADANIPORTS (4 quarters)
+2026-04-30 01:33:33.795  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for ADANIPORTS (3 years)
+2026-04-30 01:33:33.804  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: ADANIPORTS
+2026-04-30 01:33:33.804  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: SHRIRAMFIN
+2026-04-30 01:33:34.121  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for SHRIRAMFIN (4 quarters)
+2026-04-30 01:33:34.512  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for SHRIRAMFIN (3 years)
+2026-04-30 01:33:34.520  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: SHRIRAMFIN
+2026-04-30 01:33:34.520  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: SBILIFE
+2026-04-30 01:33:34.844  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for SBILIFE (4 quarters)
+2026-04-30 01:33:35.237  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for SBILIFE (3 years)
+2026-04-30 01:33:35.246  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: SBILIFE
+2026-04-30 01:33:35.246  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: ASIANPAINT
+2026-04-30 01:33:35.581  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for ASIANPAINT (4 quarters)
+2026-04-30 01:33:36.008  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for ASIANPAINT (3 years)
+2026-04-30 01:33:36.009  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: ASIANPAINT
+2026-04-30 01:33:36.009  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: BHARTIARTL
+2026-04-30 01:33:36.358  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for BHARTIARTL (4 quarters)
+2026-04-30 01:33:36.742  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for BHARTIARTL (3 years)
+2026-04-30 01:33:36.750  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: BHARTIARTL
+2026-04-30 01:33:36.750  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch starting for new company: APOLLOHOSP
+2026-04-30 01:33:37.117  INFO [scheduling-1] com.equity.fundamentals.service.QuarterlyResultsService : Quarterly results saved for APOLLOHOSP (4 quarters)
+2026-04-30 01:33:37.508  INFO [scheduling-1] com.equity.fundamentals.service.BalanceSheetService : Balance sheets saved for APOLLOHOSP (3 years)
+2026-04-30 01:33:37.518  INFO [scheduling-1] com.equity.fundamentals.scheduler.FundamentalsScheduler : On-demand fetch complete for: APOLLOHOSP

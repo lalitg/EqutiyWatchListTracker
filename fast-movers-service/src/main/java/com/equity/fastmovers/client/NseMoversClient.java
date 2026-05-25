@@ -14,10 +14,13 @@ import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * NSE HTTP client for the fast-movers-service.
@@ -38,9 +41,17 @@ public class NseMoversClient {
     private static final String GAINERS_URL   = "https://www.nseindia.com/api/live-analysis-variations?index=gainers";
     private static final String LOSERS_URL    = "https://www.nseindia.com/api/live-analysis-variations?index=loosers";
     private static final String HISTORY_URL   = "https://www.nseindia.com/api/historical/cm/equity?symbol=%s&series=[%%22EQ%%22]&from=%s&to=%s";
-    private static final DateTimeFormatter NSE_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    // New NSE archives URL — date format: DDMMYYYY (e.g., 22042026)
+    private static final String BHAVCOPY_URL  = "https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_%s%s%s.csv";
+    private static final DateTimeFormatter NSE_DATE_FMT      = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    private static final DateTimeFormatter BHAVCOPY_YEAR_FMT = DateTimeFormatter.ofPattern("yyyy");
+    private static final DateTimeFormatter BHAVCOPY_MON_FMT  = DateTimeFormatter.ofPattern("MM");
+    private static final DateTimeFormatter BHAVCOPY_DAY_FMT  = DateTimeFormatter.ofPattern("dd");
 
-    private final HttpClient   httpClient  = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
+    private final HttpClient   httpClient  = HttpClient.newBuilder()
+            .followRedirects(Redirect.ALWAYS)
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // -------------------------------------------------------------------------
@@ -162,6 +173,56 @@ public class NseMoversClient {
     }
 
     // -------------------------------------------------------------------------
+    // Bhavcopy (bulk daily close prices)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Downloads NSE's Bhavcopy CSV for the given trading date and returns a map of
+     * symbol → closing price for all EQ-series stocks.
+     * One HTTP request replaces 2000+ per-symbol historical API calls.
+     */
+    public Map<String, BigDecimal> fetchBhavcopy(LocalDate date) {
+        Map<String, BigDecimal> result = new HashMap<>();
+        String day   = date.format(BHAVCOPY_DAY_FMT);
+        String month = date.format(BHAVCOPY_MON_FMT);
+        String year  = date.format(BHAVCOPY_YEAR_FMT);
+        // URL format: sec_bhavdata_full_DDMMYYYY.csv
+        String url   = String.format(BHAVCOPY_URL, day, month, year);
+        logger.info("Downloading Bhavcopy from: {}", url);
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .timeout(Duration.ofSeconds(30))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                logger.warn("Bhavcopy not available for {} — HTTP {}", date, response.statusCode());
+                return result;
+            }
+            // CSV columns: SYMBOL, SERIES, DATE1, PREV_CLOSE, OPEN_PRICE, HIGH_PRICE, LOW_PRICE, LAST_PRICE, CLOSE_PRICE, ...
+            String[] lines = response.body().split("\n");
+            boolean header = true;
+            for (String line : lines) {
+                if (header) { header = false; continue; }
+                String[] cols = line.split(",");
+                if (cols.length < 9) continue;
+                String symbol = cols[0].trim();
+                String series = cols[1].trim();
+                if (!"EQ".equals(series)) continue;
+                try {
+                    result.put(symbol, new BigDecimal(cols[8].trim()));
+                } catch (NumberFormatException ignored) { }
+            }
+            logger.info("Bhavcopy parsed: {} EQ symbols for {}", result.size(), date);
+        } catch (Exception e) {
+            logger.error("Failed to fetch Bhavcopy for {}: {}", date, e.getMessage());
+        }
+        return result;
+    }
+
+    // -------------------------------------------------------------------------
     // HTTP helper
     // -------------------------------------------------------------------------
 
@@ -172,6 +233,7 @@ public class NseMoversClient {
                 .header("Accept", "application/json, text/plain, */*")
                 .header("Referer", NSE_HOME)
                 .header("Cookie", cookies)
+                .timeout(Duration.ofSeconds(15))
                 .GET()
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body();

@@ -3,6 +3,7 @@ package com.unified;
 import com.companynews.newsscheduler.NseNewsSchedulerApplication;
 import com.companycode.nse.NseEnterpriseSchedulerApplication;
 import com.equity.fastmovers.FastMoversApplication;
+import com.equity.fundamentals.FundamentalsApplication;
 import com.nseevents.nse_events_scheduler.NseEventsSchedulerApplication;
 import com.watchlist.global.GlobalWatchlistApplication;
 import org.apache.logging.log4j.LogManager;
@@ -12,7 +13,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * Single-JVM launcher for all 5 equity watchlist scheduler services.
+ * Single-JVM launcher for all 6 equity watchlist scheduler services.
  *
  * <p><b>Approach — Multi-Context Bootstrap:</b> Each service is started via
  * {@link SpringApplicationBuilder} on its own dedicated thread. Spring creates
@@ -68,7 +69,7 @@ public class UnifiedSchedulerApplication {
          */
         System.setProperty("logging.config", "classpath:log4j2-spring.xml");
 
-        log.info("=== Unified Scheduler starting — launching 5 service contexts ===");
+        log.info("=== Unified Scheduler starting — launching 6 service contexts ===");
 
         startService("global-watchlist", GlobalWatchlistApplication.class,
                 "application-global-watchlist", "8083");
@@ -85,7 +86,10 @@ public class UnifiedSchedulerApplication {
         startService("fast-movers", FastMoversApplication.class,
                 "application-fast-movers", "8081");
 
-        log.info("=== All 5 service threads launched — JVM will stay alive ===");
+        startService("fundamentals", FundamentalsApplication.class,
+                "application-fundamentals", "8086");
+
+        log.info("=== All 6 service threads launched — JVM will stay alive ===");
 
         /*
          * Block the main thread forever. The JVM stays alive because each

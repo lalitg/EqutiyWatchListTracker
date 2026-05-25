@@ -22,14 +22,15 @@
     <name>EquityWatchListTracker</name>
 
     <modules>
-        <!-- Build the 5 services first so their regular JARs land in ~/.m2 -->
+        <!-- Build the 6 services first so their regular JARs land in ~/.m2 -->
         <module>global-watchlist-service</module>
         <module>nse-code-service</module>
         <module>nse-events-scheduler</module>
         <module>nse-news-scheduler</module>
         <module>fast-movers-service</module>
+        <module>fundamentals-service</module>
 
-        <!-- unified-scheduler depends on the 5 above — must be last -->
+        <!-- unified-scheduler depends on the 6 above — must be last -->
         <module>unified-scheduler</module>
     </modules>
 

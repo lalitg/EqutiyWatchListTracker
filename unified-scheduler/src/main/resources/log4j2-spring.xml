@@ -23,6 +23,7 @@
       com.nseevents           — nse-events-scheduler
       com.companynews         — nse-news-scheduler
       com.equity.fastmovers   — fast-movers-service
+      com.equity.fundamentals — fundamentals-service
       com.unified             — this launcher
 
     Framework loggers (WARN — suppress noise):
@@ -120,6 +121,12 @@
 
         <!-- fast-movers-service -->
         <Logger name="com.equity.fastmovers" level="INFO" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- fundamentals-service -->
+        <Logger name="com.equity.fundamentals" level="INFO" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>

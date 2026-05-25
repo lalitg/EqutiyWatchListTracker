@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+
+    <Properties>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%t] %logger{36} : %msg%n</Property>
+        <Property name="LOG_FILE">logs/fundamentals-service.log</Property>
+        <Property name="LOG_ARCHIVE">logs/fundamentals-service.%d{yyyy-MM-dd}.%i.log.gz</Property>
+    </Properties>
+
+    <Appenders>
+
+        <!-- CONSOLE — real-time terminal output -->
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <!-- FILE — rolling daily log with size and age caps -->
+        <!-- Rotates at midnight OR when file exceeds 10 MB.          -->
+        <!-- Archives compressed as .gz — keeps disk usage small.     -->
+        <!-- Files older than 30 days are auto-deleted.               -->
+        <!-- Total log directory capped at 300 MB.                    -->
+        <RollingFile name="FILE"
+                     fileName="${LOG_FILE}"
+                     filePattern="${LOG_ARCHIVE}">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="logs" maxDepth="1">
+                    <IfFileName glob="fundamentals-service.*.log.gz"/>
+                    <IfAccumulatedFileSize exceeds="300MB"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+        <!-- ASYNC — wraps FILE to make disk writes non-blocking.     -->
+        <!-- Prevents log I/O from stalling scheduler threads.        -->
+        <Async name="ASYNC_FILE" bufferSize="512">
+            <AppenderRef ref="FILE"/>
+        </Async>
+
+    </Appenders>
+
+    <Loggers>
+
+        <!-- Suppress verbose Spring/Hibernate/HikariCP internals -->
+        <Logger name="org.springframework" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="org.hibernate" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="com.zaxxer.hikari" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- fundamentals-service application package — INFO level -->
+        <Logger name="com.equity.fundamentals" level="INFO" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- Root catch-all -->
+        <Root level="INFO">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Root>
+
+    </Loggers>
+
+</Configuration>

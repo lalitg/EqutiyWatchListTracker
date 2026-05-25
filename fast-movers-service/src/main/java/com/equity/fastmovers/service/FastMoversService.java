@@ -1,7 +1,6 @@
 package com.equity.fastmovers.service;
 
 import com.equity.fastmovers.client.NseMoversClient;
-import com.equity.fastmovers.client.NseMoversClient.HistoricalClose;
 import com.equity.fastmovers.client.NseMoversClient.MoverData;
 import com.equity.fastmovers.dto.FastMoverEntry;
 import com.equity.fastmovers.dto.FastMoversResponse;
@@ -18,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -105,66 +105,47 @@ public class FastMoversService {
     }
 
     // -------------------------------------------------------------------------
-    // Persist daily close prices — called at 3:30 PM
+    // Persist daily close prices — called at 9:30 AM to fetch previous trading day
     // -------------------------------------------------------------------------
 
     public void persistDailyClose() {
-        logger.info("persistDailyClose: starting final refresh then close price persist");
+        // Walk back up to 7 weekdays to find the most recent trading day with a published Bhavcopy.
+        // This handles public holidays (no Bhavcopy for those dates → 404) automatically.
+        LocalDate candidate = LocalDate.now();
+        Map<String, BigDecimal> bhavcopy = Map.of();
+        for (int i = 0; i < 7; i++) {
+            candidate = previousTradingDay(candidate);
+            bhavcopy = nseMoversClient.fetchBhavcopy(candidate);
+            if (!bhavcopy.isEmpty()) break;
+            logger.info("persistDailyClose: no Bhavcopy for {} (holiday?), trying earlier date", candidate);
+        }
 
-        // 1. Lock in today's final result in the cache
-        refreshTodayMovers();
+        if (bhavcopy.isEmpty()) {
+            logger.warn("persistDailyClose: no Bhavcopy found in last 7 weekdays — skipping");
+            return;
+        }
 
-        // 2. Fetch close prices for all active companies
-        LocalDate today = LocalDate.now();
-        List<CompanyMaster> companies = companyMasterRepository.findByActiveTrueOrderBySymbolAsc();
-        logger.info("persistDailyClose: fetching close prices for {} companies", companies.size());
+        LocalDate priceDate = candidate;
+        logger.info("persistDailyClose: persisting {} close prices for {}", bhavcopy.size(), priceDate);
 
-        String cookies = nseMoversClient.fetchSessionCookies();
-        int inserted = 0, skipped = 0, failed = 0;
-
-        for (int i = 0; i < companies.size(); i++) {
-            CompanyMaster company = companies.get(i);
-            String symbol = company.getSymbol();
-
-            // Skip if already persisted for today (idempotent re-run safety)
-            if (dailyPriceRepository.findByCompanyCodeAndPriceDate(symbol, today).isPresent()) {
+        int inserted = 0, skipped = 0;
+        for (Map.Entry<String, BigDecimal> entry : bhavcopy.entrySet()) {
+            String symbol    = entry.getKey();
+            BigDecimal close = entry.getValue();
+            if (dailyPriceRepository.findByCompanyCodeAndPriceDate(symbol, priceDate).isPresent()) {
                 skipped++;
                 continue;
             }
-
-            try {
-                List<HistoricalClose> history = nseMoversClient.fetchHistoricalClose(
-                        symbol, today, today, cookies);
-
-                if (history.isEmpty()) {
-                    logger.debug("persistDailyClose: no data for '{}' on {} — skipping", symbol, today);
-                    skipped++;
-                    continue;
-                }
-
-                BigDecimal closePrice = history.get(0).getClosePrice();
-                DailyPrice dp = new DailyPrice();
-                dp.setCompanyCode(symbol);
-                dp.setPriceDate(today);
-                dp.setClosePrice(closePrice);
-                dailyPriceRepository.save(dp);
-                inserted++;
-
-            } catch (Exception e) {
-                logger.debug("persistDailyClose: failed for '{}': {}", symbol, e.getMessage());
-                failed++;
-            }
-
-            if ((i + 1) % 100 == 0) {
-                logger.info("persistDailyClose: progress {}/{} — inserted={}, skipped={}, failed={}",
-                        i + 1, companies.size(), inserted, skipped, failed);
-                // Refresh cookies every 100 companies to avoid session expiry
-                cookies = nseMoversClient.fetchSessionCookies();
-            }
+            DailyPrice dp = new DailyPrice();
+            dp.setCompanyCode(symbol);
+            dp.setPriceDate(priceDate);
+            dp.setClosePrice(close);
+            dailyPriceRepository.save(dp);
+            inserted++;
         }
 
-        logger.info("persistDailyClose complete — inserted={}, skipped={}, failed={} out of {} companies",
-                inserted, skipped, failed, companies.size());
+        logger.info("persistDailyClose complete for {} — inserted={}, skipped={} out of {} symbols",
+                priceDate, inserted, skipped, bhavcopy.size());
     }
 
     // -------------------------------------------------------------------------
@@ -242,12 +223,16 @@ public class FastMoversService {
         return fallback != null ? fallback : "";
     }
 
-    /**
-     * Returns the most recent date before today that has data in daily_price.
-     * Falls back to yesterday if no data exists yet.
-     */
     private LocalDate previousTradingDate() {
-        // For 1D, just return yesterday — the 3:30 PM scheduler saves yesterday's cache row
-        return LocalDate.now().minusDays(1);
+        return previousTradingDay(LocalDate.now());
+    }
+
+    /** Returns the most recent weekday before the given date, skipping Saturday and Sunday. */
+    private LocalDate previousTradingDay(LocalDate date) {
+        LocalDate d = date.minusDays(1);
+        while (d.getDayOfWeek() == DayOfWeek.SATURDAY || d.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            d = d.minusDays(1);
+        }
+        return d;
     }
 }

@@ -73,19 +73,6 @@
       <artifactId>jackson-datatype-jsr310</artifactId>
     </dependency>
 
-    <!-- Flyway — auto runs SQL migration scripts on startup -->
-    <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-core</artifactId>
-    </dependency>
-
-    <!-- Flyway PostgreSQL support — required for Spring Boot 3.x -->
-    <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-database-postgresql</artifactId>
-      <version>10.10.0</version>
-    </dependency>
-
     <!-- Lombok: reduces boilerplate code (getters/setters) -->
     <dependency>
       <groupId>org.projectlombok</groupId>
@@ -163,14 +150,6 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
-        <configuration>
-          <!--
-            classifier=exec: produces nse-news-scheduler-0.0.1-SNAPSHOT-exec.jar
-            (executable fat JAR) and keeps nse-news-scheduler-0.0.1-SNAPSHOT.jar
-            as a plain JAR for use as a dependency in unified-scheduler.
-          -->
-          <classifier>exec</classifier>
-        </configuration>
       </plugin>
     </plugins>
   </build>
