@@ -91,12 +91,14 @@ public class GlobalWatchlistClient {
     private GlobalWatchlistEntry toEntry(JsonNode body) {
         if (body == null) return null;
         return new GlobalWatchlistEntry(
-            body.has("currentValue") ? body.get("currentValue").decimalValue() : null,
-            body.has("week52Low")    ? body.get("week52Low").decimalValue()    : null,
-            body.has("week52High")   ? body.get("week52High").decimalValue()   : null,
-            body.has("allTimeLow")   ? body.get("allTimeLow").decimalValue()   : null,
-            body.has("allTimeHigh")  ? body.get("allTimeHigh").decimalValue()  : null,
-            body.has("tradedVolume") ? body.get("tradedVolume").decimalValue() : null
+            body.has("currentValue")  ? body.get("currentValue").decimalValue()  : null,
+            body.has("week52Low")     ? body.get("week52Low").decimalValue()     : null,
+            body.has("week52High")    ? body.get("week52High").decimalValue()    : null,
+            body.has("allTimeLow")    ? body.get("allTimeLow").decimalValue()    : null,
+            body.has("allTimeHigh")   ? body.get("allTimeHigh").decimalValue()   : null,
+            body.has("tradedVolume")  ? body.get("tradedVolume").decimalValue()  : null,
+            body.has("percentChange") ? body.get("percentChange").decimalValue() : null,
+            body.has("changeValue")   ? body.get("changeValue").decimalValue()   : null
         );
     }
 
@@ -124,42 +126,32 @@ public class GlobalWatchlistClient {
         /** Total traded volume for the latest session. */
         private final BigDecimal tradedVolume;
 
-        /**
-         * Constructs an immutable entry with all price fields.
-         *
-         * @param currentValue latest traded price
-         * @param week52Low    52-week low
-         * @param week52High   52-week high
-         * @param allTimeLow   all-time low
-         * @param allTimeHigh  all-time high
-         * @param tradedVolume total traded volume
-         */
+        /** Percentage change from previous close (e.g. -1.28 means -1.28%). */
+        private final BigDecimal percentChange;
+
+        /** Absolute change from previous close (e.g. -16.5). */
+        private final BigDecimal changeValue;
+
         public GlobalWatchlistEntry(BigDecimal currentValue, BigDecimal week52Low, BigDecimal week52High,
-                                    BigDecimal allTimeLow, BigDecimal allTimeHigh, BigDecimal tradedVolume) {
-            this.currentValue = currentValue;
-            this.week52Low    = week52Low;
-            this.week52High   = week52High;
-            this.allTimeLow   = allTimeLow;
-            this.allTimeHigh  = allTimeHigh;
-            this.tradedVolume = tradedVolume;
+                                    BigDecimal allTimeLow, BigDecimal allTimeHigh, BigDecimal tradedVolume,
+                                    BigDecimal percentChange, BigDecimal changeValue) {
+            this.currentValue  = currentValue;
+            this.week52Low     = week52Low;
+            this.week52High    = week52High;
+            this.allTimeLow    = allTimeLow;
+            this.allTimeHigh   = allTimeHigh;
+            this.tradedVolume  = tradedVolume;
+            this.percentChange = percentChange;
+            this.changeValue   = changeValue;
         }
 
-        /** @return latest traded price */
         public BigDecimal getCurrentValue()  { return currentValue; }
-
-        /** @return 52-week low price */
         public BigDecimal getWeek52Low()     { return week52Low; }
-
-        /** @return 52-week high price */
         public BigDecimal getWeek52High()    { return week52High; }
-
-        /** @return all-time low price */
-        public BigDecimal getAllTimeLow()    { return allTimeLow; }
-
-        /** @return all-time high price */
-        public BigDecimal getAllTimeHigh()   { return allTimeHigh; }
-
-        /** @return total traded volume */
+        public BigDecimal getAllTimeLow()     { return allTimeLow; }
+        public BigDecimal getAllTimeHigh()    { return allTimeHigh; }
         public BigDecimal getTradedVolume()  { return tradedVolume; }
+        public BigDecimal getPercentChange() { return percentChange; }
+        public BigDecimal getChangeValue()   { return changeValue; }
     }
 }

@@ -1,0 +1,4 @@
+com/equity/MainApiApplication.class
+com/equity/config/AppConfig.class
+com/equity/config/GlobalExceptionHandler.class
+com/equity/config/SecurityConfig.class

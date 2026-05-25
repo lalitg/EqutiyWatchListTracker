@@ -1,0 +1,101 @@
+2026-05-18 16:40:49.171 [main] INFO  com.watchlist.global.GlobalWatchlistApplication - Starting GlobalWatchlistApplication v1.0.0 using Java 22.0.1 with PID 14099 (/Users/bhavyasharma/Desktop/Niveshflow jars/global-watchlist-service-1.0.0.jar started by bhavyasharma in /Users/bhavyasharma/Desktop/EqutiyWatchListTracker/watchlist-service)
+2026-05-18 16:40:49.205 [main] INFO  com.watchlist.global.GlobalWatchlistApplication - No active profile set, falling back to 1 default profile: "default"
+2026-05-18 16:40:55.223 [main] INFO  com.watchlist.global.service.GlobalWatchlistService - GlobalWatchlistService: initialising in-memory cache...
+2026-05-18 16:40:57.151 [main] INFO  com.watchlist.global.client.NseClient - Fetched 50 companies for index 'NIFTY 50'
+2026-05-18 16:40:57.152 [main] INFO  com.watchlist.global.service.GlobalWatchlistService - Fetched 50 NIFTY 50 symbols from NSE
+2026-05-18 16:40:58.371 [main] INFO  com.watchlist.global.service.GlobalWatchlistService - Loaded 74 companies into in-memory map
+2026-05-18 16:40:58.847 [main] INFO  com.watchlist.global.GlobalWatchlistApplication - Started GlobalWatchlistApplication in 10.297 seconds (process running for 12.039)
+2026-05-18 16:40:58.855 [main] INFO  com.watchlist.global.GlobalWatchlistApplication - Global Watchlist Service is READY on port 8083
+2026-05-18 16:40:58.855 [main] INFO  com.watchlist.global.scheduler.GlobalWatchlistScheduler - Startup: seeding caches...
+2026-05-18 16:40:58.855 [main] INFO  com.watchlist.global.service.GlobalWatchlistService - Refreshing prices for 74 companies...
+2026-05-18 16:41:20.306 [main] INFO  com.watchlist.global.service.GlobalWatchlistService - Price refresh complete — updated 74 / 74 companies
+2026-05-18 16:41:20.307 [main] INFO  com.watchlist.global.service.GlobalWatchlistService - Persisting 74 entries to DB...
+2026-05-18 16:41:20.456 [main] INFO  com.watchlist.global.service.GlobalWatchlistService - Persist complete — saved 74 companies
+2026-05-18 16:41:20.458 [main] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 16:41:20.458 [main] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 16:41:20.458 [main] INFO  com.watchlist.global.service.DomesticIndexService - Refreshing domestic index headers...
+2026-05-18 16:41:23.885 [main] INFO  com.watchlist.global.service.DomesticIndexService - Domestic index headers refreshed — 7 entries
+2026-05-18 16:41:23.885 [main] INFO  com.watchlist.global.service.DomesticIndexService - Refreshing sector index headers...
+2026-05-18 16:41:33.160 [main] INFO  com.watchlist.global.service.DomesticIndexService - Sector index headers refreshed — 20 entries
+2026-05-18 16:41:33.161 [main] INFO  com.watchlist.global.scheduler.GlobalWatchlistScheduler - Startup jobs complete
+2026-05-18 16:45:00.063 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 16:45:00.064 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 16:47:57.516 [http-nio-8083-exec-8] INFO  com.watchlist.global.controller.GlobalWatchlistController - GET /api/global-watchlist/company/TATAPOWER/memberships
+2026-05-18 16:47:57.741 [http-nio-8083-exec-8] INFO  com.watchlist.global.client.NseClient - CompanyInfo for 'TATAPOWER': name=Tata Power Company Limited, indices=28
+2026-05-18 16:47:57.744 [http-nio-8083-exec-9] INFO  com.watchlist.global.client.NseClient - CompanyInfo for 'TATAPOWER': name=Tata Power Company Limited, indices=28
+2026-05-18 16:50:00.007 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 16:50:00.014 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 16:55:00.011 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 16:55:00.013 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 16:55:26.596 [http-nio-8083-exec-3] WARN  com.watchlist.global.exception.GlobalExceptionHandler - Spring MVC exception at '/' (404 NOT_FOUND): No static resource .
+2026-05-18 17:06:23.090 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=10m30s525ms).
+2026-05-18 17:21:52.998 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m29s912ms).
+2026-05-18 17:31:06.476 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=9m13s479ms).
+2026-05-18 17:33:43.897 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 17:33:43.900 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 17:35:00.025 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 17:35:00.027 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 17:39:28.282 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1m21s763ms).
+2026-05-18 17:40:51.764 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 17:40:51.765 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 17:45:00.142 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 17:45:00.146 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 18:00:26.722 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m28s401ms).
+2026-05-18 18:04:58.415 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 18:04:58.417 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 18:05:00.016 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 18:05:00.018 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 18:15:46.630 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=7m49s808ms).
+2026-05-18 18:18:25.259 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=2m8s624ms).
+2026-05-18 18:22:12.593 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=3m47s335ms).
+2026-05-18 18:22:15.768 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 18:22:15.768 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 18:24:35.255 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1m52s647ms).
+2026-05-18 18:25:45.356 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1m10s105ms).
+2026-05-18 18:27:02.741 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 18:27:02.743 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 18:30:00.024 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 18:30:00.027 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 18:35:00.010 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 18:35:00.012 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 18:40:00.013 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 18:40:00.015 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 18:45:00.002 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 18:45:00.005 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 18:50:00.010 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 18:50:00.012 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 18:55:00.012 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 18:55:00.014 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 19:00:00.012 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 19:00:00.014 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 19:05:00.015 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 19:05:00.018 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 19:09:54.943 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=4m39s368ms).
+2026-05-18 19:19:10.024 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=9m15s81ms).
+2026-05-18 19:31:33.808 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=12m23s784ms).
+2026-05-18 19:45:53.937 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=14m20s121ms).
+2026-05-18 20:01:10.141 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m16s213ms).
+2026-05-18 20:20:16.601 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=19m6s459ms).
+2026-05-18 20:24:11.284 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=3m54s683ms).
+2026-05-18 20:25:25.553 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 20:25:25.555 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 20:30:00.015 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 20:30:00.017 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 20:35:00.016 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 20:35:00.021 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 20:40:00.010 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 20:40:00.012 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 20:45:00.017 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 20:45:00.020 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 20:50:00.006 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 20:50:00.008 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 20:55:00.010 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 20:55:00.012 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 21:13:51.026 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m30s55ms).
+2026-05-18 21:25:07.401 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=11m16s373ms).
+2026-05-18 21:25:59.952 [scheduling-1] ERROR com.watchlist.global.client.YahooFinanceClient - Failed to fetch global indices from yfinance wrapper: null
+2026-05-18 21:25:59.953 [scheduling-1] WARN  com.watchlist.global.service.GlobalIndexService - yfinance wrapper returned empty result — keeping stale cache
+2026-05-18 21:49:57.183 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=23m37s335ms).
+2026-05-18 21:57:36.795 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=7m39s610ms).
+2026-05-18 22:04:58.322 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=7m21s528ms).
+2026-05-18 22:15:39.033 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=10m40s712ms).

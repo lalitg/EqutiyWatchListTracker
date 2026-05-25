@@ -1,0 +1,34 @@
+2026-05-18 16:40:48.994 [main] INFO  com.companycode.nse.NseEnterpriseSchedulerApplication - Starting NseEnterpriseSchedulerApplication v1.0.0 using Java 22.0.1 with PID 14096 (/Users/bhavyasharma/Desktop/Niveshflow jars/nse-enterprise-scheduler-1.0.0.jar started by bhavyasharma in /Users/bhavyasharma/Desktop/EqutiyWatchListTracker/watchlist-service)
+2026-05-18 16:40:49.054 [main] INFO  com.companycode.nse.NseEnterpriseSchedulerApplication - No active profile set, falling back to 1 default profile: "default"
+2026-05-18 16:40:56.092 [main] INFO  com.companycode.nse.NseEnterpriseSchedulerApplication - Started NseEnterpriseSchedulerApplication in 7.805 seconds (process running for 9.155)
+2026-05-18 16:40:56.096 [main] INFO  com.companycode.nse.NseEnterpriseSchedulerApplication - NSE Enterprise Scheduler is READY on port 8084
+2026-05-18 16:40:56.096 [main] INFO  com.companycode.nse.scheduler.NseScheduler - Startup: running company sync → sector sync
+2026-05-18 16:40:56.110 [main] INFO  com.companycode.nse.service.NseSyncService - Starting company master sync from NSE CSV...
+2026-05-18 16:40:58.196 [main] INFO  com.companycode.nse.service.NseSyncService - Company sync complete — inserted 0 new companies (total in DB: 2392)
+2026-05-18 16:40:58.254 [main] INFO  com.companycode.nse.service.NseSectorSyncService - Starting sector sync from NSE API...
+2026-05-18 16:40:59.663 [main] INFO  com.companycode.nse.service.NseSectorSyncService - Found 21 sectoral indices to sync
+2026-05-18 16:41:06.032 [main] INFO  com.companycode.nse.service.NseSectorSyncService - Sector sync complete — synced 21 sectors
+2026-05-18 16:41:06.042 [main] INFO  com.companycode.nse.scheduler.NseScheduler - Startup sync complete
+2026-05-18 17:06:23.095 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=10m30s525ms).
+2026-05-18 17:21:53.013 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m29s907ms).
+2026-05-18 17:31:06.484 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=9m13s483ms).
+2026-05-18 17:39:28.295 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1m21s760ms).
+2026-05-18 18:00:26.735 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m28s406ms).
+2026-05-18 18:15:46.620 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=7m49s815ms).
+2026-05-18 18:18:25.259 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=2m8s624ms).
+2026-05-18 18:22:12.593 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=3m47s335ms).
+2026-05-18 18:24:35.253 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1m52s646ms).
+2026-05-18 18:25:45.353 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1m10s103ms).
+2026-05-18 19:09:54.957 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=4m39s365ms).
+2026-05-18 19:19:10.039 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=9m15s83ms).
+2026-05-18 19:31:33.826 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=12m23s787ms).
+2026-05-18 19:45:53.947 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=14m20s118ms).
+2026-05-18 20:01:10.142 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m16s198ms).
+2026-05-18 20:20:16.616 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=19m6s459ms).
+2026-05-18 20:24:11.284 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=3m54s683ms).
+2026-05-18 21:13:51.047 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m30s53ms).
+2026-05-18 21:25:07.418 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=11m16s370ms).
+2026-05-18 21:49:57.201 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=23m37s339ms).
+2026-05-18 21:57:36.800 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=7m39s600ms).
+2026-05-18 22:04:58.330 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=7m21s530ms).
+2026-05-18 22:15:39.041 [HikariPool-1 housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=10m40s710ms).

@@ -291,6 +291,9 @@
   font-weight: 500;
 }
 
+.wl-price-up   { color: #16a34a; font-weight: 600; }
+.wl-price-down { color: #dc2626; font-weight: 600; }
+
 @media (max-width: 768px) {
   .wl-toolbar {
     flex-direction: column;

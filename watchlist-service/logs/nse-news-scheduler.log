@@ -1,0 +1,701 @@
+2026-05-18 16:40:59.241  INFO [main] com.companynews.newsscheduler.NseNewsSchedulerApplication : Starting NseNewsSchedulerApplication v0.0.1-SNAPSHOT using Java 22.0.1 with PID 14183 (/private/tmp/nse-news-scheduler.jar started by bhavyasharma in /Users/bhavyasharma/Desktop/EqutiyWatchListTracker/watchlist-service)
+2026-05-18 16:40:59.249  INFO [main] com.companynews.newsscheduler.NseNewsSchedulerApplication : No active profile set, falling back to 1 default profile: "default"
+2026-05-18 16:41:02.540  INFO [main] org.apache.coyote.http11.Http11NioProtocol : Initializing ProtocolHandler ["http-nio-8084"]
+2026-05-18 16:41:02.544  INFO [main] org.apache.catalina.core.StandardService : Starting service [Tomcat]
+2026-05-18 16:41:02.546  INFO [main] org.apache.catalina.core.StandardEngine : Starting Servlet engine: [Apache Tomcat/10.1.16]
+2026-05-18 16:41:02.603  INFO [main] org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] : Initializing Spring embedded WebApplicationContext
+2026-05-18 16:41:04.793  WARN [main] org.hibernate.orm.deprecation : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-05-18 16:41:05.747  INFO [main] com.companynews.newsscheduler.config.AppConfig : Initializing HttpClient with connectTimeout=5s
+2026-05-18 16:41:06.864  INFO [main] com.companynews.newsscheduler.service.UrlWindow : Seeding URL window from DB — capacity: 500
+2026-05-18 16:41:07.123  INFO [main] com.companynews.newsscheduler.service.UrlWindow : URL window seeded with 2039 URLs from DB (current size: 500)
+2026-05-18 16:41:07.128  INFO [main] com.companynews.newsscheduler.config.AppConfig : Initializing googleRssExecutor with poolSize=2
+2026-05-18 16:41:07.136  INFO [main] com.companynews.newsscheduler.config.AppConfig : Initializing startupScheduler (poolSize=1)
+2026-05-18 16:41:07.210  INFO [main] com.companynews.newsscheduler.service.SeqIdWindow : SeqId window initialized — capacity: 20 — fills naturally on first NSE fetch cycle
+2026-05-18 16:41:07.228  INFO [main] com.companynews.newsscheduler.config.AppConfig : Initializing nseTaskScheduler (poolSize=1)
+2026-05-18 16:41:07.303  WARN [main] org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-05-18 16:41:08.186  INFO [main] org.apache.coyote.http11.Http11NioProtocol : Starting ProtocolHandler ["http-nio-8084"]
+2026-05-18 16:41:08.216  INFO [main] com.companynews.newsscheduler.NseNewsSchedulerApplication : Started NseNewsSchedulerApplication in 10.148 seconds (process running for 12.293)
+2026-05-18 16:41:08.219  INFO [main] com.companynews.newsscheduler.scheduler.GoogleRssScheduler : === Google RSS startup fetch — scheduling in 5s for NSE to complete first ===
+2026-05-18 16:41:08.219  INFO [main] com.companynews.newsscheduler.scheduler.NseScheduler : === NSE startup fetch triggered ===
+2026-05-18 16:41:08.220  INFO [main] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch triggered — current seqId window size: 0
+2026-05-18 16:41:08.603  INFO [main] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 16:41:08.605  INFO [main] com.companynews.newsscheduler.scheduler.NseScheduler : 20 new out of 20 total announcements — seqId window size now: 20
+2026-05-18 16:41:08.637  INFO [main]EICHERMOT com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: EICHERMOT
+2026-05-18 16:41:08.674  INFO [main]SONATSOFTW com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SONATSOFTW
+2026-05-18 16:41:08.692  INFO [main]TARSONS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: TARSONS
+2026-05-18 16:41:08.697  INFO [main]TIRUPATIFL com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: TIRUPATIFL
+2026-05-18 16:41:08.700  INFO [main]VISAKAIND com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: VISAKAIND
+2026-05-18 16:41:08.703  INFO [main]FINOPB com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: FINOPB
+2026-05-18 16:41:08.709  INFO [main]SOMANYCERA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SOMANYCERA
+2026-05-18 16:41:08.712  INFO [main]GICHSGFIN com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: GICHSGFIN
+2026-05-18 16:41:08.718  INFO [main]DIFFNKG com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: DIFFNKG
+2026-05-18 16:41:08.720  INFO [main]KIRLOSIND com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: KIRLOSIND
+2026-05-18 16:41:08.725  INFO [main]MONTECARLO com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: MONTECARLO
+2026-05-18 16:41:08.727  INFO [main]IRB com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: IRB
+2026-05-18 16:41:08.730  INFO [main]SEDEMAC com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SEDEMAC
+2026-05-18 16:41:08.732  INFO [main]ASTRAL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ASTRAL
+2026-05-18 16:41:08.733  INFO [main] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch complete — 18 unique companies processed
+2026-05-18 16:41:13.225  INFO [startup-thread-1] com.companynews.newsscheduler.scheduler.GoogleRssScheduler : Google RSS fetch started — loading keywords
+2026-05-18 16:41:13.243  INFO [startup-thread-1] com.companynews.newsscheduler.service.KeywordLoader : Loaded 74 symbols from global_watchlist
+2026-05-18 16:41:13.246  INFO [startup-thread-1] com.companynews.newsscheduler.service.KeywordLoader : Loaded 21 sectors from sector_companies
+2026-05-18 16:41:13.246  INFO [startup-thread-1] com.companynews.newsscheduler.service.KeywordLoader : Loaded 48 keywords from keywords.txt
+2026-05-18 16:41:13.246  INFO [startup-thread-1] com.companynews.newsscheduler.service.KeywordLoader : Total unique keywords to fetch: 140
+2026-05-18 16:41:13.247  INFO [startup-thread-1] com.companynews.newsscheduler.scheduler.GoogleRssScheduler : Submitting 140 keywords to executor pool
+2026-05-18 16:41:14.100  INFO [rss-worker-1]TATACONSUM com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: TATACONSUM
+2026-05-18 16:41:14.106  INFO [rss-worker-1]TATACONSUM com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: TATACONSUM
+2026-05-18 16:41:14.204  INFO [rss-worker-2]TATACOMM com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: TATACOMM
+2026-05-18 16:41:14.207  INFO [rss-worker-2]TATACOMM com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: TATACOMM
+2026-05-18 16:41:14.602  INFO [rss-worker-1]AMNPLST com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 3 items for keyword: AMNPLST
+2026-05-18 16:41:14.621  INFO [rss-worker-1]AMNPLST com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: AMNPLST
+2026-05-18 16:41:15.205  INFO [rss-worker-2]TATASTEEL com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: TATASTEEL
+2026-05-18 16:41:15.221  INFO [rss-worker-2]TATASTEEL com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: TATASTEEL
+2026-05-18 16:41:15.835  INFO [rss-worker-1]BHARTIARTL com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: BHARTIARTL
+2026-05-18 16:41:15.839  INFO [rss-worker-1]BHARTIARTL com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: BHARTIARTL
+2026-05-18 16:41:16.125  INFO [rss-worker-2]SHRIRAMFIN com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: SHRIRAMFIN
+2026-05-18 16:41:16.130  INFO [rss-worker-2]SHRIRAMFIN com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: SHRIRAMFIN
+2026-05-18 16:41:16.678  INFO [rss-worker-1]SOLARINDS com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: SOLARINDS
+2026-05-18 16:41:16.687  INFO [rss-worker-1]SOLARINDS com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: SOLARINDS
+2026-05-18 16:41:17.510  INFO [rss-worker-2]EICHERMOT com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: EICHERMOT
+2026-05-18 16:41:17.519  INFO [rss-worker-2]EICHERMOT com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: EICHERMOT
+2026-05-18 16:41:17.871  INFO [rss-worker-1]PNB com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: PNB
+2026-05-18 16:41:17.878  INFO [rss-worker-1]PNB com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: PNB
+2026-05-18 16:41:18.191  INFO [rss-worker-2]HINDUNILVR com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: HINDUNILVR
+2026-05-18 16:41:18.198  INFO [rss-worker-2]HINDUNILVR com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: HINDUNILVR
+2026-05-18 16:41:18.773  INFO [rss-worker-1]LT com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: LT
+2026-05-18 16:41:18.777  INFO [rss-worker-1]LT com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: LT
+2026-05-18 16:41:19.209  INFO [rss-worker-2]LODHA com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: LODHA
+2026-05-18 16:41:19.213  INFO [rss-worker-2]LODHA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: LODHA
+2026-05-18 16:41:19.891  INFO [rss-worker-1]ETERNAL com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: ETERNAL
+2026-05-18 16:41:19.896  INFO [rss-worker-1]ETERNAL com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: ETERNAL
+2026-05-18 16:41:20.270  INFO [rss-worker-2]JIOFIN com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: JIOFIN
+2026-05-18 16:41:20.276  INFO [rss-worker-2]JIOFIN com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: JIOFIN
+2026-05-18 16:41:20.785  INFO [rss-worker-1]GRASIM com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: GRASIM
+2026-05-18 16:41:20.788  INFO [rss-worker-1]GRASIM com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: GRASIM
+2026-05-18 16:41:21.529  INFO [rss-worker-2]MAXHEALTH com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: MAXHEALTH
+2026-05-18 16:41:21.537  INFO [rss-worker-2]MAXHEALTH com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: MAXHEALTH
+2026-05-18 16:41:21.686  INFO [rss-worker-1]SBIN com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: SBIN
+2026-05-18 16:41:21.691  INFO [rss-worker-1]SBIN com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: SBIN
+2026-05-18 16:41:22.396  INFO [rss-worker-2]MARUTI com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: MARUTI
+2026-05-18 16:41:22.400  INFO [rss-worker-2]MARUTI com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: MARUTI
+2026-05-18 16:41:22.960  INFO [rss-worker-1]WIPRO com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: WIPRO
+2026-05-18 16:41:22.964  INFO [rss-worker-1]WIPRO com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: WIPRO
+2026-05-18 16:41:23.292  INFO [rss-worker-2]TMPV com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: TMPV
+2026-05-18 16:41:23.295  INFO [rss-worker-2]TMPV com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: TMPV
+2026-05-18 16:41:23.694  INFO [rss-worker-1]NESTLEIND com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NESTLEIND
+2026-05-18 16:41:23.699  INFO [rss-worker-1]NESTLEIND com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: NESTLEIND
+2026-05-18 16:41:24.273  INFO [rss-worker-2]SUNPHARMA com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: SUNPHARMA
+2026-05-18 16:41:24.278  INFO [rss-worker-2]SUNPHARMA com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: SUNPHARMA
+2026-05-18 16:41:24.901  INFO [rss-worker-1]ADANIPORTS com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: ADANIPORTS
+2026-05-18 16:41:24.905  INFO [rss-worker-1]ADANIPORTS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ADANIPORTS
+2026-05-18 16:41:26.861  INFO [rss-worker-2]INFY com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: INFY
+2026-05-18 16:41:26.884  INFO [rss-worker-1]NTPC com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NTPC
+2026-05-18 16:41:26.897  INFO [rss-worker-2]INFY com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: INFY
+2026-05-18 16:41:26.908  INFO [rss-worker-1]NTPC com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: NTPC
+2026-05-18 16:41:27.557  INFO [rss-worker-1]TATAPOWER com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: TATAPOWER
+2026-05-18 16:41:27.561  INFO [rss-worker-1]TATAPOWER com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: TATAPOWER
+2026-05-18 16:41:27.600  INFO [rss-worker-2]BAJAJFINSV com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: BAJAJFINSV
+2026-05-18 16:41:27.604  INFO [rss-worker-2]BAJAJFINSV com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: BAJAJFINSV
+2026-05-18 16:41:28.123  INFO [rss-worker-1]POWERGRID com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: POWERGRID
+2026-05-18 16:41:28.126  INFO [rss-worker-1]POWERGRID com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: POWERGRID
+2026-05-18 16:41:28.141  INFO [rss-worker-2]HCLTECH com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: HCLTECH
+2026-05-18 16:41:28.144  INFO [rss-worker-2]HCLTECH com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: HCLTECH
+2026-05-18 16:41:28.781  INFO [rss-worker-1]TITAN com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: TITAN
+2026-05-18 16:41:28.787  INFO [rss-worker-1]TITAN com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: TITAN
+2026-05-18 16:41:28.899  INFO [rss-worker-2]INDIGO com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: INDIGO
+2026-05-18 16:41:28.907  INFO [rss-worker-2]INDIGO com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: INDIGO
+2026-05-18 16:41:29.296  INFO [rss-worker-1]BAJAJ-AUTO com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: BAJAJ-AUTO
+2026-05-18 16:41:29.302  INFO [rss-worker-1]BAJAJ-AUTO com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: BAJAJ-AUTO
+2026-05-18 16:41:29.823  INFO [rss-worker-2]ADANIGREEN com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: ADANIGREEN
+2026-05-18 16:41:29.832  INFO [rss-worker-2]ADANIGREEN com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: ADANIGREEN
+2026-05-18 16:41:30.458  INFO [rss-worker-1]SUNTV com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: SUNTV
+2026-05-18 16:41:30.465  INFO [rss-worker-1]SUNTV com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: SUNTV
+2026-05-18 16:41:30.845  INFO [rss-worker-2]NAZARA com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NAZARA
+2026-05-18 16:41:30.849  INFO [rss-worker-2]NAZARA com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: NAZARA
+2026-05-18 16:41:32.203  INFO [rss-worker-1]MEESHO com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: MEESHO
+2026-05-18 16:41:32.207  INFO [rss-worker-2]HYUNDAI com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: HYUNDAI
+2026-05-18 16:41:32.211  INFO [rss-worker-1]MEESHO com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: MEESHO
+2026-05-18 16:41:32.211  INFO [rss-worker-2]HYUNDAI com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: HYUNDAI
+2026-05-18 16:41:32.690  INFO [rss-worker-2]TECHM com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: TECHM
+2026-05-18 16:41:32.693  INFO [rss-worker-2]TECHM com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: TECHM
+2026-05-18 16:41:32.756  INFO [rss-worker-1]BAJFINANCE com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: BAJFINANCE
+2026-05-18 16:41:32.760  INFO [rss-worker-1]BAJFINANCE com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: BAJFINANCE
+2026-05-18 16:41:33.257  INFO [rss-worker-2]ASTEC com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: ASTEC
+2026-05-18 16:41:33.262  INFO [rss-worker-2]ASTEC com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: ASTEC
+2026-05-18 16:41:33.821  INFO [rss-worker-1]SBILIFE com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: SBILIFE
+2026-05-18 16:41:33.829  INFO [rss-worker-1]SBILIFE com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: SBILIFE
+2026-05-18 16:41:34.459  INFO [rss-worker-2]HINDALCO com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: HINDALCO
+2026-05-18 16:41:34.463  INFO [rss-worker-2]HINDALCO com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: HINDALCO
+2026-05-18 16:41:35.044  INFO [rss-worker-1]RELIANCE com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: RELIANCE
+2026-05-18 16:41:35.053  INFO [rss-worker-1]RELIANCE com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: RELIANCE
+2026-05-18 16:41:35.790  INFO [rss-worker-2]DLF com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: DLF
+2026-05-18 16:41:35.795  INFO [rss-worker-2]DLF com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: DLF
+2026-05-18 16:41:35.808  INFO [rss-worker-1]ICICIBANK com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: ICICIBANK
+2026-05-18 16:41:35.811  INFO [rss-worker-1]ICICIBANK com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: ICICIBANK
+2026-05-18 16:41:36.484  INFO [rss-worker-2]DRREDDY com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: DRREDDY
+2026-05-18 16:41:36.489  INFO [rss-worker-2]DRREDDY com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: DRREDDY
+2026-05-18 16:41:37.001  INFO [rss-worker-1]TCS com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: TCS
+2026-05-18 16:41:37.008  INFO [rss-worker-1]TCS com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: TCS
+2026-05-18 16:41:37.508  INFO [rss-worker-2]TRENT com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: TRENT
+2026-05-18 16:41:37.528  INFO [rss-worker-2]TRENT com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: TRENT
+2026-05-18 16:41:37.975  INFO [rss-worker-1]HDFCBANK com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: HDFCBANK
+2026-05-18 16:41:37.980  INFO [rss-worker-1]HDFCBANK com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: HDFCBANK
+2026-05-18 16:41:38.419  INFO [rss-worker-2]CIPLA com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: CIPLA
+2026-05-18 16:41:38.424  INFO [rss-worker-2]CIPLA com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: CIPLA
+2026-05-18 16:41:38.767  INFO [rss-worker-1]BANKBARODA com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: BANKBARODA
+2026-05-18 16:41:38.772  INFO [rss-worker-1]BANKBARODA com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: BANKBARODA
+2026-05-18 16:41:39.610  INFO [rss-worker-2]AXISBANK com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: AXISBANK
+2026-05-18 16:41:39.616  INFO [rss-worker-2]AXISBANK com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: AXISBANK
+2026-05-18 16:41:40.096  INFO [rss-worker-1]COALINDIA com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: COALINDIA
+2026-05-18 16:41:40.102  INFO [rss-worker-1]COALINDIA com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: COALINDIA
+2026-05-18 16:41:40.440  INFO [rss-worker-2]JSWSTEEL com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: JSWSTEEL
+2026-05-18 16:41:40.446  INFO [rss-worker-2]JSWSTEEL com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: JSWSTEEL
+2026-05-18 16:41:40.901  INFO [rss-worker-1]ASIANPAINT com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: ASIANPAINT
+2026-05-18 16:41:40.906  INFO [rss-worker-1]ASIANPAINT com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: ASIANPAINT
+2026-05-18 16:41:41.352  INFO [rss-worker-2]ULTRACEMCO com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: ULTRACEMCO
+2026-05-18 16:41:41.359  INFO [rss-worker-2]ULTRACEMCO com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: ULTRACEMCO
+2026-05-18 16:41:42.149  INFO [rss-worker-1]ONGC com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: ONGC
+2026-05-18 16:41:42.154  INFO [rss-worker-1]ONGC com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: ONGC
+2026-05-18 16:41:42.315  INFO [rss-worker-2]ADANIENT com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: ADANIENT
+2026-05-18 16:41:42.321  INFO [rss-worker-2]ADANIENT com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: ADANIENT
+2026-05-18 16:41:42.974  INFO [rss-worker-1]DBCORP com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: DBCORP
+2026-05-18 16:41:42.979  INFO [rss-worker-1]DBCORP com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: DBCORP
+2026-05-18 16:41:43.940  INFO [rss-worker-2]BEL com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: BEL
+2026-05-18 16:41:43.946  INFO [rss-worker-2]BEL com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: BEL
+2026-05-18 16:41:43.978  INFO [rss-worker-1]KOTAKBANK com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: KOTAKBANK
+2026-05-18 16:41:43.983  INFO [rss-worker-1]KOTAKBANK com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: KOTAKBANK
+2026-05-18 16:41:44.287  INFO [rss-worker-2]WOCKPHARMA com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: WOCKPHARMA
+2026-05-18 16:41:44.291  INFO [rss-worker-2]WOCKPHARMA com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: WOCKPHARMA
+2026-05-18 16:41:45.135  INFO [rss-worker-1]LTM com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: LTM
+2026-05-18 16:41:45.140  INFO [rss-worker-1]LTM com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: LTM
+2026-05-18 16:41:45.381  INFO [rss-worker-2]BHARATCOAL com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: BHARATCOAL
+2026-05-18 16:41:45.386  INFO [rss-worker-2]BHARATCOAL com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: BHARATCOAL
+2026-05-18 16:41:45.871  INFO [rss-worker-1]PFOCUS com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: PFOCUS
+2026-05-18 16:41:45.876  INFO [rss-worker-1]PFOCUS com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: PFOCUS
+2026-05-18 16:41:46.579  INFO [rss-worker-2]TIPSMUSIC com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: TIPSMUSIC
+2026-05-18 16:41:46.582  INFO [rss-worker-2]TIPSMUSIC com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: TIPSMUSIC
+2026-05-18 16:41:47.298  INFO [rss-worker-1]BHEL com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: BHEL
+2026-05-18 16:41:47.303  INFO [rss-worker-1]BHEL com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: BHEL
+2026-05-18 16:41:47.572  INFO [rss-worker-2]M&M com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: M&M
+2026-05-18 16:41:47.576  INFO [rss-worker-2]M&M com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: M&M
+2026-05-18 16:41:48.067  INFO [rss-worker-1]HDFCLIFE com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: HDFCLIFE
+2026-05-18 16:41:48.072  INFO [rss-worker-1]HDFCLIFE com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: HDFCLIFE
+2026-05-18 16:41:48.535  INFO [rss-worker-2]MAHABANK com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: MAHABANK
+2026-05-18 16:41:48.539  INFO [rss-worker-2]MAHABANK com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: MAHABANK
+2026-05-18 16:41:49.097  INFO [rss-worker-1]ITC com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: ITC
+2026-05-18 16:41:49.104  INFO [rss-worker-1]ITC com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: ITC
+2026-05-18 16:41:49.558  INFO [rss-worker-2]APOLLOHOSP com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: APOLLOHOSP
+2026-05-18 16:41:49.566  INFO [rss-worker-2]APOLLOHOSP com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: APOLLOHOSP
+2026-05-18 16:41:49.973  INFO [rss-worker-1]PPLPHARMA com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: PPLPHARMA
+2026-05-18 16:41:49.979  INFO [rss-worker-1]PPLPHARMA com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: PPLPHARMA
+2026-05-18 16:41:50.484  INFO [rss-worker-2]ZYDUSLIFE com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: ZYDUSLIFE
+2026-05-18 16:41:50.487  INFO [rss-worker-2]ZYDUSLIFE com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ZYDUSLIFE
+2026-05-18 16:41:51.018  INFO [rss-worker-1]NIFTY PRIVATE BANK com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY PRIVATE BANK
+2026-05-18 16:41:51.022  INFO [rss-worker-1]NIFTY PRIVATE BANK com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: NIFTY PRIVATE BANK
+2026-05-18 16:41:51.575  INFO [rss-worker-2]NIFTY REALTY com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY REALTY
+2026-05-18 16:41:51.582  INFO [rss-worker-2]NIFTY REALTY com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: NIFTY REALTY
+2026-05-18 16:41:52.042  INFO [rss-worker-1]NIFTY HEALTHCARE INDEX com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY HEALTHCARE INDEX
+2026-05-18 16:41:52.048  INFO [rss-worker-1]NIFTY HEALTHCARE INDEX com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: NIFTY HEALTHCARE INDEX
+2026-05-18 16:41:52.480  INFO [rss-worker-2]NIFTY CONSUMER DURABLES com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY CONSUMER DURABLES
+2026-05-18 16:41:52.483  INFO [rss-worker-2]NIFTY CONSUMER DURABLES com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: NIFTY CONSUMER DURABLES
+2026-05-18 16:41:53.345  INFO [rss-worker-1]NIFTY OIL & GAS com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY OIL & GAS
+2026-05-18 16:41:53.352  INFO [rss-worker-1]NIFTY OIL & GAS com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: NIFTY OIL & GAS
+2026-05-18 16:41:53.604  INFO [rss-worker-2]NIFTY AUTO com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY AUTO
+2026-05-18 16:41:53.610  INFO [rss-worker-2]NIFTY AUTO com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: NIFTY AUTO
+2026-05-18 16:41:54.016  INFO [rss-worker-1]NIFTY FINANCIAL SERVICES 25/50 com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY FINANCIAL SERVICES 25/50
+2026-05-18 16:41:54.041  INFO [rss-worker-1]NIFTY FINANCIAL SERVICES 25/50 com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: NIFTY FINANCIAL SERVICES 25/50
+2026-05-18 16:41:54.668  INFO [rss-worker-2]NIFTY FMCG com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY FMCG
+2026-05-18 16:41:54.674  INFO [rss-worker-2]NIFTY FMCG com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: NIFTY FMCG
+2026-05-18 16:41:55.165  INFO [rss-worker-1]NIFTY IT com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY IT
+2026-05-18 16:41:55.169  INFO [rss-worker-1]NIFTY IT com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: NIFTY IT
+2026-05-18 16:41:55.473  INFO [rss-worker-2]NIFTY MEDIA com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY MEDIA
+2026-05-18 16:41:55.477  INFO [rss-worker-2]NIFTY MEDIA com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: NIFTY MEDIA
+2026-05-18 16:41:56.139  INFO [rss-worker-1]NIFTY METAL com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY METAL
+2026-05-18 16:41:56.162  INFO [rss-worker-1]NIFTY METAL com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: NIFTY METAL
+2026-05-18 16:41:56.597  INFO [rss-worker-2]NIFTY PHARMA com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY PHARMA
+2026-05-18 16:41:56.607  INFO [rss-worker-2]NIFTY PHARMA com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: NIFTY PHARMA
+2026-05-18 16:41:57.207  INFO [rss-worker-1]NIFTY PSU BANK com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY PSU BANK
+2026-05-18 16:41:57.213  INFO [rss-worker-1]NIFTY PSU BANK com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: NIFTY PSU BANK
+2026-05-18 16:41:57.545  INFO [rss-worker-2]NIFTY500 HEALTHCARE com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY500 HEALTHCARE
+2026-05-18 16:41:57.550  INFO [rss-worker-2]NIFTY500 HEALTHCARE com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: NIFTY500 HEALTHCARE
+2026-05-18 16:41:58.107  INFO [rss-worker-1]NIFTY REITS & REALTY com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY REITS & REALTY
+2026-05-18 16:41:58.112  INFO [rss-worker-1]NIFTY REITS & REALTY com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: NIFTY REITS & REALTY
+2026-05-18 16:41:58.671  INFO [rss-worker-2]NIFTY CEMENT com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY CEMENT
+2026-05-18 16:41:58.678  INFO [rss-worker-2]NIFTY CEMENT com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: NIFTY CEMENT
+2026-05-18 16:41:59.185  INFO [rss-worker-1]NIFTY MIDSMALL HEALTHCARE com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY MIDSMALL HEALTHCARE
+2026-05-18 16:41:59.190  INFO [rss-worker-1]NIFTY MIDSMALL HEALTHCARE com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: NIFTY MIDSMALL HEALTHCARE
+2026-05-18 16:41:59.684  INFO [rss-worker-2]NIFTY FINANCIAL SERVICES EX-BANK com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY FINANCIAL SERVICES EX-BANK
+2026-05-18 16:41:59.688  INFO [rss-worker-2]NIFTY FINANCIAL SERVICES EX-BANK com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: NIFTY FINANCIAL SERVICES EX-BANK
+2026-05-18 16:42:00.194  INFO [rss-worker-1]NIFTY MIDSMALL FINANCIAL SERVICES com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY MIDSMALL FINANCIAL SERVICES
+2026-05-18 16:42:00.200  INFO [rss-worker-1]NIFTY MIDSMALL FINANCIAL SERVICES com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: NIFTY MIDSMALL FINANCIAL SERVICES
+2026-05-18 16:42:00.737  INFO [rss-worker-2]NIFTY MIDSMALL IT & TELECOM com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY MIDSMALL IT & TELECOM
+2026-05-18 16:42:00.741  INFO [rss-worker-2]NIFTY MIDSMALL IT & TELECOM com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: NIFTY MIDSMALL IT & TELECOM
+2026-05-18 16:42:01.111  INFO [rss-worker-1]NIFTY CHEMICALS com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: NIFTY CHEMICALS
+2026-05-18 16:42:01.116  INFO [rss-worker-1]NIFTY CHEMICALS com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: NIFTY CHEMICALS
+2026-05-18 16:42:01.783  INFO [rss-worker-2]RBI monetary policy com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: RBI monetary policy
+2026-05-18 16:42:01.788  INFO [rss-worker-2]RBI monetary policy com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: RBI monetary policy
+2026-05-18 16:42:02.194  INFO [rss-worker-1]Budget com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Budget
+2026-05-18 16:42:02.198  INFO [rss-worker-1]Budget com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: Budget
+2026-05-18 16:42:02.788  INFO [rss-worker-2]FII investment com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: FII investment
+2026-05-18 16:42:02.793  INFO [rss-worker-2]FII investment com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: FII investment
+2026-05-18 16:42:03.202  INFO [rss-worker-1]crude oil India com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: crude oil India
+2026-05-18 16:42:03.207  INFO [rss-worker-1]crude oil India com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: crude oil India
+2026-05-18 16:42:03.717  INFO [rss-worker-2]inflation India com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: inflation India
+2026-05-18 16:42:03.725  INFO [rss-worker-2]inflation India com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: inflation India
+2026-05-18 16:42:04.201  INFO [rss-worker-1]Fed rate hike or cut com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Fed rate hike or cut
+2026-05-18 16:42:04.697  INFO [rss-worker-2]FOMC meeting com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: FOMC meeting
+2026-05-18 16:42:04.702  INFO [rss-worker-2]FOMC meeting com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: FOMC meeting
+2026-05-18 16:42:05.218  INFO [rss-worker-1]US inflation (CPI, PPI) com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: US inflation (CPI, PPI)
+2026-05-18 16:42:05.222  INFO [rss-worker-1]US inflation (CPI, PPI) com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: US inflation (CPI, PPI)
+2026-05-18 16:42:05.628  INFO [rss-worker-2]US job data (Nonfarm payrolls) com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: US job data (Nonfarm payrolls)
+2026-05-18 16:42:05.637  INFO [rss-worker-2]US job data (Nonfarm payrolls) com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: US job data (Nonfarm payrolls)
+2026-05-18 16:42:06.148  INFO [rss-worker-1]GDP growth / recession com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: GDP growth / recession
+2026-05-18 16:42:06.157  INFO [rss-worker-1]GDP growth / recession com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: GDP growth / recession
+2026-05-18 16:42:06.686  INFO [rss-worker-2]Interest rates com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Interest rates
+2026-05-18 16:42:06.691  INFO [rss-worker-2]Interest rates com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: Interest rates
+2026-05-18 16:42:07.230  INFO [rss-worker-1]Bond yields (US 10Y yield) com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Bond yields (US 10Y yield)
+2026-05-18 16:42:07.238  INFO [rss-worker-1]Bond yields (US 10Y yield) com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: Bond yields (US 10Y yield)
+2026-05-18 16:42:07.716  INFO [rss-worker-2]Dollar index (DXY) com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Dollar index (DXY)
+2026-05-18 16:42:07.722  INFO [rss-worker-2]Dollar index (DXY) com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: Dollar index (DXY)
+2026-05-18 16:42:08.322  INFO [rss-worker-1]Quantitative tightening (QT) com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Quantitative tightening (QT)
+2026-05-18 16:42:08.328  INFO [rss-worker-1]Quantitative tightening (QT) com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: Quantitative tightening (QT)
+2026-05-18 16:42:08.703  INFO [rss-worker-2]Quantitative easing (QE) com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Quantitative easing (QE)
+2026-05-18 16:42:08.707  INFO [rss-worker-2]Quantitative easing (QE) com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: Quantitative easing (QE)
+2026-05-18 16:42:09.292  INFO [rss-worker-1]RBI policy / repo rate com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: RBI policy / repo rate
+2026-05-18 16:42:09.298  INFO [rss-worker-1]RBI policy / repo rate com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: RBI policy / repo rate
+2026-05-18 16:42:09.769  INFO [rss-worker-2]Inflation (CPI/WPI India) com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Inflation (CPI/WPI India)
+2026-05-18 16:42:09.774  INFO [rss-worker-2]Inflation (CPI/WPI India) com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: Inflation (CPI/WPI India)
+2026-05-18 16:42:10.670  INFO [rss-worker-1]Union Budget com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Union Budget
+2026-05-18 16:42:10.688  INFO [rss-worker-1]Union Budget com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: Union Budget
+2026-05-18 16:42:10.731  INFO [rss-worker-2]Fiscal deficit com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Fiscal deficit
+2026-05-18 16:42:11.418  INFO [rss-worker-1]GST changes com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: GST changes
+2026-05-18 16:42:11.425  INFO [rss-worker-1]GST changes com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: GST changes
+2026-05-18 16:42:11.599  INFO [rss-worker-2]IIP data com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: IIP data
+2026-05-18 16:42:11.605  INFO [rss-worker-2]IIP data com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: IIP data
+2026-05-18 16:42:12.103  INFO [rss-worker-1]Trade deficit com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Trade deficit
+2026-05-18 16:42:12.108  INFO [rss-worker-1]Trade deficit com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: Trade deficit
+2026-05-18 16:42:12.933  INFO [rss-worker-2]Rupee vs Dollar com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Rupee vs Dollar
+2026-05-18 16:42:12.939  INFO [rss-worker-2]Rupee vs Dollar com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: Rupee vs Dollar
+2026-05-18 16:42:13.230  INFO [rss-worker-1]Economic survey com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Economic survey
+2026-05-18 16:42:13.234  INFO [rss-worker-1]Economic survey com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: Economic survey
+2026-05-18 16:42:13.774  INFO [rss-worker-2]War com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: War
+2026-05-18 16:42:13.778  INFO [rss-worker-2]War com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: War
+2026-05-18 16:42:14.327  INFO [rss-worker-1]Trade war com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Trade war
+2026-05-18 16:42:14.332  INFO [rss-worker-1]Trade war com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: Trade war
+2026-05-18 16:42:14.758  INFO [rss-worker-2]Military strike com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Military strike
+2026-05-18 16:42:14.763  INFO [rss-worker-2]Military strike com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: Military strike
+2026-05-18 16:42:15.344  INFO [rss-worker-1]Border tension com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Border tension
+2026-05-18 16:42:15.348  INFO [rss-worker-1]Border tension com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: Border tension
+2026-05-18 16:42:15.704  INFO [rss-worker-2]Sanctions com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Sanctions
+2026-05-18 16:42:15.707  INFO [rss-worker-2]Sanctions com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: Sanctions
+2026-05-18 16:42:16.356  INFO [rss-worker-1]Terrorist attack com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Terrorist attack
+2026-05-18 16:42:16.358  INFO [rss-worker-1]Terrorist attack com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: Terrorist attack
+2026-05-18 16:42:16.744  INFO [rss-worker-2]Political crisis com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Political crisis
+2026-05-18 16:42:16.747  INFO [rss-worker-2]Political crisis com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: Political crisis
+2026-05-18 16:42:17.373  INFO [rss-worker-1]Nifty 50 com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Nifty 50
+2026-05-18 16:42:17.401  INFO [rss-worker-1]Nifty 50 com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: Nifty 50
+2026-05-18 16:42:17.944  INFO [rss-worker-2]Sensex com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Sensex
+2026-05-18 16:42:17.947  INFO [rss-worker-2]Sensex com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: Sensex
+2026-05-18 16:42:18.376  INFO [rss-worker-1]Bank Nifty com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Bank Nifty
+2026-05-18 16:42:18.381  INFO [rss-worker-1]Bank Nifty com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: Bank Nifty
+2026-05-18 16:42:18.910  INFO [rss-worker-2]Budget 2026 com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Budget 2026
+2026-05-18 16:42:18.912  INFO [rss-worker-2]Budget 2026 com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: Budget 2026
+2026-05-18 16:42:19.359  INFO [rss-worker-1]crude oil com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: crude oil
+2026-05-18 16:42:19.365  INFO [rss-worker-1]crude oil com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: crude oil
+2026-05-18 16:42:19.928  INFO [rss-worker-2]gold price com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: gold price
+2026-05-18 16:42:19.942  INFO [rss-worker-2]gold price com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: gold price
+2026-05-18 16:42:20.365  INFO [rss-worker-1]silver price com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: silver price
+2026-05-18 16:42:20.369  INFO [rss-worker-1]silver price com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: silver price
+2026-05-18 16:42:20.875  INFO [rss-worker-2]US economy com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: US economy
+2026-05-18 16:42:21.335  INFO [rss-worker-1]Europe economy com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Europe economy
+2026-05-18 16:42:21.349  INFO [rss-worker-1]Europe economy com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: Europe economy
+2026-05-18 16:42:21.840  INFO [rss-worker-2]Asia markets com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: Asia markets
+2026-05-18 16:42:21.858  INFO [rss-worker-2]Asia markets com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: Asia markets
+2026-05-18 16:42:22.402  INFO [rss-worker-1]China economy com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: China economy
+2026-05-18 16:42:22.404  INFO [rss-worker-1]China economy com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: China economy
+2026-05-18 16:42:22.819  INFO [rss-worker-2]war commodity prices com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: war commodity prices
+2026-05-18 16:42:22.823  INFO [rss-worker-2]war commodity prices com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: war commodity prices
+2026-05-18 16:42:23.404  INFO [rss-worker-1]OPEC oil com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: OPEC oil
+2026-05-18 16:42:23.410  INFO [rss-worker-1]OPEC oil com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: OPEC oil
+2026-05-18 16:42:23.910  INFO [rss-worker-2]US Federal Reserve com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: US Federal Reserve
+2026-05-18 16:42:23.914  INFO [rss-worker-2]US Federal Reserve com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: US Federal Reserve
+2026-05-18 16:42:23.944  INFO [startup-thread-1] com.companynews.newsscheduler.scheduler.GoogleRssScheduler : Google RSS fetch cycle completed — 140 keywords processed
+2026-05-18 16:45:00.065  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch triggered — current seqId window size: 20
+2026-05-18 16:45:00.231  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 16:45:00.232  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : 2 new out of 20 total announcements — seqId window size now: 20
+2026-05-18 16:45:00.260  INFO [nse-scheduler-thread-1]GSFC com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: GSFC
+2026-05-18 16:45:00.263  INFO [nse-scheduler-thread-1]ASTRAL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ASTRAL
+2026-05-18 16:45:00.265  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch complete — 2 unique companies processed
+2026-05-18 16:46:49.788  INFO [http-nio-8084-exec-4] org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-05-18 16:46:49.905  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.WatchlistEventController : Watchlist event received — new symbol: INE075A01022 — triggering immediate on-demand fetch
+2026-05-18 16:46:49.905  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.WatchlistEventController : Watchlist event received — new symbol: INE009A01021 — triggering immediate on-demand fetch
+2026-05-18 16:46:49.905  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.WatchlistEventController : Watchlist event received — new symbol: INE040A01034 — triggering immediate on-demand fetch
+2026-05-18 16:46:49.906  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.WatchlistEventController : Watchlist event received — new symbol: INE090A01021 — triggering immediate on-demand fetch
+2026-05-18 16:46:49.905  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.WatchlistEventController : Watchlist event received — new symbol: INE467B01029 — triggering immediate on-demand fetch
+2026-05-18 16:46:49.905  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.WatchlistEventController : Watchlist event received — new symbol: INE002A01018 — triggering immediate on-demand fetch
+2026-05-18 16:46:50.322  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: INE090A01021
+2026-05-18 16:46:50.338  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 3 items for keyword: INE002A01018
+2026-05-18 16:46:50.343  INFO [http-nio-8084-exec-4]INE090A01021 com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: INE090A01021
+2026-05-18 16:46:50.344  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.WatchlistEventController : Google RSS: 5 items saved for new symbol: INE090A01021
+2026-05-18 16:46:50.347  INFO [http-nio-8084-exec-2]INE002A01018 com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: INE002A01018
+2026-05-18 16:46:50.348  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.WatchlistEventController : Google RSS: 3 items saved for new symbol: INE002A01018
+2026-05-18 16:46:50.479  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 16:46:50.480  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.WatchlistEventController : On-demand fetch complete for symbol: INE090A01021 — total items saved: 5
+2026-05-18 16:46:50.487  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 16:46:50.488  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.WatchlistEventController : On-demand fetch complete for symbol: INE002A01018 — total items saved: 3
+2026-05-18 16:46:50.507  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.WatchlistEventController : Watchlist event received — new symbol: INE062A01020 — triggering immediate on-demand fetch
+2026-05-18 16:46:50.507  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.WatchlistEventController : Watchlist event received — new symbol: INE238A01034 — triggering immediate on-demand fetch
+2026-05-18 16:46:50.620  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 2 items for keyword: INE009A01021
+2026-05-18 16:46:50.624  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 1 items for keyword: INE467B01029
+2026-05-18 16:46:50.624  INFO [http-nio-8084-exec-1]INE009A01021 com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: INE009A01021
+2026-05-18 16:46:50.625  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.WatchlistEventController : Google RSS: 2 items saved for new symbol: INE009A01021
+2026-05-18 16:46:50.627  INFO [http-nio-8084-exec-3]INE467B01029 com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: INE467B01029
+2026-05-18 16:46:50.628  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.WatchlistEventController : Google RSS: 1 items saved for new symbol: INE467B01029
+2026-05-18 16:46:50.654  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 3 items for keyword: INE075A01022
+2026-05-18 16:46:50.669  INFO [http-nio-8084-exec-5]INE075A01022 com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: INE075A01022
+2026-05-18 16:46:50.669  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.WatchlistEventController : Google RSS: 2 items saved for new symbol: INE075A01022
+2026-05-18 16:46:50.682  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: INE040A01034
+2026-05-18 16:46:50.687  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 16:46:50.687  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.WatchlistEventController : On-demand fetch complete for symbol: INE009A01021 — total items saved: 2
+2026-05-18 16:46:50.689  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 16:46:50.689  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.WatchlistEventController : On-demand fetch complete for symbol: INE467B01029 — total items saved: 1
+2026-05-18 16:46:50.696  INFO [http-nio-8084-exec-6]INE040A01034 com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: INE040A01034
+2026-05-18 16:46:50.696  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.WatchlistEventController : Google RSS: 4 items saved for new symbol: INE040A01034
+2026-05-18 16:46:50.775  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 16:46:50.776  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.WatchlistEventController : On-demand fetch complete for symbol: INE075A01022 — total items saved: 2
+2026-05-18 16:46:50.786  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 16:46:50.786  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.WatchlistEventController : On-demand fetch complete for symbol: INE040A01034 — total items saved: 4
+2026-05-18 16:46:53.111  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: INE238A01034
+2026-05-18 16:46:53.119  INFO [http-nio-8084-exec-8]INE238A01034 com.companynews.newsscheduler.service.NewsWorker : Saved 5 new item(s) for keyword: INE238A01034
+2026-05-18 16:46:53.120  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.WatchlistEventController : Google RSS: 5 items saved for new symbol: INE238A01034
+2026-05-18 16:46:53.146  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.service.RssFetcher : Google RSS parsed 5 items for keyword: INE062A01020
+2026-05-18 16:46:53.152  INFO [http-nio-8084-exec-7]INE062A01020 com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: INE062A01020
+2026-05-18 16:46:53.152  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.WatchlistEventController : Google RSS: 4 items saved for new symbol: INE062A01020
+2026-05-18 16:46:53.253  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 16:46:53.254  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.WatchlistEventController : On-demand fetch complete for symbol: INE238A01034 — total items saved: 5
+2026-05-18 16:46:53.283  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 16:46:53.283  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.WatchlistEventController : On-demand fetch complete for symbol: INE062A01020 — total items saved: 4
+2026-05-18 16:47:30.863  INFO [http-nio-8084-exec-10] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Nifty 50
+2026-05-18 16:47:30.885  INFO [http-nio-8084-exec-10] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Nifty 50
+2026-05-18 16:47:32.300  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=FOMC meeting
+2026-05-18 16:47:32.300  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=US inflation (CPI, PPI)
+2026-05-18 16:47:32.302  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=US economy
+2026-05-18 16:47:32.302  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=US job data (Nonfarm payrolls)
+2026-05-18 16:47:32.304  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Fed rate hike or cut
+2026-05-18 16:47:32.307  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=FOMC meeting
+2026-05-18 16:47:32.307  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=US inflation (CPI, PPI)
+2026-05-18 16:47:32.323  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=US Federal Reserve
+2026-05-18 16:47:32.324  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Dollar index (DXY)
+2026-05-18 16:47:32.324  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=US job data (Nonfarm payrolls)
+2026-05-18 16:47:32.324  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=US economy
+2026-05-18 16:47:32.325  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=US Federal Reserve
+2026-05-18 16:47:32.326  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Dollar index (DXY)
+2026-05-18 16:47:32.333  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Fed rate hike or cut
+2026-05-18 16:47:33.797  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Europe economy
+2026-05-18 16:47:33.801  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Europe economy
+2026-05-18 16:47:34.532  INFO [http-nio-8084-exec-9] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=China economy
+2026-05-18 16:47:34.534  INFO [http-nio-8084-exec-10] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Singapore economy
+2026-05-18 16:47:34.536  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Japan economy
+2026-05-18 16:47:34.536  INFO [http-nio-8084-exec-10] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Singapore economy
+2026-05-18 16:47:34.536  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Asia markets
+2026-05-18 16:47:34.536  INFO [http-nio-8084-exec-9] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=China economy
+2026-05-18 16:47:34.539  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Asia markets
+2026-05-18 16:47:34.539  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Japan economy
+2026-05-18 16:47:35.164  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=RBI monetary policy
+2026-05-18 16:47:35.165  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Budget
+2026-05-18 16:47:35.165  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Union Budget
+2026-05-18 16:47:35.165  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Fiscal deficit
+2026-05-18 16:47:35.165  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=RBI policy / repo rate
+2026-05-18 16:47:35.168  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Budget
+2026-05-18 16:47:35.169  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=RBI policy / repo rate
+2026-05-18 16:47:35.169  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=RBI monetary policy
+2026-05-18 16:47:35.170  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Union Budget
+2026-05-18 16:47:35.171  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Fiscal deficit
+2026-05-18 16:47:35.172  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Budget 2026
+2026-05-18 16:47:35.180  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Budget 2026
+2026-05-18 16:47:35.188  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=IIP data
+2026-05-18 16:47:35.189  INFO [http-nio-8084-exec-10] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=GST changes
+2026-05-18 16:47:35.188  INFO [http-nio-8084-exec-9] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=inflation India
+2026-05-18 16:47:35.191  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Inflation (CPI/WPI India)
+2026-05-18 16:47:35.193  INFO [http-nio-8084-exec-9] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=inflation India
+2026-05-18 16:47:35.193  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=IIP data
+2026-05-18 16:47:35.193  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Trade deficit
+2026-05-18 16:47:35.195  INFO [http-nio-8084-exec-10] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=GST changes
+2026-05-18 16:47:35.195  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Economic survey
+2026-05-18 16:47:35.195  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Inflation (CPI/WPI India)
+2026-05-18 16:47:35.198  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Trade deficit
+2026-05-18 16:47:35.204  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=FII investment
+2026-05-18 16:47:35.205  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Rupee vs Dollar
+2026-05-18 16:47:35.205  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Nifty 50
+2026-05-18 16:47:35.205  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Sensex
+2026-05-18 16:47:35.206  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Economic survey
+2026-05-18 16:47:35.207  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=FII investment
+2026-05-18 16:47:35.207  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Rupee vs Dollar
+2026-05-18 16:47:35.208  INFO [http-nio-8084-exec-9] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Bank Nifty
+2026-05-18 16:47:35.208  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Sensex
+2026-05-18 16:47:35.209  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Nifty 50
+2026-05-18 16:47:35.216  INFO [http-nio-8084-exec-9] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Bank Nifty
+2026-05-18 16:47:35.217  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=India election results
+2026-05-18 16:47:35.218  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=crude oil India
+2026-05-18 16:47:35.219  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=India election results
+2026-05-18 16:47:35.221  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=crude oil India
+2026-05-18 16:47:35.665  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Interest rates
+2026-05-18 16:47:35.665  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Bond yields (US 10Y yield)
+2026-05-18 16:47:35.665  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Quantitative easing (QE)
+2026-05-18 16:47:35.665  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Quantitative tightening (QT)
+2026-05-18 16:47:35.666  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=GDP growth / recession
+2026-05-18 16:47:35.667  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Interest rates
+2026-05-18 16:47:35.667  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Quantitative easing (QE)
+2026-05-18 16:47:35.667  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Bond yields (US 10Y yield)
+2026-05-18 16:47:35.668  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=crude oil
+2026-05-18 16:47:35.667  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Quantitative tightening (QT)
+2026-05-18 16:47:35.668  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=GDP growth / recession
+2026-05-18 16:47:35.679  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=gold price
+2026-05-18 16:47:35.679  INFO [http-nio-8084-exec-10] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=war commodity prices
+2026-05-18 16:47:35.679  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=War
+2026-05-18 16:47:35.679  INFO [http-nio-8084-exec-9] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=silver price
+2026-05-18 16:47:35.679  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=OPEC oil
+2026-05-18 16:47:35.680  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=crude oil
+2026-05-18 16:47:35.681  INFO [http-nio-8084-exec-10] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=war commodity prices
+2026-05-18 16:47:35.682  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=gold price
+2026-05-18 16:47:35.682  INFO [http-nio-8084-exec-9] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=silver price
+2026-05-18 16:47:35.683  INFO [http-nio-8084-exec-3] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=War
+2026-05-18 16:47:35.692  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Trade war
+2026-05-18 16:47:35.693  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Military strike
+2026-05-18 16:47:35.693  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Terrorist attack
+2026-05-18 16:47:35.693  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Border tension
+2026-05-18 16:47:35.693  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Sanctions
+2026-05-18 16:47:35.695  INFO [http-nio-8084-exec-6] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Terrorist attack
+2026-05-18 16:47:35.695  INFO [http-nio-8084-exec-2] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Border tension
+2026-05-18 16:47:35.695  INFO [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Sanctions
+2026-05-18 16:47:35.695  INFO [http-nio-8084-exec-1] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Trade war
+2026-05-18 16:47:35.695  INFO [http-nio-8084-exec-8] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Military strike
+2026-05-18 16:47:35.704  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=Political crisis
+2026-05-18 16:47:35.706  INFO [http-nio-8084-exec-7] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=Political crisis
+2026-05-18 16:47:35.706  INFO [http-nio-8084-exec-4] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=OPEC oil
+2026-05-18 16:47:57.536  INFO [http-nio-8084-exec-10] com.companynews.newsscheduler.controller.NewsController : GET /api/news requested for key=TATAPOWER
+2026-05-18 16:47:57.555  INFO [http-nio-8084-exec-10] com.companynews.newsscheduler.controller.NewsController : Cache hit — returning DB data for key=TATAPOWER
+2026-05-18 16:55:26.644 ERROR [http-nio-8084-exec-5] com.companynews.newsscheduler.controller.GlobalExceptionHandler : Unexpected error: No static resource .
+org.springframework.web.servlet.resource.NoResourceFoundException: No static resource .
+	at org.springframework.web.servlet.resource.ResourceHttpRequestHandler.handleRequest(ResourceHttpRequestHandler.java:585) ~[spring-webmvc-6.1.1.jar!/:6.1.1]
+	at org.springframework.web.servlet.mvc.HttpRequestHandlerAdapter.handle(HttpRequestHandlerAdapter.java:52) ~[spring-webmvc-6.1.1.jar!/:6.1.1]
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1089) ~[spring-webmvc-6.1.1.jar!/:6.1.1]
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:979) ~[spring-webmvc-6.1.1.jar!/:6.1.1]
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014) ~[spring-webmvc-6.1.1.jar!/:6.1.1]
+	at org.springframework.web.servlet.FrameworkServlet.doGet(FrameworkServlet.java:903) ~[spring-webmvc-6.1.1.jar!/:6.1.1]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:564) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885) ~[spring-webmvc-6.1.1.jar!/:6.1.1]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:205) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:51) ~[tomcat-embed-websocket-10.1.16.jar!/:?]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-6.1.1.jar!/:6.1.1]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.1.jar!/:6.1.1]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-6.1.1.jar!/:6.1.1]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.1.jar!/:6.1.1]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:109) ~[spring-web-6.1.1.jar!/:6.1.1]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.1.jar!/:6.1.1]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201) ~[spring-web-6.1.1.jar!/:6.1.1]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.1.jar!/:6.1.1]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:482) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:340) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:391) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:896) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1744) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1191) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:61) ~[tomcat-embed-core-10.1.16.jar!/:?]
+	at java.base/java.lang.Thread.run(Thread.java:1570) [?:?]
+2026-05-18 17:06:34.465  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=10m30s525ms).
+2026-05-18 17:30:47.829  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=24m13s366ms).
+2026-05-18 17:33:43.867  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch triggered — current seqId window size: 20
+2026-05-18 17:33:44.372  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 17:33:44.374  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : 20 new out of 20 total announcements — seqId window size now: 20
+2026-05-18 17:33:44.448  INFO [nse-scheduler-thread-1]MWL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: MWL
+2026-05-18 17:33:44.483  INFO [nse-scheduler-thread-1]COSMOFIRST com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: COSMOFIRST
+2026-05-18 17:33:44.489  INFO [nse-scheduler-thread-1]GNFC com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: GNFC
+2026-05-18 17:33:44.493  INFO [nse-scheduler-thread-1]BLAL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: BLAL
+2026-05-18 17:33:44.502  INFO [nse-scheduler-thread-1]ICRA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ICRA
+2026-05-18 17:33:44.504  INFO [nse-scheduler-thread-1]CONCORDBIO com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: CONCORDBIO
+2026-05-18 17:33:44.506  INFO [nse-scheduler-thread-1]RAMAPHO com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: RAMAPHO
+2026-05-18 17:33:44.509  INFO [nse-scheduler-thread-1]MGL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: MGL
+2026-05-18 17:33:44.513  INFO [nse-scheduler-thread-1]VSTTILLERS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: VSTTILLERS
+2026-05-18 17:33:44.529  INFO [nse-scheduler-thread-1]KOKUYOCMLN com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: KOKUYOCMLN
+2026-05-18 17:33:44.531  INFO [nse-scheduler-thread-1]AMBER com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: AMBER
+2026-05-18 17:33:44.534  INFO [nse-scheduler-thread-1]DRCSYSTEMS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: DRCSYSTEMS
+2026-05-18 17:33:44.538  INFO [nse-scheduler-thread-1]ASALCBR com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ASALCBR
+2026-05-18 17:33:44.542  INFO [nse-scheduler-thread-1]RBZJEWEL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: RBZJEWEL
+2026-05-18 17:33:44.552  INFO [nse-scheduler-thread-1]SUNPHARMA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SUNPHARMA
+2026-05-18 17:33:44.559  INFO [nse-scheduler-thread-1]DPSCLTD com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: DPSCLTD
+2026-05-18 17:33:44.561  INFO [nse-scheduler-thread-1]RISHABH com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: RISHABH
+2026-05-18 17:33:44.563  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch complete — 19 unique companies processed
+2026-05-18 17:39:09.641  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1m21s761ms).
+2026-05-18 18:00:08.074  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m28s403ms).
+2026-05-18 18:00:50.135  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch triggered — current seqId window size: 20
+2026-05-18 18:00:50.315  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 18:00:50.316  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : 20 new out of 20 total announcements — seqId window size now: 20
+2026-05-18 18:00:50.354  INFO [nse-scheduler-thread-1]TREL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: TREL
+2026-05-18 18:00:50.380  INFO [nse-scheduler-thread-1]HERITGFOOD com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: HERITGFOOD
+2026-05-18 18:00:50.386  INFO [nse-scheduler-thread-1]SUVEN com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SUVEN
+2026-05-18 18:00:50.392  INFO [nse-scheduler-thread-1]DEEDEV com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: DEEDEV
+2026-05-18 18:00:50.396  INFO [nse-scheduler-thread-1]GREENPANEL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: GREENPANEL
+2026-05-18 18:00:50.404  INFO [nse-scheduler-thread-1]STLNETWORK com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: STLNETWORK
+2026-05-18 18:00:50.408  INFO [nse-scheduler-thread-1]VISAKAIND com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: VISAKAIND
+2026-05-18 18:00:50.419  INFO [nse-scheduler-thread-1]JAGSNPHARM com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: JAGSNPHARM
+2026-05-18 18:00:50.430  INFO [nse-scheduler-thread-1]SANSTAR com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SANSTAR
+2026-05-18 18:00:50.432  INFO [nse-scheduler-thread-1]DEEPAKNTR com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: DEEPAKNTR
+2026-05-18 18:00:50.439  INFO [nse-scheduler-thread-1]IDEA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: IDEA
+2026-05-18 18:00:50.442  INFO [nse-scheduler-thread-1]JETFREIGHT com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: JETFREIGHT
+2026-05-18 18:00:50.447  INFO [nse-scheduler-thread-1]RAYMOND com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: RAYMOND
+2026-05-18 18:00:50.450  INFO [nse-scheduler-thread-1]PICCADIL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: PICCADIL
+2026-05-18 18:00:50.460  INFO [nse-scheduler-thread-1]INTERARCH com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: INTERARCH
+2026-05-18 18:00:50.466  INFO [nse-scheduler-thread-1]NAVNETEDUL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: NAVNETEDUL
+2026-05-18 18:00:50.468  INFO [nse-scheduler-thread-1]SYRMA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SYRMA
+2026-05-18 18:00:50.482  INFO [nse-scheduler-thread-1]DYCL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: DYCL
+2026-05-18 18:00:50.490  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch complete — 19 unique companies processed
+2026-05-18 18:15:57.978  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=7m49s811ms).
+2026-05-18 18:18:06.612  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=2m8s633ms).
+2026-05-18 18:22:23.951  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=3m47s327ms).
+2026-05-18 18:24:46.606  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1m52s639ms).
+2026-05-18 18:25:56.701  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1m10s98ms).
+2026-05-18 18:29:18.446  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch triggered — current seqId window size: 20
+2026-05-18 18:29:18.666  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 18:29:18.668  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : 20 new out of 20 total announcements — seqId window size now: 20
+2026-05-18 18:29:18.720  INFO [nse-scheduler-thread-1]TEJASNET com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: TEJASNET
+2026-05-18 18:29:18.733  INFO [nse-scheduler-thread-1]IDBI com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: IDBI
+2026-05-18 18:29:18.745  INFO [nse-scheduler-thread-1]VIKASLIFE com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: VIKASLIFE
+2026-05-18 18:29:18.754  INFO [nse-scheduler-thread-1]TATACONSUM com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: TATACONSUM
+2026-05-18 18:29:18.760  INFO [nse-scheduler-thread-1]UNOMINDA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: UNOMINDA
+2026-05-18 18:29:18.771  INFO [nse-scheduler-thread-1]ARVSMART com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ARVSMART
+2026-05-18 18:29:18.780  INFO [nse-scheduler-thread-1]GNFC com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: GNFC
+2026-05-18 18:29:18.785  INFO [nse-scheduler-thread-1]HLEGLAS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: HLEGLAS
+2026-05-18 18:29:18.789  INFO [nse-scheduler-thread-1]NELCAST com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: NELCAST
+2026-05-18 18:29:18.793  INFO [nse-scheduler-thread-1]CMICABLES com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: CMICABLES
+2026-05-18 18:29:18.796  INFO [nse-scheduler-thread-1]CHOLAFIN com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: CHOLAFIN
+2026-05-18 18:29:18.799  INFO [nse-scheduler-thread-1]GPTHEALTH com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: GPTHEALTH
+2026-05-18 18:29:18.806  INFO [nse-scheduler-thread-1]AXISBANK com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: AXISBANK
+2026-05-18 18:29:18.813  INFO [nse-scheduler-thread-1]ATLANTAA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ATLANTAA
+2026-05-18 18:29:18.815  INFO [nse-scheduler-thread-1]VIKRAN com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: VIKRAN
+2026-05-18 18:29:18.819  INFO [nse-scheduler-thread-1]DOMS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: DOMS
+2026-05-18 18:29:18.831  INFO [nse-scheduler-thread-1]MONTECARLO com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: MONTECARLO
+2026-05-18 18:29:18.834  INFO [nse-scheduler-thread-1]SBCL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SBCL
+2026-05-18 18:29:18.835  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch complete — 18 unique companies processed
+2026-05-18 18:30:00.009  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch triggered — current seqId window size: 20
+2026-05-18 18:30:00.165  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 18:30:00.166  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : 3 new out of 20 total announcements — seqId window size now: 20
+2026-05-18 18:30:00.189  INFO [nse-scheduler-thread-1]CERA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: CERA
+2026-05-18 18:30:00.197  INFO [nse-scheduler-thread-1]SEDEMAC com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SEDEMAC
+2026-05-18 18:30:00.199  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch complete — 3 unique companies processed
+2026-05-18 18:44:59.985  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch triggered — current seqId window size: 20
+2026-05-18 18:45:00.142  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 18:45:00.143  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : 20 new out of 20 total announcements — seqId window size now: 20
+2026-05-18 18:45:00.177  INFO [nse-scheduler-thread-1]AFSL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: AFSL
+2026-05-18 18:45:00.182  INFO [nse-scheduler-thread-1]POLYCAB com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: POLYCAB
+2026-05-18 18:45:00.190  INFO [nse-scheduler-thread-1]NELCAST com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: NELCAST
+2026-05-18 18:45:00.196  INFO [nse-scheduler-thread-1]HLEGLAS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: HLEGLAS
+2026-05-18 18:45:00.201  INFO [nse-scheduler-thread-1]CEREBRAINT com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: CEREBRAINT
+2026-05-18 18:45:00.206  INFO [nse-scheduler-thread-1]RITES com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: RITES
+2026-05-18 18:45:00.219  INFO [nse-scheduler-thread-1]TRITURBINE com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: TRITURBINE
+2026-05-18 18:45:00.223  INFO [nse-scheduler-thread-1]DOMS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: DOMS
+2026-05-18 18:45:00.228  INFO [nse-scheduler-thread-1]ZYDUSWELL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ZYDUSWELL
+2026-05-18 18:45:00.231  INFO [nse-scheduler-thread-1]IGPL com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: IGPL
+2026-05-18 18:45:00.234  INFO [nse-scheduler-thread-1]APOLLO com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: APOLLO
+2026-05-18 18:45:00.236  INFO [nse-scheduler-thread-1]CELEBRITY com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: CELEBRITY
+2026-05-18 18:45:00.237  INFO [nse-scheduler-thread-1]MASTEK com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: MASTEK
+2026-05-18 18:45:00.241  INFO [nse-scheduler-thread-1]APARINDS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: APARINDS
+2026-05-18 18:45:00.242  INFO [nse-scheduler-thread-1]SBCL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SBCL
+2026-05-18 18:45:00.243  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch complete — 19 unique companies processed
+2026-05-18 18:59:59.981  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch triggered — current seqId window size: 20
+2026-05-18 19:00:00.164  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 19:00:00.164  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : 20 new out of 20 total announcements — seqId window size now: 20
+2026-05-18 19:00:00.180  INFO [nse-scheduler-thread-1]SOUTHBANK com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SOUTHBANK
+2026-05-18 19:00:00.193  INFO [nse-scheduler-thread-1]ADSL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ADSL
+2026-05-18 19:00:00.198  INFO [nse-scheduler-thread-1]EPIGRAL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: EPIGRAL
+2026-05-18 19:00:00.202  INFO [nse-scheduler-thread-1]HLEGLAS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: HLEGLAS
+2026-05-18 19:00:00.210  INFO [nse-scheduler-thread-1]SEAMECLTD com.companynews.newsscheduler.service.NewsWorker : Saved 3 new item(s) for keyword: SEAMECLTD
+2026-05-18 19:00:00.213  INFO [nse-scheduler-thread-1]TGBHOTELS com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: TGBHOTELS
+2026-05-18 19:00:00.215  INFO [nse-scheduler-thread-1]IMAGICAA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: IMAGICAA
+2026-05-18 19:00:00.217  INFO [nse-scheduler-thread-1]TRITURBINE com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: TRITURBINE
+2026-05-18 19:00:00.223  INFO [nse-scheduler-thread-1]RAMAPHO com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: RAMAPHO
+2026-05-18 19:00:00.226  INFO [nse-scheduler-thread-1]DOMS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: DOMS
+2026-05-18 19:00:00.236  INFO [nse-scheduler-thread-1]UNIPARTS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: UNIPARTS
+2026-05-18 19:00:00.247  INFO [nse-scheduler-thread-1]STAR com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: STAR
+2026-05-18 19:00:00.250  INFO [nse-scheduler-thread-1]GCSL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: GCSL
+2026-05-18 19:00:00.255  INFO [nse-scheduler-thread-1]SBCL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SBCL
+2026-05-18 19:00:00.257  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch complete — 16 unique companies processed
+2026-05-18 19:14:10.035  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=8m43s49ms).
+2026-05-18 19:19:36.533  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=5m26s496ms).
+2026-05-18 19:41:53.929  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=22m17s395ms).
+2026-05-18 19:55:08.671  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=13m14s741ms).
+2026-05-18 20:09:36.098  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=14m27s430ms).
+2026-05-18 20:23:52.597  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=14m16s499ms).
+2026-05-18 20:30:25.507  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch triggered — current seqId window size: 20
+2026-05-18 20:30:26.035  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 20:30:26.036  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : 20 new out of 20 total announcements — seqId window size now: 20
+2026-05-18 20:30:26.075  INFO [nse-scheduler-thread-1]JUBLPHARMA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: JUBLPHARMA
+2026-05-18 20:30:26.084  INFO [nse-scheduler-thread-1]BLSE com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: BLSE
+2026-05-18 20:30:26.088  INFO [nse-scheduler-thread-1]JLHL com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: JLHL
+2026-05-18 20:30:26.094  INFO [nse-scheduler-thread-1]JKPAPER com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: JKPAPER
+2026-05-18 20:30:26.108  INFO [nse-scheduler-thread-1]EIHAHOTELS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: EIHAHOTELS
+2026-05-18 20:30:26.116  INFO [nse-scheduler-thread-1]MAXHEALTH com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: MAXHEALTH
+2026-05-18 20:30:26.128  INFO [nse-scheduler-thread-1]BURNPUR com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: BURNPUR
+2026-05-18 20:30:26.138  INFO [nse-scheduler-thread-1]SASKEN com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SASKEN
+2026-05-18 20:30:26.149  INFO [nse-scheduler-thread-1]KSHINTL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: KSHINTL
+2026-05-18 20:30:26.151  INFO [nse-scheduler-thread-1]GVT&D com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: GVT&D
+2026-05-18 20:30:26.154  INFO [nse-scheduler-thread-1]AFCONS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: AFCONS
+2026-05-18 20:30:26.164  INFO [nse-scheduler-thread-1]PURVA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: PURVA
+2026-05-18 20:30:26.166  INFO [nse-scheduler-thread-1]SHREEPUSHK com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: SHREEPUSHK
+2026-05-18 20:30:26.167  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch complete — 13 unique companies processed
+2026-05-18 20:44:59.983  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch triggered — current seqId window size: 20
+2026-05-18 20:45:00.455  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 20:45:00.456  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : 20 new out of 20 total announcements — seqId window size now: 20
+2026-05-18 20:45:00.483  INFO [nse-scheduler-thread-1]TRITURBINE com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: TRITURBINE
+2026-05-18 20:45:00.501  INFO [nse-scheduler-thread-1]LATENTVIEW com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: LATENTVIEW
+2026-05-18 20:45:00.509  INFO [nse-scheduler-thread-1]GEMAROMA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: GEMAROMA
+2026-05-18 20:45:00.515  INFO [nse-scheduler-thread-1]BLSE com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: BLSE
+2026-05-18 20:45:00.520  INFO [nse-scheduler-thread-1]SPARC com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: SPARC
+2026-05-18 20:45:00.523  INFO [nse-scheduler-thread-1]KSHINTL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: KSHINTL
+2026-05-18 20:45:00.528  INFO [nse-scheduler-thread-1]AFCONS com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: AFCONS
+2026-05-18 20:45:00.537  INFO [nse-scheduler-thread-1]PURVA com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: PURVA
+2026-05-18 20:45:00.541  INFO [nse-scheduler-thread-1]STYLEBAAZA com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: STYLEBAAZA
+2026-05-18 20:45:00.545  INFO [nse-scheduler-thread-1]ADANIENT com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ADANIENT
+2026-05-18 20:45:00.557  INFO [nse-scheduler-thread-1]BOSCHLTD com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: BOSCHLTD
+2026-05-18 20:45:00.558  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch complete — 13 unique companies processed
+2026-05-18 21:13:32.342  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m30s58ms).
+2026-05-18 21:24:44.620  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=11m12s280ms).
+2026-05-18 21:25:59.929  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch triggered — current seqId window size: 20
+2026-05-18 21:26:00.156  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.service.NseFetcher : NSE JSON parsed successfully — 20 announcements retrieved
+2026-05-18 21:26:00.161  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : 20 new out of 20 total announcements — seqId window size now: 20
+2026-05-18 21:26:00.198  INFO [nse-scheduler-thread-1]TRITURBINE com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: TRITURBINE
+2026-05-18 21:26:00.213  INFO [nse-scheduler-thread-1]BKMINDST com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: BKMINDST
+2026-05-18 21:26:00.215  INFO [nse-scheduler-thread-1]BLSE com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: BLSE
+2026-05-18 21:26:00.225  INFO [nse-scheduler-thread-1]AJAXENGG com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: AJAXENGG
+2026-05-18 21:26:00.227  INFO [nse-scheduler-thread-1]CYIENTDLM com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: CYIENTDLM
+2026-05-18 21:26:00.228  INFO [nse-scheduler-thread-1]JKPAPER com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: JKPAPER
+2026-05-18 21:26:00.231  INFO [nse-scheduler-thread-1]PURVA com.companynews.newsscheduler.service.NewsWorker : Saved 2 new item(s) for keyword: PURVA
+2026-05-18 21:26:00.234  INFO [nse-scheduler-thread-1]SUBROS com.companynews.newsscheduler.service.NewsWorker : Saved 4 new item(s) for keyword: SUBROS
+2026-05-18 21:26:00.236  INFO [nse-scheduler-thread-1]MIRCELECTR com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: MIRCELECTR
+2026-05-18 21:26:00.241  INFO [nse-scheduler-thread-1]ADANIENT com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: ADANIENT
+2026-05-18 21:26:00.248  INFO [nse-scheduler-thread-1]VEDL com.companynews.newsscheduler.service.NewsWorker : Saved 1 new item(s) for keyword: VEDL
+2026-05-18 21:26:00.249  INFO [nse-scheduler-thread-1] com.companynews.newsscheduler.scheduler.NseScheduler : NSE fetch complete — 13 unique companies processed
+2026-05-18 21:34:37.943  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=8m45s181ms).
+2026-05-18 21:50:08.474  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m30s529ms).
+2026-05-18 21:57:48.081  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=7m39s607ms).
+2026-05-18 22:05:09.615  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=7m21s526ms).
+2026-05-18 22:15:50.317  WARN [HikariPool-1 housekeeper] com.zaxxer.hikari.pool.HikariPool : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=10m40s711ms).

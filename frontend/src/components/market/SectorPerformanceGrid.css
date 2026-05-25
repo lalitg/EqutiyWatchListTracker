@@ -1,0 +1,58 @@
+.sector-grid-wrap { margin-bottom: 32px; }
+
+.sector-grid-label {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.sector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.sector-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border: 1px solid rgba(102,126,234,0.1);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  text-align: center;
+}
+
+.sector-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102,126,234,0.15);
+}
+
+.sector-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.sector-card-change {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sector-card-change.gain { color: #16a34a; }
+.sector-card-change.loss { color: #dc2626; }
+.sector-card-change.neutral { color: #64748b; }
+
+.sector-card-arrow { font-size: 12px; margin-right: 2px; }
+
+.sector-loading, .sector-error {
+  color: #94a3b8;
+  font-size: 14px;
+  padding: 16px 0;
+}
+.sector-error { color: #dc2626; }

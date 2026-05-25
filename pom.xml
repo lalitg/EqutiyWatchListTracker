@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Root aggregator POM — build coordinator only, not a parent.
+
+        Running `mvn install` from this directory builds all modules in order
+        and installs each artifact to ~/.m2 so the launcher can depend on them.
+
+        Build order:
+          1. user-service      — no deps on the other two
+          2. auth-service      — depends on user-service at runtime (HTTP call)
+          3. watchlist-service — depends on both auth and user at runtime
+          4. main-api-service  — launcher; depends on the 3 plain JARs above
+    -->
+    <groupId>com.equity</groupId>
+    <artifactId>equity-watchlist-main-api</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>EquityWatchList Main API</name>
+
+    <modules>
+        <module>user-service</module>
+        <module>auth-service</module>
+        <module>watchlist-service</module>
+        <module>main-api-service</module>
+    </modules>
+
+</project>

@@ -1,10 +1,7 @@
-import apiClient from './apiClient';
-import { getFastMovers as getMock } from '../mockData/fastMoversMock';
-
-export async function fetchFastMovers(period = '1D') {
-  try {
-    return await apiClient(`/market/fast-movers?period=${encodeURIComponent(period)}`);
-  } catch {
-    return getMock(period);
+export async function fetchFastMovers(range = 'TODAY') {
+  const response = await fetch(`/api/fast-movers?range=${encodeURIComponent(range)}`, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
   }
+  return response.json();
 }

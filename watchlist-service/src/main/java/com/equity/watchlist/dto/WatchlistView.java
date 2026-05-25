@@ -5,41 +5,58 @@ import java.math.BigDecimal;
 /**
  * Response DTO representing a watchlist entry returned to the client.
  *
- * <p>Returned by GET and POST endpoints on {@code /api/v1/watchlist}.
- * Price fields reflect the values stored at the time of last update;
- * they are not fetched live on every read.
+ * <p>Price fields are populated live from global-watchlist-service at read time —
+ * they are not stored in the {@code watchlist} table.
  */
 public class WatchlistView {
 
     /** NSE stock symbol (e.g. {@code "INFY"}). */
     private String companyCode;
 
-    /** Full company name from {@code company_master} (e.g. {@code "Infosys Limited"}). May be {@code null} if not found. */
+    /** Full company name from {@code company_master}. May be {@code null} if not found. */
     private String companyName;
 
-    /** 52-week low price. */
+    /** ID of the named watchlist this entry belongs to. */
+    private Long userWatchlistId;
+
+    /** Name of the watchlist this entry belongs to (e.g. "My Watchlist"). */
+    private String watchlistName;
+
+    /** 52-week low price (fetched live from global_watchlist). */
     private BigDecimal week52Low;
 
-    /** 52-week high price. */
+    /** 52-week high price (fetched live from global_watchlist). */
     private BigDecimal week52High;
 
-    /** All-time low price. */
+    /** All-time low price (fetched live from global_watchlist). */
     private BigDecimal allTimeLow;
 
-    /** All-time high price. */
+    /** All-time high price (fetched live from global_watchlist). */
     private BigDecimal allTimeHigh;
 
-    /** Latest traded price at last update time. */
+    /** Latest traded price (fetched live from global_watchlist). */
     private BigDecimal currentValue;
 
-    /** Total traded volume for the latest session. */
+    /** Total traded volume for the latest session (fetched live from global_watchlist). */
     private BigDecimal tradedVolume;
+
+    /** Percentage change from previous close (fetched live from global_watchlist). */
+    private BigDecimal percentChange;
+
+    /** Absolute price change from previous close (fetched live from global_watchlist). */
+    private BigDecimal changeValue;
 
     public String getCompanyCode() { return companyCode; }
     public void setCompanyCode(String companyCode) { this.companyCode = companyCode; }
 
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
+
+    public Long getUserWatchlistId() { return userWatchlistId; }
+    public void setUserWatchlistId(Long userWatchlistId) { this.userWatchlistId = userWatchlistId; }
+
+    public String getWatchlistName() { return watchlistName; }
+    public void setWatchlistName(String watchlistName) { this.watchlistName = watchlistName; }
 
     public BigDecimal getWeek52Low() { return week52Low; }
     public void setWeek52Low(BigDecimal week52Low) { this.week52Low = week52Low; }
@@ -58,4 +75,10 @@ public class WatchlistView {
 
     public BigDecimal getTradedVolume() { return tradedVolume; }
     public void setTradedVolume(BigDecimal tradedVolume) { this.tradedVolume = tradedVolume; }
+
+    public BigDecimal getPercentChange() { return percentChange; }
+    public void setPercentChange(BigDecimal percentChange) { this.percentChange = percentChange; }
+
+    public BigDecimal getChangeValue() { return changeValue; }
+    public void setChangeValue(BigDecimal changeValue) { this.changeValue = changeValue; }
 }
