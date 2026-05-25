@@ -29,8 +29,15 @@ public class NseClient {
     private static final String NSE_HOME         = "https://www.nseindia.com";
     private static final String INDEX_URL_TPL    = "https://www.nseindia.com/api/equity-stockIndices?index=";
     private static final String QUOTE_EQUITY_URL = "https://www.nseindia.com/api/quote-equity?symbol=";
+    private static final String USER_AGENT       =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    private static final long COOKIE_TTL_MS = 5 * 60 * 1000L;
 
+    private final HttpClient   httpClient   = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private volatile String cachedCookies = "";
+    private volatile long   cookieExpiry  = 0;
 
     // -------------------------------------------------------------------------
     // Public API
@@ -110,10 +117,9 @@ public class NseClient {
      */
     public CompanyInfo fetchCompanyInfo(String symbol) {
         try {
-            HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
-            String cookies = fetchSessionCookies(client);
+            String cookies = getSessionCookies();
             String encoded = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
-            String json = fetchWithCookies(client, QUOTE_EQUITY_URL + encoded, cookies);
+            String json = fetchWithCookies(QUOTE_EQUITY_URL + encoded, cookies);
             JsonNode root = objectMapper.readTree(json);
 
             String name = root.path("info").path("companyName").asText(null);
@@ -155,38 +161,45 @@ public class NseClient {
     // -------------------------------------------------------------------------
 
     private JsonNode fetchData(String indexName) throws Exception {
-        HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
-        String cookies = fetchSessionCookies(client);
+        String cookies = getSessionCookies();
         String encoded = URLEncoder.encode(indexName, StandardCharsets.UTF_8);
-        String json = fetchWithCookies(client, INDEX_URL_TPL + encoded, cookies);
+        String json = fetchWithCookies(INDEX_URL_TPL + encoded, cookies);
         JsonNode root = objectMapper.readTree(json);
         return root.get("data");
     }
 
-    private String fetchSessionCookies(HttpClient client) throws Exception {
+    private synchronized String getSessionCookies() throws Exception {
+        if (System.currentTimeMillis() < cookieExpiry && !cachedCookies.isEmpty()) {
+            return cachedCookies;
+        }
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(NSE_HOME))
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .header("User-Agent", USER_AGENT)
                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                .header("Accept-Language", "en-US,en;q=0.9")
                 .GET()
                 .build();
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        return response.headers().allValues("set-cookie")
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        cachedCookies = response.headers().allValues("set-cookie")
                 .stream()
                 .map(c -> c.split(";")[0])
                 .reduce("", (a, b) -> a.isEmpty() ? b : a + "; " + b);
+        cookieExpiry = System.currentTimeMillis() + COOKIE_TTL_MS;
+        logger.debug("NSE session cookies refreshed");
+        return cachedCookies;
     }
 
-    private String fetchWithCookies(HttpClient client, String url, String cookies) throws Exception {
+    private String fetchWithCookies(String url, String cookies) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .header("User-Agent", USER_AGENT)
                 .header("Accept", "application/json, text/plain, */*")
+                .header("Accept-Language", "en-US,en;q=0.9")
                 .header("Referer", NSE_HOME)
                 .header("Cookie", cookies)
                 .GET()
                 .build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString()).body();
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body();
     }
 
     private BigDecimal decimal(JsonNode node, String field) {

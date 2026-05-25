@@ -73,6 +73,13 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- H2 in-memory DB — used only by FundamentalsApplicationTests -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
+
 	</dependencies>
 
 	<build>
