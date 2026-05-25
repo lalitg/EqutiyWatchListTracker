@@ -1,0 +1,25 @@
+# Maven build output
+target/
+*.jar
+*.war
+*.class
+
+# Logs
+logs/
+*.log
+*.log.gz
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Node
+node_modules/
+frontend/build/
+
+# Environment
+.env
