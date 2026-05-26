@@ -1,33 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    Unified Log4j2 configuration for the single-JVM launcher.
+    Unified Log4j2 configuration for the single-JVM launcher (unified-scheduler).
 
-    Log4j2 is a JVM-level singleton — it is initialised ONCE by whichever
-    Spring context boots first, and subsequent contexts' logging.config values
-    are silently ignored. This file is the authoritative config for all 5 services
-    running inside unified-scheduler.
-
-    UnifiedSchedulerApplication.main() pins this file via:
+    Log4j2 is a JVM-level singleton — initialised ONCE by whichever Spring context
+    boots first. UnifiedSchedulerApplication.main() pins this file via:
         System.setProperty("logging.config", "classpath:log4j2-spring.xml")
-    before any service thread starts, guaranteeing this config is used.
+    before any service thread starts, guaranteeing this config is used regardless
+    of the startup order of the 6 service contexts.
 
     Appenders:
-      CONSOLE  — real-time output to SYSTEM_OUT (local dev / Docker logs)
-      FILE     — rolling file: daily rollover + 50 MB size cap, 30-day retention
-      ASYNC    — non-blocking wrapper around FILE; prevents disk I/O from
-                 stalling scheduler/fetch threads
+      CONSOLE    — real-time output to SYSTEM_OUT (dev / Docker / journalctl)
+      FILE       — rolling file: daily rollover + 50 MB size cap, 30-day/500 MB retention
+      ASYNC_FILE — non-blocking wrapper around FILE; disk I/O on a background thread
+                   so scheduler and fetch threads are never stalled by slow writes
 
-    Package loggers (INFO):
-      com.watchlist.global    — global-watchlist-service
-      com.companycode.nse     — nse-code-service
-      com.nseevents           — nse-events-scheduler
-      com.companynews         — nse-news-scheduler
-      com.equity.fastmovers   — fast-movers-service
-      com.equity.fundamentals — fundamentals-service
+    Application loggers (INFO):
+      com.watchlist.global    — global-watchlist-service (port 8083)
+      com.companycode.nse     — nse-code-service / nse-enterprise-scheduler (port 8082)
+      com.nseevents           — nse-events-scheduler (port 8085)
+      com.companynews         — nse-news-scheduler (port 8084)
+      com.equity.fastmovers   — fast-movers-service (port 8081)
+      com.equity.fundamentals — fundamentals-service (port 8086)
       com.unified             — this launcher
 
-    Framework loggers (WARN — suppress noise):
-      org.springframework, org.hibernate, com.zaxxer.hikari, org.flywaydb
+    Framework loggers (WARN — suppress routine noise):
+      org.springframework, org.hibernate, com.zaxxer.hikari,
+      org.flywaydb, io.github.resilience4j, net.javacrumbs.shedlock
 -->
 <Configuration status="WARN" monitorInterval="30">
 
@@ -39,12 +37,12 @@
 
     <Appenders>
 
-        <!-- Console — terminal / Docker stdout -->
+        <!-- Console — terminal / Docker stdout / EC2 journalctl -->
         <Console name="CONSOLE" target="SYSTEM_OUT">
             <PatternLayout pattern="${LOG_PATTERN}"/>
         </Console>
 
-        <!-- Rolling file — daily + 50 MB cap, compressed archives -->
+        <!-- Rolling file — daily rollover + 50 MB size cap, gzip compressed archives -->
         <RollingFile name="FILE"
                      fileName="${LOG_FILE}"
                      filePattern="${LOG_ARCHIVE}">
@@ -63,11 +61,12 @@
         </RollingFile>
 
         <!--
-            Async wrapper — all disk writes happen on a background I/O thread.
-            bufferSize=1024 keeps 1024 log events in memory before blocking,
-            which is more than enough for 4 concurrent schedulers.
+            Async wrapper — all disk writes on a dedicated background I/O thread.
+            bufferSize=2048: holds up to 2048 log events in-memory before blocking,
+            enough for 6 concurrent schedulers at peak throughput.
+            includeLocation=false: skips expensive stack-frame lookup for performance.
         -->
-        <Async name="ASYNC_FILE" bufferSize="1024">
+        <Async name="ASYNC_FILE" bufferSize="2048" includeLocation="false">
             <AppenderRef ref="FILE"/>
         </Async>
 
@@ -75,63 +74,79 @@
 
     <Loggers>
 
-        <!-- ── Framework internals — WARN only ─────────────────────────── -->
-        <Logger name="org.springframework" level="WARN" additivity="false">
+        <!-- ── Framework internals — WARN only (suppress startup noise) ──── -->
+        <Logger name="org.springframework"           level="WARN" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>
-        <Logger name="org.hibernate" level="WARN" additivity="false">
+        <Logger name="org.hibernate"                 level="WARN" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>
-        <Logger name="com.zaxxer.hikari" level="WARN" additivity="false">
+        <Logger name="com.zaxxer.hikari"             level="WARN" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>
-        <Logger name="org.flywaydb" level="WARN" additivity="false">
+        <Logger name="org.flywaydb"                  level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="io.github.resilience4j"        level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="net.javacrumbs.shedlock"       level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="com.rometools"                 level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="org.apache.http"               level="WARN" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>
 
         <!-- ── Application packages — INFO ──────────────────────────────── -->
 
-        <!-- global-watchlist-service -->
+        <!-- global-watchlist-service (port 8083) -->
         <Logger name="com.watchlist.global" level="INFO" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>
 
-        <!-- nse-code-service -->
+        <!-- nse-enterprise-scheduler / nse-code-service (port 8082) -->
         <Logger name="com.companycode.nse" level="INFO" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>
 
-        <!-- nse-events-scheduler -->
+        <!-- nse-events-scheduler (port 8085) -->
         <Logger name="com.nseevents" level="INFO" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>
 
-        <!-- nse-news-scheduler -->
+        <!-- nse-news-scheduler (port 8084) -->
         <Logger name="com.companynews" level="INFO" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>
 
-        <!-- fast-movers-service -->
+        <!-- fast-movers-service (port 8081) -->
         <Logger name="com.equity.fastmovers" level="INFO" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>
 
-        <!-- fundamentals-service -->
+        <!-- fundamentals-service (port 8086) -->
         <Logger name="com.equity.fundamentals" level="INFO" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>
         </Logger>
 
-        <!-- unified-scheduler launcher itself -->
+        <!-- unified-scheduler launcher -->
         <Logger name="com.unified" level="INFO" additivity="false">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="ASYNC_FILE"/>

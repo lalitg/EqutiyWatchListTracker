@@ -76,13 +76,9 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <!--
-                  classifier=exec: produces TWO jars:
-                  1. nse-enterprise-scheduler-1.0.0.jar        — plain library jar used as a
-                     dependency by unified-scheduler
-                  2. nse-enterprise-scheduler-1.0.0-exec.jar   — fat runnable jar for
-                     standalone execution
-                  Without this, repackage replaces the plain jar with the fat Boot jar and
-                  unified-scheduler cannot find the classes (buried in BOOT-INF/classes/).
+                  classifier=exec produces TWO jars:
+                  1. nse-enterprise-scheduler-1.0.0.jar        — plain library jar for unified-scheduler dependency
+                  2. nse-enterprise-scheduler-1.0.0-exec.jar   — fat runnable jar for standalone execution
                 -->
                 <configuration>
                     <mainClass>com.companycode.nse.NseEnterpriseSchedulerApplication</mainClass>

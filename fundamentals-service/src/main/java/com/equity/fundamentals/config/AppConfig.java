@@ -3,9 +3,9 @@ package com.equity.fundamentals.config;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
@@ -39,14 +39,15 @@ public class AppConfig {
     /**
      * RestTemplate used by YFinanceWrapperClient to call the Python Flask wrapper.
      *
-     * Timeouts are set conservatively — yfinance can be slow for some symbols.
-     * connect: 10s, read: 30s.
+     * Uses SimpleClientHttpRequestFactory directly to avoid RestTemplateBuilder API
+     * differences between Spring Boot versions (connectTimeout/readTimeout method
+     * signatures changed across 3.x releases).
      */
     @Bean
-    public RestTemplate restTemplate(RestTemplateBuilder builder) {
-        return builder
-            .connectTimeout(Duration.ofSeconds(10))
-            .readTimeout(Duration.ofSeconds(30))
-            .build();
+    public RestTemplate restTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout((int) Duration.ofSeconds(10).toMillis());
+        factory.setReadTimeout((int) Duration.ofSeconds(30).toMillis());
+        return new RestTemplate(factory);
     }
 }
