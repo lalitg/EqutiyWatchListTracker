@@ -16,16 +16,21 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Fetches live price data for NSE stocks via the Yahoo Finance v8 chart API.
+ * HTTP client for fetching live price data for individual NSE stocks.
  *
- * <p>NSE stocks on Yahoo Finance carry a ".NS" suffix — RELIANCE → RELIANCE.NS.
- * Yahoo Finance's chart endpoint does not require session cookies, crumbs, or API keys,
- * unlike NSE's own API which uses Akamai Bot Manager and blocks programmatic access.
+ * <p>Calls the NSE {@code quote-equity} API for each symbol to retrieve current
+ * price, 52-week range, and traded volume. NSE requires a valid browser session
+ * cookie — callers must first obtain a cookie via {@link #fetchSessionCookies()}
+ * and pass it to {@link #fetchPrice(String, String)} for the duration of a batch.
  *
- * <p>Typical usage — call once per refresh batch; no cookie handshake required:
+ * <p>The underlying {@link HttpClient} is shared across all calls — it is
+ * thread-safe and intended to be reused, not recreated per request.
+ *
+ * <p>Typical usage in a price-refresh batch:
  * <pre>{@code
+ * String cookies = nsePriceClient.fetchSessionCookies();
  * for (String symbol : symbols) {
- *     PriceData price = nsePriceClient.fetchPrice(symbol);
+ *     PriceData price = nsePriceClient.fetchPrice(symbol, cookies);
  * }
  * }</pre>
  */
@@ -34,101 +39,168 @@ public class NsePriceClient {
 
     private static final Logger logger = LogManager.getLogger(NsePriceClient.class);
 
-    // ?interval=1d&range=1d requests a single daily candle — smallest payload;
-    // the meta object always contains the latest real-time price regardless.
-    private static final String YAHOO_CHART_URL =
-        "https://query1.finance.yahoo.com/v8/finance/chart/%s.NS?interval=1d&range=1d";
-    private static final String USER_AGENT =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    private static final String NSE_HOME       = "https://www.nseindia.com";
+    private static final String QUOTE_URL      = "https://www.nseindia.com/api/quote-equity?symbol=";
+    private static final String TRADE_INFO_URL = "https://www.nseindia.com/api/quote-equity?symbol=%s&section=trade_info";
 
-    private final HttpClient   httpClient   = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    /** Shared, thread-safe HTTP client — reused across all NSE API calls. */
+    private final HttpClient    httpClient     = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
+    private final ObjectMapper  objectMapper   = new ObjectMapper();
 
     /**
-     * Returns a non-empty marker string so the empty-cookie guard in
-     * {@link com.watchlist.global.service.GlobalWatchlistService#refreshPrices()} passes through.
-     * Yahoo Finance does not require a session cookie handshake.
+     * Performs a cookie handshake with the NSE home page and returns the session
+     * cookie string required for subsequent API calls.
+     *
+     * <p>Call this once before a price-refresh batch, then reuse the returned
+     * cookie string for all {@link #fetchPrice} calls in that batch.
+     *
+     * @return a semicolon-separated cookie string (e.g. {@code "nsit=abc; nseappid=xyz"}),
+     *         or an empty string if the handshake fails
      */
     public String fetchSessionCookies() {
-        return "yahoo";
-    }
-
-    /**
-     * Fetches live price data for an NSE stock symbol.
-     * The {@code cookies} parameter is unused — kept for caller compatibility.
-     */
-    public PriceData fetchPrice(String symbol, String cookies) {
-        return fetchPrice(symbol);
-    }
-
-    /**
-     * Fetches live price data for an NSE stock from Yahoo Finance.
-     *
-     * @param symbol the NSE stock symbol without suffix (e.g. {@code "RELIANCE"}, {@code "M&M"})
-     * @return a {@link PriceData} snapshot, or {@code null} if the fetch fails
-     */
-    public PriceData fetchPrice(String symbol) {
         try {
-            String encoded = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
-            String url = String.format(YAHOO_CHART_URL, encoded);
-
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .header("User-Agent", USER_AGENT)
-                    .header("Accept", "application/json")
+                    .uri(URI.create(NSE_HOME))
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                     .GET()
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            JsonNode root = objectMapper.readTree(response.body());
-            JsonNode meta = root.path("chart").path("result").path(0).path("meta");
+            String cookies = response.headers().allValues("set-cookie")
+                    .stream()
+                    .map(c -> c.split(";")[0])
+                    .reduce("", (a, b) -> a.isEmpty() ? b : a + "; " + b);
 
-            if (meta.isMissingNode()) {
-                JsonNode err = root.path("chart").path("error");
-                logger.warn("No data from Yahoo Finance for '{}': {}", symbol,
-                            err.isMissingNode() ? "no result in response" : err.toString());
-                return null;
+            logger.debug("NSE session cookies obtained");
+            return cookies;
+        } catch (Exception e) {
+            logger.error("Failed to obtain NSE session cookies: {}", e.getMessage());
+            return "";
+        }
+    }
+
+    /**
+     * Fetches live price data for a single NSE stock symbol.
+     *
+     * <p>Makes two NSE API calls:
+     * <ol>
+     *   <li>{@code quote-equity?symbol=X} — current price, 52-week high/low</li>
+     *   <li>{@code quote-equity?symbol=X&section=trade_info} — traded volume</li>
+     * </ol>
+     *
+     * @param symbol  the NSE stock symbol (e.g. {@code "INFY"}), must be upper-cased
+     * @param cookies the session cookie string from {@link #fetchSessionCookies()}
+     * @return a {@link PriceData} object with the fetched values,
+     *         or {@code null} if either API call fails
+     */
+    public PriceData fetchPrice(String symbol, String cookies) {
+        try {
+            String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
+            // Call 1: current price and 52-week range
+            String quoteJson = get(QUOTE_URL + encodedSymbol, cookies);
+            JsonNode quoteBody = objectMapper.readTree(quoteJson);
+
+            BigDecimal currentPrice = null;
+            BigDecimal week52High   = null;
+            BigDecimal week52Low    = null;
+
+            BigDecimal previousClose = null;
+            BigDecimal changeValue   = null;
+            BigDecimal pChange       = null;
+
+            if (quoteBody != null && quoteBody.has("priceInfo")) {
+                JsonNode priceInfo = quoteBody.get("priceInfo");
+                if (priceInfo.has("lastPrice"))
+                    currentPrice = priceInfo.get("lastPrice").decimalValue();
+                if (priceInfo.has("previousClose"))
+                    previousClose = priceInfo.get("previousClose").decimalValue();
+                if (priceInfo.has("change"))
+                    changeValue = priceInfo.get("change").decimalValue();
+                if (priceInfo.has("pChange"))
+                    pChange = priceInfo.get("pChange").decimalValue();
+                if (priceInfo.has("weekHighLow")) {
+                    JsonNode whl = priceInfo.get("weekHighLow");
+                    if (whl.has("max")) week52High = whl.get("max").decimalValue();
+                    if (whl.has("min")) week52Low  = whl.get("min").decimalValue();
+                }
             }
 
-            BigDecimal currentPrice  = decimal(meta, "regularMarketPrice");
-            BigDecimal previousClose = decimal(meta, "regularMarketPreviousClose");
-            BigDecimal pChange       = decimal(meta, "regularMarketChangePercent");
-            BigDecimal tradedVolume  = decimal(meta, "regularMarketVolume");
-            BigDecimal week52High    = decimal(meta, "fiftyTwoWeekHigh");
-            BigDecimal week52Low     = decimal(meta, "fiftyTwoWeekLow");
-            BigDecimal changeValue   = (currentPrice != null && previousClose != null)
-                                       ? currentPrice.subtract(previousClose) : null;
+            // Call 2: traded volume
+            BigDecimal tradedVolume = null;
+            String tradeJson = get(String.format(TRADE_INFO_URL, encodedSymbol), cookies);
+            JsonNode tradeBody = objectMapper.readTree(tradeJson);
 
-            logger.debug("Yahoo price for '{}': price={}, pChange={}", symbol, currentPrice, pChange);
-            return new PriceData(currentPrice, week52Low, week52High, week52Low, week52High,
-                                 tradedVolume, previousClose, changeValue, pChange);
+            if (tradeBody != null && tradeBody.has("marketDeptOrderBook")) {
+                JsonNode tradeInfo = tradeBody.get("marketDeptOrderBook").get("tradeInfo");
+                if (tradeInfo != null && tradeInfo.has("totalTradedVolume"))
+                    tradedVolume = tradeInfo.get("totalTradedVolume").decimalValue();
+            }
+
+            logger.debug("Fetched price for '{}': currentPrice={}, pChange={}", symbol, currentPrice, pChange);
+            return new PriceData(currentPrice, week52Low, week52High, week52Low, week52High, tradedVolume,
+                                 previousClose, changeValue, pChange);
+
         } catch (Exception e) {
             logger.error("Failed to fetch price for '{}': {}", symbol, e.getMessage());
             return null;
         }
     }
 
-    private BigDecimal decimal(JsonNode node, String field) {
-        JsonNode f = node.get(field);
-        if (f == null || f.isNull()) return null;
-        try { return f.decimalValue(); } catch (Exception ignored) { return null; }
+    /**
+     * Makes an authenticated GET request to an NSE API endpoint using the shared {@link HttpClient}.
+     *
+     * @param url     the NSE API endpoint URL
+     * @param cookies the session cookie string obtained from {@link #fetchSessionCookies()}
+     * @return the raw JSON response body
+     * @throws Exception if the HTTP request fails
+     */
+    private String get(String url, String cookies) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .header("Accept", "application/json, text/plain, */*")
+                .header("Referer", NSE_HOME)
+                .header("Cookie", cookies)
+                .GET()
+                .build();
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body();
     }
 
     // -------------------------------------------------------------------------
     // Value object
     // -------------------------------------------------------------------------
 
-    /** Immutable price snapshot from Yahoo Finance. */
+    /**
+     * Immutable value object holding the price snapshot returned by the NSE API.
+     */
     public static class PriceData {
 
+        /** Latest traded price. */
         private final BigDecimal currentPrice;
+
+        /** 52-week low price. */
         private final BigDecimal week52Low;
+
+        /** 52-week high price. */
         private final BigDecimal week52High;
+
+        /** All-time low price (currently set equal to 52-week low). */
         private final BigDecimal allTimeLow;
+
+        /** All-time high price (currently set equal to 52-week high). */
         private final BigDecimal allTimeHigh;
+
+        /** Total traded volume for the latest session. */
         private final BigDecimal tradedVolume;
+
+        /** Previous closing price. */
         private final BigDecimal previousClose;
+
+        /** Absolute change from previous close. */
         private final BigDecimal changeValue;
+
+        /** Percentage change from previous close. */
         private final BigDecimal pChange;
 
         public PriceData(BigDecimal currentPrice, BigDecimal week52Low, BigDecimal week52High,
