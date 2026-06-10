@@ -32,6 +32,10 @@ public class CompanyMaster {
     @Column(name = "company_name")
     private String companyName;
 
+    /** ISIN (International Securities Identification Number) e.g. {@code "INE009A01021"}. */
+    @Column(name = "isin")
+    private String isin;
+
     /**
      * Whether the company is currently active on NSE.
      * Inactive companies are excluded from autocomplete results.
@@ -47,6 +51,9 @@ public class CompanyMaster {
 
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
+
+    public String getIsin() { return isin; }
+    public void setIsin(String isin) { this.isin = isin; }
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }

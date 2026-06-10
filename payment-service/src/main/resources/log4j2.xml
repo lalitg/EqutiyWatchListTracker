@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+
+    <Properties>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
+        <!-- Override LOG_DIR at startup: java -DLOG_DIR=/var/log/payment-service -jar payment-service.jar -->
+        <!-- Local dev default: logs/   EC2: /var/log/payment-service/ -->
+        <Property name="LOG_DIR">${sys:LOG_DIR:-logs}</Property>
+        <Property name="APP_NAME">payment-service</Property>
+    </Properties>
+
+    <Appenders>
+
+        <!-- Console appender — output for local dev and Docker -->
+        <Console name="ConsoleAppender" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <!--
+            Rolling file appender
+            - Active file : logs/payment-service.log
+            - Rolled file : logs/payment-service-2026-04-13-14.log.gz  (hourly, gzipped)
+            - Keeps 30 days of rolled files (720 hourly files max)
+            - Also rolls if a single file hits 50 MB (rare, but safe)
+            On EC2: grep through rolled files with  zcat payment-service-*.log.gz | grep ERROR
+        -->
+        <RollingFile name="FileAppender"
+                     fileName="${LOG_DIR}/${APP_NAME}.log"
+                     filePattern="${LOG_DIR}/${APP_NAME}-%d{yyyy-MM-dd-HH}-%i.log.gz">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <!-- Roll every hour -->
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="50MB"/>
+            </Policies>
+            <!-- Keep 30 days × 24 hours = 720 rolled files max -->
+            <DefaultRolloverStrategy max="720">
+                <!-- Also delete files older than 30 days regardless of count -->
+                <Delete basePath="${LOG_DIR}" maxDepth="1">
+                    <IfFileName glob="${APP_NAME}-*.log.gz"/>
+                    <IfLastModified age="30d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+    </Appenders>
+
+    <Loggers>
+
+        <!-- Application code — INFO and above goes to both console and file -->
+        <Logger name="com.equity.payment" level="INFO" additivity="false">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
+        <!-- Spring framework — WARN only to reduce noise -->
+        <Logger name="org.springframework" level="WARN" additivity="false">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
+        <!-- Hibernate — WARN in prod; change to DEBUG locally to see SQL queries -->
+        <Logger name="org.hibernate" level="WARN" additivity="false">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
+        <!-- Razorpay SDK — INFO to see API call results -->
+        <Logger name="com.razorpay" level="INFO" additivity="false">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
+        <!-- Root — catch-all for everything else -->
+        <Root level="WARN">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="FileAppender"/>
+        </Root>
+
+    </Loggers>
+
+</Configuration>

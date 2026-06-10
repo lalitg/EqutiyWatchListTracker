@@ -47,16 +47,13 @@ public class GlobalWatchlistController {
     private final GlobalWatchlistService service;
     private final GlobalIndexService     globalIndexService;
     private final DomesticIndexService   domesticIndexService;
-    private final NseClient              nseClient;
 
     public GlobalWatchlistController(GlobalWatchlistService service,
                                      GlobalIndexService globalIndexService,
-                                     DomesticIndexService domesticIndexService,
-                                     NseClient nseClient) {
+                                     DomesticIndexService domesticIndexService) {
         this.service              = service;
         this.globalIndexService   = globalIndexService;
         this.domesticIndexService = domesticIndexService;
-        this.nseClient            = nseClient;
     }
 
     /**
@@ -196,34 +193,25 @@ public class GlobalWatchlistController {
             logger.info("Company '{}' not in cache — fetching live from NSE", upperSymbol);
             entry = service.addCompany(upperSymbol);
         }
-        // Backfill companyName if not already set (companies seeded before this feature)
-        if (entry != null && entry.getCompanyName() == null) {
-            entry.setCompanyName(nseClient.fetchCompanyInfo(upperSymbol).companyName);
-        }
         return ResponseEntity.ok(entry);
     }
 
     /**
-     * Returns the full company name and all NSE indices/sectors the stock belongs to.
-     * Calls NSE's stock-indices API on every request (live, not cached) so the list
-     * is always accurate.
+     * Returns the company name and all NSE index/sector memberships for a symbol.
+     * Uses the precomputed reverse map built from constituent lists during each
+     * index refresh — avoids calling the unreliable per-symbol NSE quote-equity API.
      */
     @GetMapping("/company/{symbol}/memberships")
     public ResponseEntity<CompanyMembershipsResponse> getCompanyMemberships(@PathVariable String symbol) {
         String upperSymbol = symbol.toUpperCase();
         logger.info("GET /api/global-watchlist/company/{}/memberships", upperSymbol);
 
-        NseClient.CompanyInfo info = nseClient.fetchCompanyInfo(upperSymbol);
+        List<IndexLabel> labels = domesticIndexService.getSymbolMemberships(upperSymbol);
 
-        List<IndexLabel> labels = new ArrayList<>();
-        for (String key : info.indexKeys) {
-            String displayName = domesticIndexService.getDisplayName(key);
-            String type        = domesticIndexService.resolveType(key);
-            if (displayName != null && type != null) {
-                labels.add(new IndexLabel(key, displayName, type));
-            }
-        }
+        GlobalWatchlistEntry entry = service.getEntry(upperSymbol);
+        String companyName = (entry != null) ? entry.getCompanyName() : null;
 
-        return ResponseEntity.ok(new CompanyMembershipsResponse(upperSymbol, info.companyName, labels));
+        logger.info("Memberships for '{}': {} labels found", upperSymbol, labels.size());
+        return ResponseEntity.ok(new CompanyMembershipsResponse(upperSymbol, companyName, labels));
     }
 }

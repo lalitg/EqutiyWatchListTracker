@@ -56,7 +56,7 @@ public class GlobalWatchlistScheduler {
         globalIndexService.refreshAll();
     }
 
-    /** Domestic + sector index headers — every 5 min during market hours */
+    /** Domestic + sector index headers and symbol membership map — every 5 min during market hours */
     @Scheduled(cron = "0 */5 9-15 * * MON-FRI")
     public void refreshDomesticIndices() {
         domesticIndexService.refreshDomesticIndices();

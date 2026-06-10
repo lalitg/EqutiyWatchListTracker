@@ -63,7 +63,60 @@ Border tension
 Sanctions
 Terrorist attack
 Political crisis
+
+# Indian Market Indices
+Nifty 50
+Sensex
+Bank Nifty
+
+# Macroeconomic
+RBI monetary policy
+inflation India
+FII investment
+Budget 2026
+
+# Commodities
+crude oil
+gold price
+silver price
+
+# Global Regions
+US economy
+Europe economy
+Asia markets
+China economy
+
+# Geopolitical
+war commodity prices
+OPEC oil
+US Federal Reserve
+
+# India (Global Market Tab)
+RBI Notifications
+PIB India
+India economy
+India GDP
+India inflation
+
+# Global (Global Market Tab)
 China tariffs
 China tensions
 Forex Reserves
 BOJ Policy
+global trade
+
+# US (Global Market Tab)
+Nasdaq
+Dow Jones
+Global liquidity
+Federal Reserve Economic Data
+S&P 500
+
+# Asia (Global Market Tab)
+Japan economy
+Bank of Japan
+
+# Europe (Global Market Tab)
+European Central Bank Policy
+ECB rate
+Eurozone economy
