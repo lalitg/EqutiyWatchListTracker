@@ -71,19 +71,6 @@
 			<scope>test</scope>
 		</dependency>
 		
-		<!-- Flyway — auto creates table on startup -->
-		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-core</artifactId>
-		</dependency>
-
-		<!-- Flyway PostgreSQL support — required for Spring Boot 3.x -->
-		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-database-postgresql</artifactId>
-			<version>10.10.0</version>
-		</dependency>
-
 		<!-- Jackson JSR310 — for LocalDateTime serialization -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.datatype</groupId>
