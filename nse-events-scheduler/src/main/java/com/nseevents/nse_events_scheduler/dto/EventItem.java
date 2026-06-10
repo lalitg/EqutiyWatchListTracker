@@ -1,6 +1,7 @@
 package com.nseevents.nse_events_scheduler.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.Objects;
 
 /**
  * DTO representing one single NSE calendar event.
@@ -8,25 +9,25 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  *
  * Fields stored in DB JSONB: date, event, purpose
  * Fields NOT stored (JsonIgnore): symbol — keyword column already identifies company
+ *
+ * equals/hashCode are based on (date, event, purpose) so that List.stream().distinct()
+ * removes cross-source duplicates before the events are persisted.
  */
 public class EventItem {
 
-    // The event date — e.g. "23-Apr-2026"
     private String date;
-
-    // bm_desc from NSE — the full event description
-    // Renamed to "event" as your mentor requested
     private String event;
-
-    // purpose from NSE — category e.g. "Financial Results", "Dividend"
     private String purpose;
 
-    // symbol from NSE — used internally to group events by company
-    // @JsonIgnore — never stored in JSONB, keyword column already has this
     @JsonIgnore
     private String symbol;
 
-    // Default constructor — required by Jackson for JSONB deserialization
+    // Which NSE API this event came from: "event-calendar", "board-meetings", "corp-actions"
+    // Used by EventWorkerService to run per-source early-exit independently.
+    // Never stored in JSONB — internal routing only.
+    @JsonIgnore
+    private String source;
+
     public EventItem() {}
 
     public EventItem(String date, String event, String purpose) {
@@ -47,5 +48,24 @@ public class EventItem {
     @JsonIgnore
     public String getSymbol() { return symbol; }
     public void setSymbol(String symbol) { this.symbol = symbol; }
+
+    @JsonIgnore
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof EventItem)) return false;
+        EventItem that = (EventItem) o;
+        return Objects.equals(date, that.date)
+            && Objects.equals(event, that.event)
+            && Objects.equals(purpose, that.purpose);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(date, event, purpose);
+    }
 }
 

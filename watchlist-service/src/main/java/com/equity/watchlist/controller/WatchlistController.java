@@ -37,6 +37,11 @@ public class WatchlistController {
 
     private final WatchlistService watchlistService;
 
+    /**
+     * Constructs the controller with the required service dependency.
+     *
+     * @param watchlistService the service handling watchlist business logic
+     */
     public WatchlistController(WatchlistService watchlistService) {
         this.watchlistService = watchlistService;
     }
