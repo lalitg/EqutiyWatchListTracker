@@ -71,9 +71,19 @@ public class RssFetcher {
     private final String rssBaseUrl;
     private final MeterRegistry meterRegistry;
 
-    /** Maximum number of RSS items to return per keyword fetch. Configurable via {@code news.limit}. */
+    /** Maximum number of news items to store per keyword. Configurable via {@code news.limit}. */
     @Value("${news.limit:5}")
     private int newsLimit;
+
+    /**
+     * Maximum number of items to read from the Google RSS feed per keyword.
+     * Must be larger than {@link #newsLimit} so that if Google's top results are already
+     * stored, newer articles sitting lower in the feed (positions 6–20) are still seen.
+     * Google does not sort strictly by date — relevance also affects ranking, so a newer
+     * article can appear at position 6+ behind older SEO-optimized "share price today" pages.
+     */
+    @Value("${news.rss.fetch-limit:20}")
+    private int rssFetchLimit;
 
     /**
      * Timer recording the wall-clock time of each Google RSS HTTP fetch + XML parse per keyword.
@@ -228,7 +238,7 @@ public class RssFetcher {
 
             NodeList items = doc.getElementsByTagName("item");
             int count = 0;
-            for (int i = 0; i < items.getLength() && count < newsLimit; i++) {
+            for (int i = 0; i < items.getLength() && count < rssFetchLimit; i++) {
                 Element item   = (Element) items.item(i);
                 String title   = getTagValue("title",   item);
                 String link    = getTagValue("link",    item);
@@ -284,14 +294,14 @@ public class RssFetcher {
 
         // Company symbols: 2–10 uppercase letters/digits, no spaces
         if (upper.matches("[A-Z0-9]{2,10}") && !upper.contains(" ")) {
-            return keyword + " NSE stock";
+            return keyword;
         }
 
         if (isSector(upper)) {
-            return keyword + " sector India stock market";
+            return keyword;
         }
 
-        return keyword + " finance economy market India";
+        return keyword;
     }
 
     /**

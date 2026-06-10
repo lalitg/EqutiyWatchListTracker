@@ -179,16 +179,11 @@ public class NewsWorker {
                 currentNews = new ArrayList<>();
             }
 
-            // Build lookup sets from already-stored items for dedup layers 2 and 4
+            // Build URL lookup set for dedup layer 2
             Set<String> savedUrls = currentNews.stream()
                 .map(NewsItem::getLink)
                 .filter(l -> l != null)
                 .collect(Collectors.toSet());
-
-            List<String> existingSummaries = currentNews.stream()
-                .map(NewsItem::getSummary)
-                .filter(s -> s != null)
-                .collect(Collectors.toList());
 
             Set<String> seenInBatch = new HashSet<>();
             int added = 0;
@@ -215,8 +210,8 @@ public class NewsWorker {
                     skippedUrlCounter.increment();
                     continue;
                 }
-                // Layer 4: Jaccard similarity check against existing headlines
-                if (similarityChecker.isDuplicate(summary, existingSummaries)) {
+                // Layer 4: time-aware Jaccard similarity check against already-accepted items
+                if (similarityChecker.isDuplicate(item, currentNews)) {
                     log.debug("Near-duplicate headline skipped (Jaccard): {}", summary);
                     skippedSimilarityCounter.increment();
                     continue;
@@ -225,12 +220,18 @@ public class NewsWorker {
                 currentNews.add(item);
                 savedUrls.add(link);
                 seenInBatch.add(link);
-                existingSummaries.add(summary);
                 added++;
             }
 
             if (added == 0) {
                 log.debug("No new items to save after deduplication for keyword: {}", keyword);
+                // Articles passed UrlWindow but were all blocked by DB URL check or Jaccard.
+                // Still touch last_updated so the frontend doesn't show a stale timestamp
+                // for runs where old article URLs cycled back through an evicted UrlWindow.
+                if (existing.isPresent()) {
+                    record.setLastUpdated(LocalDateTime.now());
+                    repository.save(record);
+                }
                 return;
             }
 
@@ -244,8 +245,9 @@ public class NewsWorker {
             record.setLastUpdated(LocalDateTime.now());
             repository.save(record);
 
-            savedCounter.increment(added);
-            log.info("Saved {} new item(s) for keyword: {}", added, keyword);
+            savedCounter.increment(currentNews.size());
+            log.info("Saved {} item(s) for keyword: {} ({} new passed dedup, trimmed to {})",
+                    currentNews.size(), keyword, added, newsLimit);
 
         } catch (DataIntegrityViolationException e) {
             log.warn("Constraint violation on save — falling back to upsert for keyword: {}", keyword);
@@ -254,6 +256,25 @@ public class NewsWorker {
             ThreadContext.remove("keyword");
             lock.unlock();
         }
+    }
+
+    /**
+     * Updates {@code last_updated} to now for the given keyword without changing its news items.
+     *
+     * <p>Called when Google RSS is fetched successfully but all articles are already in the
+     * {@link UrlWindow} (no new URLs this run). Touching the timestamp signals to the frontend
+     * that the data was verified recently — preventing stale-looking timestamps when Google
+     * keeps the same articles in its feed for multiple days.
+     *
+     * @param keyword the keyword whose timestamp should be refreshed
+     */
+    @Transactional
+    public void touchLastUpdated(String keyword) {
+        repository.findByKeyword(keyword).ifPresent(record -> {
+            record.setLastUpdated(LocalDateTime.now());
+            repository.save(record);
+            log.debug("Refreshed last_updated for keyword={} (no new items this run)", keyword);
+        });
     }
 
     /**
