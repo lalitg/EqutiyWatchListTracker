@@ -166,7 +166,7 @@ Setup instructions will be added as development progresses.
 
 🤝 Contribution
 
-Bhavya Sharma - bhavya@inboundcy.in
+Bhavya Sharma - bhavya@inboundcy.in  
 Ashi Malaiya - ashi@inboundcy.in
 
 Contributions, ideas, and feedback are welcome.
