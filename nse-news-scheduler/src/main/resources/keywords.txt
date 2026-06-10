@@ -1,27 +1,61 @@
-RBI monetary policy
-Budget
-FII investment
-crude oil India
-inflation India
+# US
+US economy
 Fed rate hike or cut
 FOMC meeting
 US inflation (CPI, PPI)
 US job data (Nonfarm payrolls)
+US Federal Reserve
+Dollar index (DXY)
+Nasdaq
+Dow Jones
+Global liquidity
+Federal Reserve Economic Data
+
+# EUROPE
+Europe economy
+European Central Bank Policy
+
+# ASIA
+Asia markets
+China economy
+Japan economy
+Singapore economy
+BOJ Policy
+
+# INDIA
+RBI monetary policy
+RBI policy / repo rate
+RBI Notifications
+Budget
+Union Budget
+Budget 2026
+Fiscal deficit
+GST changes
+inflation India
+Inflation (CPI/WPI India)
+IIP data
+Trade deficit
+Economic survey
+FII investment
+Rupee vs Dollar
+Nifty 50
+Sensex
+Bank Nifty
+crude oil India
+India election results
+PIB India
+
+# GLOBAL
 GDP growth / recession
 Interest rates
 Bond yields (US 10Y yield)
-Dollar index (DXY)
 Quantitative tightening (QT)
 Quantitative easing (QE)
-RBI policy / repo rate
-Inflation (CPI/WPI India)
-Union Budget
-Fiscal deficit
-GST changes
-IIP data
-Trade deficit
-Rupee vs Dollar
-Economic survey
+crude oil
+gold price
+silver price
+OPEC oil
+war commodity prices
 War
 Trade war
 Military strike

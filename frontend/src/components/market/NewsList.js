@@ -8,14 +8,21 @@ const NewsList = ({ news }) => {
 
   return (
     <div className="news-list">
-      <h3 className="news-list-title">Latest News</h3>
       <div className="news-items">
-        {news.map((item) => (
-          <div key={item.id} className="news-item">
-            <div className="news-item-title">{item.title}</div>
+        {news.map((item, idx) => (
+          <div key={idx} className="news-item">
             <div className="news-item-meta">
-              <span className="news-source">{item.source}</span>
               <span className="news-date">{item.date}</span>
+              {item.source && <span className="news-source">{item.source}</span>}
+            </div>
+            <div className="news-item-title">
+              {item.link ? (
+                <a href={item.link} target="_blank" rel="noopener noreferrer" className="news-item-link">
+                  {item.summary || item.title}
+                </a>
+              ) : (
+                item.summary || item.title
+              )}
             </div>
           </div>
         ))}

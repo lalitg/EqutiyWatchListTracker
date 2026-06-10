@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
 import * as watchlistService from '../services/watchlistService';
+import { notifySymbolAdded } from '../services/newsService';
 
 const WatchlistContext = createContext();
 
@@ -52,6 +53,7 @@ export function WatchlistProvider({ children }) {
     dispatch({ type: ACTIONS.ACTION_START });
     try {
       await watchlistService.addCompany(companyCode);
+      notifySymbolAdded(companyCode);
       await fetchEntries();
     } catch (err) {
       alert('Error: ' + err.message);
@@ -98,6 +100,20 @@ export function WatchlistProvider({ children }) {
     }
   }, [fetchEntries]);
 
+  const importCompanies = useCallback(async (companyCodes) => {
+    dispatch({ type: ACTIONS.ACTION_START });
+    try {
+      const result = await watchlistService.importCompanies(companyCodes);
+      companyCodes.forEach(notifySymbolAdded);
+      await fetchEntries();
+      return result;
+    } catch (err) {
+      throw err;
+    } finally {
+      dispatch({ type: ACTIONS.ACTION_END });
+    }
+  }, [fetchEntries]);
+
   const value = {
     ...state,
     fetchEntries,
@@ -105,6 +121,7 @@ export function WatchlistProvider({ children }) {
     updateCompany,
     deleteCompany,
     bulkDelete,
+    importCompanies,
   };
 
   return (

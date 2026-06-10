@@ -1,0 +1,11 @@
+2026-04-13 19:16:40.019 [main] INFO  com.equity.auth.AuthServiceApplication - Starting AuthServiceApplication v0.0.1-SNAPSHOT using Java 17.0.18 with PID 8536 (C:\Users\pc\Desktop\MainFolderWatchlist\EqutiyWatchListTracker\auth-service\target\auth-service-0.0.1-SNAPSHOT.jar started by pc in C:\Users\pc\Desktop\MainFolderWatchlist\EqutiyWatchListTracker\auth-service)
+2026-04-13 19:16:40.040 [main] INFO  com.equity.auth.AuthServiceApplication - No active profile set, falling back to 1 default profile: "default"
+2026-04-13 19:16:47.611 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 64737936-7148-4f72-824d-dd4f0fe37d45
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-04-13 19:16:48.466 [main] INFO  com.equity.auth.AuthServiceApplication - Started AuthServiceApplication in 9.179 seconds (process running for 11.141)
+2026-04-13 19:16:48.466 [main] INFO  com.equity.auth.AuthServiceApplication - Auth Service is READY on port 8088
+2026-04-13 19:18:23.784 [http-nio-8088-exec-1] INFO  com.equity.auth.service.AuthService - Login successful: userId=2, username=testuser

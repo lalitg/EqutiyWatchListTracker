@@ -126,8 +126,35 @@ public class GoogleRssScheduler {
     }
 
     /**
-     * Runs the full Google RSS fetch-dedup-save cycle on the configured cron schedule
-     * (default: midnight, 8 AM, 10 AM, 12 PM, 2 PM, 4 PM, 8 PM, configured via {@code news.google.cron}).
+     * Scheduled entry point for peak hours: weekdays 8 AM–5 PM, every 30 minutes.
+     * Delegates to {@link #runFetch()}.
+     */
+    @Scheduled(cron = "${news.google.cron.peak}")
+    public void runFetchPeak() {
+        runFetch();
+    }
+
+    /**
+     * Scheduled entry point for off-peak weekday hours: midnight–8 AM and 6 PM–11 PM, every hour.
+     * Delegates to {@link #runFetch()}.
+     */
+    @Scheduled(cron = "${news.google.cron.offpeak.weekday}")
+    public void runFetchOffpeakWeekday() {
+        runFetch();
+    }
+
+    /**
+     * Scheduled entry point for weekends: every hour all day.
+     * Delegates to {@link #runFetch()}.
+     */
+    @Scheduled(cron = "${news.google.cron.offpeak.weekend}")
+    public void runFetchOffpeakWeekend() {
+        runFetch();
+    }
+
+    /**
+     * Runs the full Google RSS fetch-dedup-save cycle.
+     * Called by the three scheduled entry points and the startup listener.
      *
      * <p>Submits one {@link CompletableFuture} per keyword to the managed executor pool
      * with a configurable delay between submissions to avoid rate-limiting.
@@ -138,7 +165,6 @@ public class GoogleRssScheduler {
      * across runs, it must NOT be shut down. {@code allOf()} blocks until all submitted futures
      * complete — equivalent behaviour without touching the pool lifecycle.
      */
-    @Scheduled(cron = "${news.google.cron}")
     public void runFetch() {
         log.info("Google RSS fetch started — loading keywords");
 
@@ -204,7 +230,11 @@ public class GoogleRssScheduler {
                 .toList();
 
             if (newItems.isEmpty()) {
-                log.debug("All {} items already seen in URL window for keyword: {}", fetched.size(), keyword);
+                // All fetched URLs were already seen — no new articles this run.
+                // Still touch last_updated so the frontend shows the data was verified now,
+                // not the last time a new article was actually added (which could be days ago).
+                log.debug("All {} items already seen in URL window for keyword: {} — touching last_updated", fetched.size(), keyword);
+                newsWorker.touchLastUpdated(keyword);
                 return;
             }
 
