@@ -71,17 +71,34 @@ public class GlobalWatchlistService {
     public void init() {
         logger.info("GlobalWatchlistService: initialising in-memory cache...");
 
-        // Step 1: Fetch NIFTY 50 and insert any symbols not yet in global_watchlist
+        // Step 1: Fetch NIFTY 50 and insert any symbols not yet in global_watchlist, set is_nifty50 flag
         List<String> nifty50 = nseClient.fetchNifty50Symbols();
         logger.info("Fetched {} NIFTY 50 symbols from NSE", nifty50.size());
+        Set<String> nifty50Set = new HashSet<>(nifty50);
         for (String code : nifty50) {
             if (!repository.existsByCompanyCode(code)) {
                 GlobalWatchlist entity = new GlobalWatchlist();
                 entity.setCompanyCode(code);
+                entity.setNifty50(true);
                 repository.save(entity);
                 logger.debug("Inserted NIFTY 50 company '{}' into global_watchlist", code);
+            } else {
+                repository.findByCompanyCode(code).ifPresent(entity -> {
+                    if (!entity.isNifty50()) {
+                        entity.setNifty50(true);
+                        repository.save(entity);
+                    }
+                });
             }
         }
+        // Clear is_nifty50 for any company no longer in the index
+        repository.findAll().forEach(entity -> {
+            if (entity.isNifty50() && !nifty50Set.contains(entity.getCompanyCode())) {
+                entity.setNifty50(false);
+                repository.save(entity);
+                logger.info("Cleared is_nifty50 for '{}' (no longer in NIFTY 50)", entity.getCompanyCode());
+            }
+        });
 
         // Step 2: Load ALL rows into cache (NIFTY 50 + user-added companies from previous runs)
         repository.findAll().forEach(entity -> globalMap.put(entity.getCompanyCode(), toEntry(entity)));
@@ -115,10 +132,13 @@ public class GlobalWatchlistService {
             entry.setCurrentValue(price.getCurrentPrice());
             entry.setTradedVolume(price.getTradedVolume());
 
-            if (price.getWeek52Low() != null)  entry.setWeek52Low(price.getWeek52Low());
-            if (price.getWeek52High() != null) entry.setWeek52High(price.getWeek52High());
-            if (price.getAllTimeLow() != null)  entry.setAllTimeLow(price.getAllTimeLow());
-            if (price.getAllTimeHigh() != null) entry.setAllTimeHigh(price.getAllTimeHigh());
+            if (price.getWeek52Low() != null)    entry.setWeek52Low(price.getWeek52Low());
+            if (price.getWeek52High() != null)   entry.setWeek52High(price.getWeek52High());
+            if (price.getAllTimeLow() != null)    entry.setAllTimeLow(price.getAllTimeLow());
+            if (price.getAllTimeHigh() != null)   entry.setAllTimeHigh(price.getAllTimeHigh());
+            if (price.getPreviousClose() != null) entry.setPreviousClose(price.getPreviousClose());
+            if (price.getChangeValue() != null)   entry.setChangeValue(price.getChangeValue());
+            if (price.getPChange() != null)       entry.setPercentChange(price.getPChange());
 
             entry.setLastUpdated(LocalDateTime.now());
             globalMap.put(code, entry);
@@ -155,6 +175,9 @@ public class GlobalWatchlistService {
             entity.setAllTimeLow(entry.getAllTimeLow());
             entity.setAllTimeHigh(entry.getAllTimeHigh());
             entity.setTradedVolume(entry.getTradedVolume());
+            entity.setPreviousClose(entry.getPreviousClose());
+            entity.setChangeValue(entry.getChangeValue());
+            entity.setPercentChange(entry.getPercentChange());
             entity.setLastUpdated(LocalDateTime.now());
             toSave.add(entity);
         });
@@ -196,12 +219,18 @@ public class GlobalWatchlistService {
             entity.setAllTimeLow(price.getAllTimeLow());
             entity.setAllTimeHigh(price.getAllTimeHigh());
             entity.setTradedVolume(price.getTradedVolume());
+            entity.setPreviousClose(price.getPreviousClose());
+            entity.setChangeValue(price.getChangeValue());
+            entity.setPercentChange(price.getPChange());
         }
         repository.save(entity);
 
+        String companyName = nseClient.fetchCompanyInfo(companyCode).companyName;
+
         GlobalWatchlistEntry entry = toEntry(entity);
+        entry.setCompanyName(companyName);
         globalMap.put(companyCode, entry);
-        logger.info("Company '{}' added to global watchlist successfully", companyCode);
+        logger.info("Company '{}' ({}) added to global watchlist successfully", companyCode, companyName);
 
         return entry;
     }
@@ -231,6 +260,61 @@ public class GlobalWatchlistService {
      * @param entity the {@link GlobalWatchlist} entity loaded from DB
      * @return a populated {@link GlobalWatchlistEntry}
      */
+    /**
+     * Re-fetches NIFTY 50 composition from NSE and updates the {@code is_nifty50} flag
+     * in both the DB and in-memory map. Called by the bi-weekly scheduler.
+     */
+    public void refreshNifty50Composition() {
+        logger.info("Refreshing NIFTY 50 composition...");
+        List<String> nifty50 = nseClient.fetchNifty50Symbols();
+        Set<String> nifty50Set = new HashSet<>(nifty50);
+
+        // Mark entrants true
+        for (String code : nifty50Set) {
+            if (!repository.existsByCompanyCode(code)) {
+                GlobalWatchlist entity = new GlobalWatchlist();
+                entity.setCompanyCode(code);
+                entity.setNifty50(true);
+                repository.save(entity);
+                GlobalWatchlistEntry entry = toEntry(entity);
+                globalMap.put(code, entry);
+                logger.info("New NIFTY 50 entrant '{}' added", code);
+            } else {
+                repository.findByCompanyCode(code).ifPresent(entity -> {
+                    if (!entity.isNifty50()) {
+                        entity.setNifty50(true);
+                        repository.save(entity);
+                        logger.info("'{}' re-entered NIFTY 50", code);
+                    }
+                    globalMap.computeIfPresent(code, (k, e) -> { e.setNifty50(true); return e; });
+                });
+            }
+        }
+
+        // Mark exits false
+        repository.findAll().forEach(entity -> {
+            if (entity.isNifty50() && !nifty50Set.contains(entity.getCompanyCode())) {
+                entity.setNifty50(false);
+                repository.save(entity);
+                logger.info("'{}' exited NIFTY 50", entity.getCompanyCode());
+                globalMap.computeIfPresent(entity.getCompanyCode(), (k, e) -> { e.setNifty50(false); return e; });
+            }
+        });
+
+        logger.info("NIFTY 50 composition refresh complete — {} symbols", nifty50Set.size());
+    }
+
+    /**
+     * Returns all entries where {@code isNifty50} is true, from the in-memory cache.
+     *
+     * @return list of NIFTY 50 entries
+     */
+    public List<GlobalWatchlistEntry> getNifty50() {
+        List<GlobalWatchlistEntry> result = new ArrayList<>();
+        globalMap.values().forEach(e -> { if (e.isNifty50()) result.add(e); });
+        return result;
+    }
+
     private GlobalWatchlistEntry toEntry(GlobalWatchlist entity) {
         GlobalWatchlistEntry entry = new GlobalWatchlistEntry();
         entry.setCompanyCode(entity.getCompanyCode());
@@ -240,6 +324,10 @@ public class GlobalWatchlistService {
         entry.setAllTimeLow(entity.getAllTimeLow());
         entry.setAllTimeHigh(entity.getAllTimeHigh());
         entry.setTradedVolume(entity.getTradedVolume());
+        entry.setPreviousClose(entity.getPreviousClose());
+        entry.setChangeValue(entity.getChangeValue());
+        entry.setPercentChange(entity.getPercentChange());
+        entry.setNifty50(entity.isNifty50());
         entry.setLastUpdated(entity.getLastUpdated());
         return entry;
     }

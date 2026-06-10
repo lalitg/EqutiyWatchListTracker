@@ -2,87 +2,167 @@ package com.watchlist.global.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.watchlist.global.model.IndexCompanyEntry;
+import com.watchlist.global.model.IndexSummary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-/**
- * HTTP client for fetching NIFTY 50 company symbols from the NSE API.
- *
- * <p>NSE blocks plain HTTP calls without a valid browser session cookie.
- * This client performs a two-step cookie handshake — first hitting the NSE home
- * page to obtain session cookies, then using those cookies to call the
- * equity-stockIndices API.
- */
 @Component
 public class NseClient {
 
     private static final Logger logger = LogManager.getLogger(NseClient.class);
 
-    private static final String NSE_HOME = "https://www.nseindia.com";
-    private static final String NIFTY50_URL = "https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%2050";
+    private static final String NSE_HOME         = "https://www.nseindia.com";
+    private static final String INDEX_URL_TPL    = "https://www.nseindia.com/api/equity-stockIndices?index=";
+    private static final String QUOTE_EQUITY_URL = "https://www.nseindia.com/api/quote-equity?symbol=";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * Fetches the list of NIFTY 50 stock symbols from the NSE API.
-     *
-     * <p>Performs a cookie handshake before the API call to satisfy NSE's
-     * browser-session requirement. The index entry itself ({@code "NIFTY 50"}) is
-     * excluded from the returned list.
-     *
-     * @return a list of NSE stock symbols (e.g. {@code ["INFY", "TCS", ...]});
-     *         returns an empty list if the fetch fails
-     */
+    // -------------------------------------------------------------------------
+    // Public API
+    // -------------------------------------------------------------------------
+
+    /** Backward-compat wrapper — returns NIFTY 50 stock symbols only. */
     public List<String> fetchNifty50Symbols() {
-        List<String> symbols = new ArrayList<>();
-        logger.info("Fetching NIFTY 50 symbols from NSE API");
-        try {
-            HttpClient client = HttpClient.newBuilder()
-                    .followRedirects(Redirect.ALWAYS)
-                    .build();
+        return fetchIndexSymbols("NIFTY 50");
+    }
 
-            // Step 1: cookie handshake — hit NSE home to obtain session cookies
-            String cookies = fetchSessionCookies(client);
-            logger.debug("Session cookies obtained from NSE home");
-
-            // Step 2: fetch NIFTY 50 index data with session cookies
-            String json = fetchWithCookies(client, NIFTY50_URL, cookies);
-            JsonNode root = objectMapper.readTree(json);
-            JsonNode data = root.get("data");
-
-            if (data != null) {
-                for (JsonNode item : data) {
-                    String symbol = item.get("symbol").asText();
-                    // Skip the index row itself
-                    if (!symbol.equalsIgnoreCase("NIFTY 50")) {
-                        symbols.add(symbol);
-                    }
-                }
-            }
-            logger.info("Fetched {} NIFTY 50 symbols from NSE", symbols.size());
-
-        } catch (Exception e) {
-            logger.error("Failed to fetch NIFTY 50 from NSE: {} — skipping NIFTY 50 seed", e.getMessage());
-        }
+    /** Returns the list of stock symbols for any NSE index (excludes the index row itself). */
+    public List<String> fetchIndexSymbols(String indexName) {
+        List<IndexCompanyEntry> companies = fetchIndexCompanies(indexName);
+        List<String> symbols = new ArrayList<>(companies.size());
+        for (IndexCompanyEntry e : companies) symbols.add(e.getSymbol());
         return symbols;
     }
 
     /**
-     * Hits the NSE home page to obtain session cookies required for subsequent API calls.
-     *
-     * @param client the {@link HttpClient} to use for the request
-     * @return a semicolon-separated cookie string (e.g. {@code "nsit=abc; nseappid=xyz"})
-     * @throws Exception if the HTTP request fails
+     * Returns the index-level summary (LTP, change, chg%) for the given NSE index.
+     * This is the first row returned by the equity-stockIndices API.
      */
+    public IndexSummary fetchIndexHeader(String indexName) {
+        try {
+            JsonNode data = fetchData(indexName);
+            if (data == null || !data.isArray() || data.size() == 0) return null;
+            JsonNode row = data.get(0);
+            IndexSummary summary = new IndexSummary(indexName, indexName, true);
+            summary.setLtp(decimal(row, "lastPrice"));
+            summary.setChange(decimal(row, "change"));
+            summary.setChangePercent(decimal(row, "pChange"));
+            summary.setLastUpdated(LocalDateTime.now());
+            logger.debug("Fetched header for '{}': ltp={}, pChange={}", indexName, summary.getLtp(), summary.getChangePercent());
+            return summary;
+        } catch (Exception e) {
+            logger.error("Failed to fetch index header for '{}': {}", indexName, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Returns all constituent companies for the given NSE index with price data.
+     * The index row itself (first item) is excluded.
+     */
+    public List<IndexCompanyEntry> fetchIndexCompanies(String indexName) {
+        try {
+            JsonNode data = fetchData(indexName);
+            if (data == null || !data.isArray()) return Collections.emptyList();
+
+            List<IndexCompanyEntry> result = new ArrayList<>();
+            boolean first = true;
+            for (JsonNode item : data) {
+                if (first) { first = false; continue; } // skip index row
+                IndexCompanyEntry entry = new IndexCompanyEntry();
+                entry.setSymbol(item.path("symbol").asText());
+                entry.setLtp(decimal(item, "lastPrice"));
+                entry.setChange(decimal(item, "change"));
+                entry.setChangePercent(decimal(item, "pChange"));
+                entry.setWeek52High(decimal(item, "yearHigh"));
+                entry.setWeek52Low(decimal(item, "yearLow"));
+                entry.setPreviousClose(decimal(item, "previousClose"));
+                entry.setTradedVolume(decimal(item, "totalTradedVolume"));
+                result.add(entry);
+            }
+            logger.info("Fetched {} companies for index '{}'", result.size(), indexName);
+            return result;
+        } catch (Exception e) {
+            logger.error("Failed to fetch companies for index '{}': {}", indexName, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Fetches company name and all index memberships for a symbol in a single NSE API call
+     * (quote-equity endpoint). Returns a two-element array: [companyName, List<String> indexKeys].
+     * Combines both fetches to avoid a double cookie handshake.
+     */
+    public CompanyInfo fetchCompanyInfo(String symbol) {
+        try {
+            HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
+            String cookies = fetchSessionCookies(client);
+            String encoded = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
+            String json = fetchWithCookies(client, QUOTE_EQUITY_URL + encoded, cookies);
+            JsonNode root = objectMapper.readTree(json);
+
+            String name = root.path("info").path("companyName").asText(null);
+
+            // pdSectorIndAll is an array of all index keys the stock belongs to
+            List<String> indices = new ArrayList<>();
+            JsonNode indAll = root.path("metadata").path("pdSectorIndAll");
+            if (indAll.isArray()) {
+                for (JsonNode n : indAll) {
+                    String key = n.asText(null);
+                    if (key != null && !key.isBlank()) indices.add(key.toUpperCase());
+                }
+            }
+
+            logger.info("CompanyInfo for '{}': name={}, indices={}", symbol, name, indices.size());
+            return new CompanyInfo(name, indices);
+        } catch (Exception e) {
+            logger.error("Failed to fetch company info for '{}': {}", symbol, e.getMessage());
+            return new CompanyInfo(null, Collections.emptyList());
+        }
+    }
+
+    /** Returns just the company name from NSE's quote-equity API. */
+    public String fetchCompanyName(String symbol) {
+        return fetchCompanyInfo(symbol).companyName;
+    }
+
+    public static class CompanyInfo {
+        public final String companyName;
+        public final List<String> indexKeys;
+        public CompanyInfo(String companyName, List<String> indexKeys) {
+            this.companyName = companyName;
+            this.indexKeys   = indexKeys;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Internal helpers
+    // -------------------------------------------------------------------------
+
+    private JsonNode fetchData(String indexName) throws Exception {
+        HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
+        String cookies = fetchSessionCookies(client);
+        String encoded = URLEncoder.encode(indexName, StandardCharsets.UTF_8);
+        String json = fetchWithCookies(client, INDEX_URL_TPL + encoded, cookies);
+        JsonNode root = objectMapper.readTree(json);
+        return root.get("data");
+    }
+
     private String fetchSessionCookies(HttpClient client) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(NSE_HOME))
@@ -90,24 +170,13 @@ public class NseClient {
                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 .GET()
                 .build();
-
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
         return response.headers().allValues("set-cookie")
                 .stream()
                 .map(c -> c.split(";")[0])
                 .reduce("", (a, b) -> a.isEmpty() ? b : a + "; " + b);
     }
 
-    /**
-     * Makes an authenticated GET request to the given NSE API URL using session cookies.
-     *
-     * @param client  the {@link HttpClient} to use for the request
-     * @param url     the NSE API endpoint URL
-     * @param cookies the session cookie string obtained from {@link #fetchSessionCookies}
-     * @return the raw JSON response body as a string
-     * @throws Exception if the HTTP request fails
-     */
     private String fetchWithCookies(HttpClient client, String url, String cookies) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -117,8 +186,12 @@ public class NseClient {
                 .header("Cookie", cookies)
                 .GET()
                 .build();
+        return client.send(request, HttpResponse.BodyHandlers.ofString()).body();
+    }
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        return response.body();
+    private BigDecimal decimal(JsonNode node, String field) {
+        JsonNode f = node.get(field);
+        if (f == null || f.isNull()) return null;
+        try { return f.decimalValue(); } catch (Exception e) { return null; }
     }
 }
