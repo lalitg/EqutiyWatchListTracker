@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 public class WatchlistService {
 
     private static final Logger logger = LogManager.getLogger(WatchlistService.class);
+    private static final int MAX_COMPANIES = 10;
 
     private final WatchlistRepository watchlistRepository;
     private final UserWatchlistRepository userWatchlistRepository;
@@ -85,7 +86,11 @@ public class WatchlistService {
     public List<UserWatchlistView> getWatchlistsForUser(Long userId) {
         return userWatchlistRepository.findByUserIdOrderByCreatedAtAsc(userId)
                 .stream()
-                .map(this::toUserWatchlistView)
+                .map(w -> {
+                    UserWatchlistView view = toUserWatchlistView(w);
+                    view.setCompanyCount((int) watchlistRepository.countByUserWatchlistId(w.getId()));
+                    return view;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -130,6 +135,11 @@ public class WatchlistService {
 
         if (watchlistRepository.findByUserWatchlistIdAndCompanyCode(userWatchlistId, code).isPresent()) {
             throw new IllegalArgumentException("Company '" + code + "' is already in this watchlist");
+        }
+
+        long currentCount = watchlistRepository.countByUserWatchlistId(userWatchlistId);
+        if (currentCount >= MAX_COMPANIES) {
+            throw new IllegalArgumentException("Watchlist is full — max " + MAX_COMPANIES + " companies per watchlist");
         }
 
         GlobalWatchlistEntry entry = globalWatchlistClient.getEntry(code);
@@ -222,7 +232,8 @@ public class WatchlistService {
      * <p>When {@code mode} is {@code "ISIN"}, each value is looked up in
      * {@code company_master.isin} to resolve the NSE symbol first. When mode
      * is {@code "SYMBOL"} (or null), values are treated directly as NSE symbols.
-     * Skips duplicates already present in the watchlist.
+     * Skips duplicates already present in the watchlist. Stops early if the
+     * watchlist reaches the {@code MAX_COMPANIES} limit.
      *
      * @param codes           the raw values from the CSV column (ISINs or NSE symbols)
      * @param mode            {@code "ISIN"} or {@code "SYMBOL"} (null defaults to SYMBOL)
@@ -261,6 +272,12 @@ public class WatchlistService {
                 logger.debug("Import: '{}' already in watchlist — skipping", symbol);
                 skipped++;
                 continue;
+            }
+
+            if (watchlistRepository.countByUserWatchlistId(resolvedId) >= MAX_COMPANIES) {
+                logger.info("Import: watchlist {} is full (max {}), skipping remaining", resolvedId, MAX_COMPANIES);
+                failed += codes.size() - imported - skipped - failed - 1;
+                break;
             }
 
             GlobalWatchlistEntry entry = globalWatchlistClient.getEntry(symbol);

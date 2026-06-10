@@ -110,7 +110,7 @@ public class NseClient {
      */
     public CompanyInfo fetchCompanyInfo(String symbol) {
         try {
-            HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
+            HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).version(HttpClient.Version.HTTP_1_1).build();
             String cookies = fetchSessionCookies(client);
             String encoded = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
             String json = fetchWithCookies(client, QUOTE_EQUITY_URL + encoded, cookies);
@@ -155,7 +155,7 @@ public class NseClient {
     // -------------------------------------------------------------------------
 
     private JsonNode fetchData(String indexName) throws Exception {
-        HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
+        HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).version(HttpClient.Version.HTTP_1_1).build();
         String cookies = fetchSessionCookies(client);
         String encoded = URLEncoder.encode(indexName, StandardCharsets.UTF_8);
         String json = fetchWithCookies(client, INDEX_URL_TPL + encoded, cookies);

@@ -1,29 +1,44 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SectorSelector from '../components/market/SectorSelector';
 import FastMoversTable from '../components/market/FastMoversTable';
 import { fetchFastMovers } from '../services/fastMoversService';
 
-const PERIODS = ['1D', '3D', '1W', '2W', '1M'];
+const RANGES = ['TODAY', '1D', '2D', '3D', '4D', '1W'];
 
-const PERIOD_LABELS = {
-  '1D': '1 Day',
-  '3D': '3 Days',
-  '1W': '1 Week',
-  '2W': '2 Weeks',
-  '1M': '1 Month',
+const RANGE_LABELS = {
+  'TODAY': 'Today',
+  '1D':    '1 Day',
+  '2D':    '2 Day',
+  '3D':    '3 Day',
+  '4D':    '4 Day',
+  '1W':    '1 Week',
 };
 
+function formatLastUpdated(generatedAt) {
+  if (!generatedAt) return null;
+  const diffMs = Date.now() - new Date(generatedAt).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins === 1) return '1 min ago';
+  return `${mins} min ago`;
+}
+
+const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
+
 const FastMoversPage = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('1D');
+  const [selectedRange, setSelectedRange] = useState('TODAY');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const timerRef = useRef(null);
+  const navigate = useNavigate();
 
-  const loadData = useCallback(async (period) => {
+  const loadData = useCallback(async (range) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchFastMovers(period);
+      const result = await fetchFastMovers(range);
       setData(result);
     } catch (err) {
       setError(err.message);
@@ -32,25 +47,32 @@ const FastMoversPage = () => {
     }
   }, []);
 
-  useEffect(() => { loadData(selectedPeriod); }, [selectedPeriod, loadData]);
+  useEffect(() => { loadData(selectedRange); }, [selectedRange, loadData]);
 
-  const handlePeriodChange = (period) => {
-    setSelectedPeriod(period);
-  };
+  useEffect(() => {
+    timerRef.current = setInterval(() => loadData(selectedRange), AUTO_REFRESH_MS);
+    return () => clearInterval(timerRef.current);
+  }, [selectedRange, loadData]);
 
   return (
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Fast Movers</h1>
-        <button className="btn btn-secondary" onClick={() => loadData(selectedPeriod)}>Refresh</button>
+        <button className="btn btn-secondary" onClick={() => loadData(selectedRange)}>Refresh</button>
       </div>
 
       <SectorSelector
-        options={PERIODS.map(p => p)}
-        labels={PERIOD_LABELS}
-        selected={selectedPeriod}
-        onSelect={handlePeriodChange}
+        options={RANGES}
+        labels={RANGE_LABELS}
+        selected={selectedRange}
+        onSelect={setSelectedRange}
       />
+
+      {selectedRange === 'TODAY' && data && data.generatedAt && (
+        <p style={{ fontSize: 12, color: '#94a3b8', margin: '8px 0 16px' }}>
+          Last updated: {formatLastUpdated(data.generatedAt)}
+        </p>
+      )}
 
       {loading && (
         <div className="page-loading"><p>Loading fast movers...</p></div>
@@ -59,14 +81,26 @@ const FastMoversPage = () => {
       {error && (
         <div className="page-error">
           <p>{error}</p>
-          <button onClick={() => loadData(selectedPeriod)} className="btn btn-primary" style={{ marginTop: 16 }}>Retry</button>
+          <button onClick={() => loadData(selectedRange)} className="btn btn-primary" style={{ marginTop: 16 }}>Retry</button>
         </div>
       )}
 
       {!loading && !error && data && (
         <div className="market-content">
-          <FastMoversTable title="Top Gainers" data={data.gainers} type="gainers" />
-          <FastMoversTable title="Top Losers" data={data.losers} type="losers" />
+          <FastMoversTable
+            title="Top Gainers"
+            data={data.gainers}
+            type="gainers"
+            range={selectedRange}
+            onCompanyClick={(entry) => navigate(`/company/${encodeURIComponent(entry.companyCode)}`)}
+          />
+          <FastMoversTable
+            title="Top Losers"
+            data={data.losers}
+            type="losers"
+            range={selectedRange}
+            onCompanyClick={(entry) => navigate(`/company/${encodeURIComponent(entry.companyCode)}`)}
+          />
         </div>
       )}
     </div>

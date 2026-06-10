@@ -4,11 +4,15 @@ import './ImportCsvModal.css';
 
 const STEPS = { UPLOAD: 'UPLOAD', MAP: 'MAP', RESULT: 'RESULT' };
 
+const ISIN_PATTERN = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
+const isIsinValue = v => ISIN_PATTERN.test(v.trim().toUpperCase());
+
 const ImportCsvModal = ({ isOpen, onClose, onImport, isLoading }) => {
   const [step, setStep] = useState(STEPS.UPLOAD);
   const [headers, setHeaders] = useState([]);
   const [rows, setRows] = useState([]);
   const [selectedHeader, setSelectedHeader] = useState('');
+  const [mode, setMode] = useState('SYMBOL');
   const [fileName, setFileName] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -49,9 +53,14 @@ const ImportCsvModal = ({ isOpen, onClose, onImport, isLoading }) => {
       setHeaders(h);
       setRows(r);
       const auto = h.find(hdr =>
+        /isin/i.test(hdr)
+      ) || h.find(hdr =>
         /symbol|code|ticker|company/i.test(hdr)
       ) || h[0];
       setSelectedHeader(auto);
+      const autoColIdx = h.indexOf(auto);
+      const sample = r.slice(0, 5).map(row => row[autoColIdx]).filter(Boolean);
+      setMode(sample.length > 0 && sample.every(isIsinValue) ? 'ISIN' : 'SYMBOL');
       setStep(STEPS.MAP);
     };
     reader.readAsText(file);
@@ -71,7 +80,7 @@ const ImportCsvModal = ({ isOpen, onClose, onImport, isLoading }) => {
 
     setError('');
     try {
-      const res = await onImport(codes);
+      const res = await onImport(codes, mode);
       setResult(res);
       setStep(STEPS.RESULT);
     } catch (err) {
@@ -84,6 +93,7 @@ const ImportCsvModal = ({ isOpen, onClose, onImport, isLoading }) => {
     setHeaders([]);
     setRows([]);
     setSelectedHeader('');
+    setMode('SYMBOL');
     setFileName('');
     setResult(null);
     setError('');
@@ -128,12 +138,29 @@ const ImportCsvModal = ({ isOpen, onClose, onImport, isLoading }) => {
             <select
               className="csv-col-dropdown"
               value={selectedHeader}
-              onChange={e => setSelectedHeader(e.target.value)}
+              onChange={e => {
+                const hdr = e.target.value;
+                setSelectedHeader(hdr);
+                const idx = headers.indexOf(hdr);
+                const sample = rows.slice(0, 5).map(r => r[idx]).filter(Boolean);
+                setMode(sample.length > 0 && sample.every(isIsinValue) ? 'ISIN' : 'SYMBOL');
+              }}
             >
               {headers.map(h => (
                 <option key={h} value={h}>{h}</option>
               ))}
             </select>
+          </div>
+          <div className="csv-mode-toggle">
+            <span className="csv-col-label">Import by:</span>
+            <label className="csv-mode-option">
+              <input type="radio" value="SYMBOL" checked={mode === 'SYMBOL'} onChange={() => setMode('SYMBOL')} />
+              NSE Symbol
+            </label>
+            <label className="csv-mode-option">
+              <input type="radio" value="ISIN" checked={mode === 'ISIN'} onChange={() => setMode('ISIN')} />
+              ISIN
+            </label>
           </div>
           {previewCodes.length > 0 && (
             <div className="csv-preview">
