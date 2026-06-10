@@ -153,6 +153,62 @@ public class GoogleRssScheduler {
     }
 
     /**
+     * Scheduled entry point for US market evening window: Mon–Fri, 6 PM–11:30 PM IST, every 30 min.
+     * Delegates to {@link #runUsFetch()}.
+     */
+    @Scheduled(cron = "${news.google.cron.us-market.evening}")
+    public void runFetchUsMarketEvening() {
+        runUsFetch();
+    }
+
+    /**
+     * Scheduled entry point for US market overnight window: Tue–Sat, 12 AM–2:30 AM IST, every 30 min.
+     * Delegates to {@link #runUsFetch()}.
+     */
+    @Scheduled(cron = "${news.google.cron.us-market.morning}")
+    public void runFetchUsMarketMorning() {
+        runUsFetch();
+    }
+
+    /**
+     * Runs the Google RSS fetch-dedup-save cycle for US market keywords only.
+     * Called by {@link #runFetchUsMarketEvening()} and {@link #runFetchUsMarketMorning()}.
+     *
+     * <p>Reads from {@code us-keywords.txt} via {@link KeywordLoader#loadUsKeywords()}.
+     * Uses the same executor pool, URL dedup window, and rate-limit delay as the main cycle.
+     * Duplicate articles (also fetched by the main cycle at off-peak) are silently dropped
+     * by the existing {@link UrlWindow} dedup before reaching the database.
+     */
+    public void runUsFetch() {
+        log.info("US market Google RSS fetch started — loading US keywords");
+
+        List<String> keywords = keywordLoader.loadUsKeywords();
+        if (keywords.isEmpty()) {
+            log.warn("No US keywords found — skipping US market fetch cycle");
+            return;
+        }
+
+        log.info("Submitting {} US keywords to executor pool", keywords.size());
+
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        for (String keyword : keywords) {
+            futures.add(CompletableFuture.runAsync(() -> processKeyword(keyword), executor));
+
+            try {
+                Thread.sleep(fetchDelayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("US fetch delay interrupted — stopping remaining keyword submissions");
+                break;
+            }
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        log.info("US market Google RSS fetch cycle completed — {} keywords processed", keywords.size());
+    }
+
+    /**
      * Runs the full Google RSS fetch-dedup-save cycle.
      * Called by the three scheduled entry points and the startup listener.
      *
