@@ -8,7 +8,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,10 +60,6 @@ public class NewsWorker {
 
     private final CompanyNewsRepository repository;
     private final SimilarityChecker similarityChecker;
-
-    /** Maximum number of news items to retain per keyword. Configurable via {@code news.limit}. */
-    @Value("${news.limit:5}")
-    private int newsLimit;
 
     /**
      * Per-keyword {@link ReentrantLock} map.
@@ -235,19 +230,16 @@ public class NewsWorker {
                 return;
             }
 
-            // Sort latest first, then trim to configured limit
+            // Sort latest first — the hourly cleanup job handles removing articles outside the retention window
             currentNews.sort((a, b) -> compareDates(b.getDate(), a.getDate()));
-            if (currentNews.size() > newsLimit) {
-                currentNews = currentNews.subList(0, newsLimit);
-            }
 
             record.setNews(currentNews);
             record.setLastUpdated(LocalDateTime.now());
             repository.save(record);
 
-            savedCounter.increment(currentNews.size());
-            log.info("Saved {} item(s) for keyword: {} ({} new passed dedup, trimmed to {})",
-                    currentNews.size(), keyword, added, newsLimit);
+            savedCounter.increment(added);
+            log.info("Saved {} total item(s) for keyword: {} ({} new this run)",
+                    currentNews.size(), keyword, added);
 
         } catch (DataIntegrityViolationException e) {
             log.warn("Constraint violation on save — falling back to upsert for keyword: {}", keyword);
@@ -307,10 +299,6 @@ public class NewsWorker {
 
         for (NewsItem item : newItems) {
             currentNews.add(0, item);
-        }
-
-        if (currentNews.size() > newsLimit) {
-            currentNews = currentNews.subList(0, newsLimit);
         }
 
         record.setNews(currentNews);
