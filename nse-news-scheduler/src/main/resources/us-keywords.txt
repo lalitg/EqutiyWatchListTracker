@@ -1,11 +1,16 @@
-US economy
-Fed rate hike or cut
-FOMC meeting
-US inflation (CPI, PPI)
-US job data (Nonfarm payrolls)
-US Federal Reserve
-Dollar index (DXY)
+# US
 Nasdaq
 Dow Jones
 Global liquidity
 Federal Reserve Economic Data
+US economy
+Fed rate decision
+FOMC meeting
+US inflation CPI PPI
+US job data Nonfarm payrolls
+US Federal Reserve 
+Dollar index DXY
+US recession
+US war
+US technology sector
+US innovation
