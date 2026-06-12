@@ -97,7 +97,7 @@ public class NseScheduler {
      * <p>The {@code scheduler = "nseTaskScheduler"} attribute routes this task to the
      * dedicated NSE thread pool, ensuring it never blocks or is blocked by other schedulers.
      */
-    @Scheduled(cron = "${news.nse.cron}", scheduler = "nseTaskScheduler")
+    @Scheduled(cron = "${news.nse.cron}", scheduler = "nseTaskScheduler", zone = "${scheduler.timezone}")
     public void runFetch() {
         log.info("NSE fetch triggered — current seqId window size: {}", seqIdWindow.getWindowSize());
 

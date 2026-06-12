@@ -126,10 +126,10 @@ public class GoogleRssScheduler {
     }
 
     /**
-     * Scheduled entry point for peak hours: weekdays 8 AM–5 PM, every 30 minutes.
+     * Scheduled entry point for peak hours: weekdays 8 AM–5 PM IST, every 15 minutes.
      * Delegates to {@link #runFetch()}.
      */
-    @Scheduled(cron = "${news.google.cron.peak}")
+    @Scheduled(cron = "${news.google.cron.peak}", zone = "${scheduler.timezone}")
     public void runFetchPeak() {
         runFetch();
     }
@@ -138,7 +138,7 @@ public class GoogleRssScheduler {
      * Scheduled entry point for off-peak weekday hours: midnight–8 AM and 6 PM–11 PM, every hour.
      * Delegates to {@link #runFetch()}.
      */
-    @Scheduled(cron = "${news.google.cron.offpeak.weekday}")
+    @Scheduled(cron = "${news.google.cron.offpeak.weekday}", zone = "${scheduler.timezone}")
     public void runFetchOffpeakWeekday() {
         runFetch();
     }
@@ -147,7 +147,7 @@ public class GoogleRssScheduler {
      * Scheduled entry point for weekends: every hour all day.
      * Delegates to {@link #runFetch()}.
      */
-    @Scheduled(cron = "${news.google.cron.offpeak.weekend}")
+    @Scheduled(cron = "${news.google.cron.offpeak.weekend}", zone = "${scheduler.timezone}")
     public void runFetchOffpeakWeekend() {
         runFetch();
     }
@@ -156,7 +156,7 @@ public class GoogleRssScheduler {
      * Scheduled entry point for US market evening window: Mon–Fri, 6 PM–11:30 PM IST, every 30 min.
      * Delegates to {@link #runUsFetch()}.
      */
-    @Scheduled(cron = "${news.google.cron.us-market.evening}")
+    @Scheduled(cron = "${news.google.cron.us-market.evening}", zone = "${scheduler.timezone}")
     public void runFetchUsMarketEvening() {
         runUsFetch();
     }
@@ -165,7 +165,7 @@ public class GoogleRssScheduler {
      * Scheduled entry point for US market overnight window: Tue–Sat, 12 AM–2:30 AM IST, every 30 min.
      * Delegates to {@link #runUsFetch()}.
      */
-    @Scheduled(cron = "${news.google.cron.us-market.morning}")
+    @Scheduled(cron = "${news.google.cron.us-market.morning}", zone = "${scheduler.timezone}")
     public void runFetchUsMarketMorning() {
         runUsFetch();
     }

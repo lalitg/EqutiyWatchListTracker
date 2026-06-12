@@ -137,7 +137,8 @@ public class NewsWorker {
      * is applied inside the per-keyword lock so concurrent calls for the same keyword do not
      * produce race conditions or duplicate DB inserts.
      *
-     * <p>After dedup, items are sorted newest-first and trimmed to {@code news.limit}.
+     * <p>After dedup, items are sorted newest-first. The hourly cleanup job handles removing
+     * articles outside the 24-hour retention window.
      *
      * <p>Log4j2's {@link ThreadContext} is populated with the keyword so all log lines inside
      * this method carry the {@code keyword} field, making parallel log output traceable in

@@ -23,7 +23,7 @@ public class NewsCleanupScheduler {
         this.newsCleanupService = newsCleanupService;
     }
 
-    @Scheduled(cron = "${news.cleanup.cron}")
+    @Scheduled(cron = "${news.cleanup.cron}", zone = "${scheduler.timezone}")
     public void runCleanup() {
         log.info("=== News cleanup job started ===");
         newsCleanupService.cleanup();
