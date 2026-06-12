@@ -1,14 +1,25 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import CompanySearchBar from './CompanySearchBar';
 import './Navbar.css';
 
 const Navbar = () => {
+  const { isLoggedIn, user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <nav className="navbar">
       <div className="navbar-inner">
         <NavLink to="/watchlist" className="navbar-logo">
           Equity Watchlist Tracker
         </NavLink>
+        <CompanySearchBar />
         <div className="navbar-links">
           <NavLink to="/watchlist" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             Watchlist
@@ -22,6 +33,22 @@ const Navbar = () => {
           <NavLink to="/market/fast-movers" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             Fast Movers
           </NavLink>
+          <NavLink to="/market/nifty50" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            Nifty 50
+          </NavLink>
+          <NavLink to="/market/calendar" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            Calendar
+          </NavLink>
+          {isLoggedIn ? (
+            <div className="navbar-user">
+              <span className="navbar-username">Hi, {user?.username}</span>
+              <button className="navbar-logout-btn" onClick={handleLogout}>Logout</button>
+            </div>
+          ) : (
+            <NavLink to="/login" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              Login
+            </NavLink>
+          )}
         </div>
       </div>
     </nav>

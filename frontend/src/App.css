@@ -115,6 +115,13 @@ body {
   gap: 8px;
 }
 
+.last-updated-label {
+  font-size: 0.78rem;
+  color: #888;
+  text-align: right;
+  margin-bottom: 4px;
+}
+
 /* === Buttons === */
 .btn {
   padding: 12px 24px;

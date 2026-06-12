@@ -1,4 +1,4 @@
-# India
+# India (Global Market Tab)
 RBI monetary policy
 repo rate
 India Budget
@@ -22,8 +22,9 @@ India war
 India recession
 Indian natural disaster
 Indian terrorist attack
+India GDP
 
-# Global
+# Global (Global Market Tab)
 GDP growth recession
 Interest rates
 Bond yields US 10Y yield
@@ -42,8 +43,11 @@ Terrorist attack
 Political crisis
 IMF
 world bank
+global trade
+Forex Reserves
+China tariffs
 
-# US
+# US (Global Market Tab)
 Nasdaq
 Dow Jones
 Global liquidity
@@ -60,7 +64,7 @@ US war
 US technology sector
 US innovation
 
-# Asia
+# Asia (Global Market Tab)
 BOJ Policy
 Taiwan economy
 Hong Kong economy
@@ -69,7 +73,7 @@ China economy
 Japan economy
 Singapore economy
 
-# Europe
+# Europe (Global Market Tab)
 European Central Bank Policy
 European innovation
 European technology

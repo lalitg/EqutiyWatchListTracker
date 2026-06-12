@@ -1,0 +1,108 @@
+.dig-section {
+  margin-bottom: 32px;
+}
+
+.dig-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #64748b;
+  margin-bottom: 14px;
+  padding-left: 2px;
+}
+
+.dig-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 1100px) {
+  .dig-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 720px) {
+  .dig-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.dig-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px 18px;
+  border: 1px solid #e8edf2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.dig-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #e2e8f0;
+  border-radius: 12px 12px 0 0;
+}
+
+.dig-card--gain::before { background: linear-gradient(90deg, #16a34a, #4ade80); }
+.dig-card--loss::before { background: linear-gradient(90deg, #dc2626, #f87171); }
+
+.dig-card--clickable {
+  cursor: pointer;
+}
+
+.dig-card--clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
+  border-color: #c7d2fe;
+}
+
+.dig-card-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.dig-card-ltp {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+
+.dig-card-pct {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #94a3b8;
+}
+
+.dig-card-pct.gain { color: #16a34a; }
+.dig-card-pct.loss { color: #dc2626; }
+
+.dig-card-chg {
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: #94a3b8;
+}
+
+.dig-card-chg.gain { color: #22c55e; }
+.dig-card-chg.loss { color: #f87171; }
+
+.dig-loading, .dig-error {
+  text-align: center;
+  padding: 24px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+.dig-error { color: #dc2626; }

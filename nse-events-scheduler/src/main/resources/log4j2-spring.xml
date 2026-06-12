@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+
+    <Properties>
+        <!-- Shared log pattern — same format as the previous logback config -->
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%t] %logger{36} : %msg%n</Property>
+        <!-- Active log file -->
+        <Property name="LOG_FILE">logs/nse-events-scheduler.log</Property>
+        <!-- Archived files: compressed .gz, named by date + index -->
+        <Property name="LOG_ARCHIVE">logs/nse-events-scheduler.%d{yyyy-MM-dd}.%i.log.gz</Property>
+    </Properties>
+
+    <Appenders>
+
+        <!-- CONSOLE — real-time terminal output -->
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <!-- FILE — rolling daily log with size and age caps -->
+        <!-- Rotates when the file hits 10 MB OR a new day starts.          -->
+        <!-- Compressed archives (.gz) keep disk usage small.               -->
+        <!-- Files older than 30 days are auto-deleted.                     -->
+        <!-- Total log directory is capped at 300 MB.                       -->
+        <RollingFile name="FILE"
+                     fileName="${LOG_FILE}"
+                     filePattern="${LOG_ARCHIVE}">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <!-- Roll over at midnight -->
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <!-- Also roll over if a single file exceeds 10 MB -->
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <!-- Delete archives older than 30 days, cap total at 300 MB -->
+                <Delete basePath="logs" maxDepth="1">
+                    <IfFileName glob="nse-events-scheduler.*.log.gz"/>
+                    <IfAccumulatedFileSize exceeds="300MB"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+        <!-- ASYNC — wraps FILE appender to make disk writes non-blocking.  -->
+        <!-- Prevents log I/O from stalling application/scheduler threads.  -->
+        <Async name="ASYNC_FILE" bufferSize="512">
+            <AppenderRef ref="FILE"/>
+        </Async>
+
+    </Appenders>
+
+    <Loggers>
+
+        <!-- Suppress verbose Spring/Hibernate/HikariCP/Flyway internals -->
+        <Logger name="org.springframework" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="org.hibernate" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="com.zaxxer.hikari" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+        <Logger name="org.flywaydb" level="WARN" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- Application package — INFO so all service logs are visible -->
+        <Logger name="com.nseevents" level="INFO" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Logger>
+
+        <!-- Root — catch-all for any library not explicitly configured above -->
+        <Root level="INFO">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_FILE"/>
+        </Root>
+
+    </Loggers>
+
+</Configuration>

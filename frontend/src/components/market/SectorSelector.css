@@ -28,3 +28,17 @@
   border-color: transparent;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
+
+.sector-tab-pct {
+  font-size: 0.78em;
+  font-weight: 600;
+  margin-left: 3px;
+}
+
+.sector-tab-pct.gain { color: #16a34a; }
+.sector-tab-pct.loss { color: #dc2626; }
+
+.sector-tab.active .sector-tab-pct.gain,
+.sector-tab.active .sector-tab-pct.loss {
+  color: rgba(255, 255, 255, 0.9);
+}

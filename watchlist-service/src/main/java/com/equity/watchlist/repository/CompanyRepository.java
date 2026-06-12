@@ -16,4 +16,7 @@ public interface CompanyRepository extends JpaRepository<CompanyMaster, Long> {
 
     /** Looks up a company by its NSE symbol. */
     Optional<CompanyMaster> findBySymbol(String symbol);
+
+    /** Looks up a company by its ISIN. */
+    Optional<CompanyMaster> findByIsin(String isin);
 }
