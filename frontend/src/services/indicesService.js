@@ -1,17 +1,5 @@
 const BASE = '/api/global-watchlist';
 
-export async function fetchGlobalIndices() {
-  const res = await fetch(`${BASE}/global-indices`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function fetchDomesticIndices() {
-  const res = await fetch(`${BASE}/domestic-indices`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
 export async function fetchDomesticIndexCompanies(indexKey) {
   const res = await fetch(`${BASE}/domestic-indices/${encodeURIComponent(indexKey)}/companies`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

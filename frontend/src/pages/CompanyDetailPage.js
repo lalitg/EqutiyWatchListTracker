@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  fetchCompanyDetail,
   fetchQuarterlyResults,
   fetchBalanceSheet,
   fetchPeSnapshot,
@@ -18,14 +17,6 @@ import './CompanyDetailPage.css';
 function fmt(val) {
   if (val == null) return '—';
   return Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function fmtVolume(val) {
-  if (val == null) return '—';
-  const n = Number(val);
-  if (n >= 1e7) return (n / 1e7).toFixed(2) + ' Cr';
-  if (n >= 1e5) return (n / 1e5).toFixed(2) + ' L';
-  return n.toLocaleString('en-IN');
 }
 
 function fmtCr(val) {
@@ -49,9 +40,8 @@ const CompanyDetailPage = () => {
   const { entries, activeId, addCompany, isActionLoading } = useWatchlist();
   const isInWatchlist = entries.some(e => e.companyCode === symbol?.toUpperCase());
 
-  const [data,        setData]        = useState(null);
   const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState(null);
+  const [error]                       = useState(null);
 
   const [quarterly,   setQuarterly]   = useState([]);
   const [balSheet,    setBalSheet]    = useState([]);
@@ -67,11 +57,6 @@ const CompanyDetailPage = () => {
   const [insightsLoading, setInsightsLoading] = useState(true);
 
   useEffect(() => {
-    fetchCompanyDetail(symbol)
-      .then(setData)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
-
     Promise.allSettled([
       fetchQuarterlyResults(symbol),
       fetchBalanceSheet(symbol),
@@ -94,10 +79,7 @@ const CompanyDetailPage = () => {
       if (sRes.status === 'fulfilled') setSebi(sRes.value);
     }).finally(() => setInsightsLoading(false));
 
-    const t = setInterval(() => {
-      fetchCompanyDetail(symbol).then(setData).catch(() => {});
-    }, 5 * 60 * 1000);
-    return () => clearInterval(t);
+    setLoading(false);
   }, [symbol]);
 
   if (loading) return (
@@ -115,25 +97,13 @@ const CompanyDetailPage = () => {
     </div>
   );
 
-  const pct      = data.percentChange != null ? Number(data.percentChange) : null;
-  const chg      = data.changeValue   != null ? Number(data.changeValue)   : null;
-  const ltp      = data.currentValue  != null ? Number(data.currentValue)  : null;
-  const hi52     = data.week52High    != null ? Number(data.week52High)    : null;
-  const lo52     = data.week52Low     != null ? Number(data.week52Low)     : null;
-  const positive = pct != null && pct > 0;
-  const negative = pct != null && pct < 0;
-  const arrow    = positive ? '▲' : negative ? '▼' : '';
-  const sign     = positive ? '+' : '';
-
-  const rangePos = (hi52 && lo52 && ltp && hi52 > lo52)
-    ? Math.min(100, Math.max(0, ((ltp - lo52) / (hi52 - lo52)) * 100))
-    : null;
-
   const peLabel = pe ? fmtPe(pe.trailingPe) : null;
 
-  const companyName    = memberships?.companyName || null;
+  const companyName    = memberships?.companyName || symbol;
   const sectorBadges   = (memberships?.memberships || []).filter(m => m.type === 'SECTOR');
   const domesticBadges = (memberships?.memberships || []).filter(m => m.type === 'DOMESTIC');
+  const allTimeHigh    = memberships?.allTimeHigh ?? null;
+  const allTimeLow     = memberships?.allTimeLow  ?? null;
 
   return (
     <div className="cdp-container">
@@ -149,32 +119,16 @@ const CompanyDetailPage = () => {
       </div>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div className={`cdp-hero ${positive ? 'cdp-hero--gain' : negative ? 'cdp-hero--loss' : ''}`}>
+      <div className="cdp-hero">
         <div className="cdp-hero-top">
           <div className="cdp-identity">
-            <div className="cdp-symbol">{data.companyCode}</div>
+            <div className="cdp-symbol">{symbol?.toUpperCase()}</div>
             {companyName && <div className="cdp-company-name">{companyName}</div>}
           </div>
           {peLabel && <div className="cdp-pe-pill">P/E {peLabel}</div>}
         </div>
 
-        <div className="cdp-price-row">
-          <div className="cdp-ltp">₹{fmt(ltp)}</div>
-          {pct != null && (
-            <div className={`cdp-change ${positive ? 'gain' : negative ? 'loss' : ''}`}>
-              {arrow} {fmt(Math.abs(chg))} ({sign}{pct.toFixed(2)}%)
-            </div>
-          )}
-        </div>
-
-        {data.lastUpdated && (
-          <div className="cdp-updated">
-            {new Date(data.lastUpdated).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-          </div>
-        )}
-
-        {/* Sector + index membership badges — all of them, not just the one navigated from */}
-        {(sectorBadges.length > 0 || domesticBadges.length > 0 || data.nifty50) && (
+        {(sectorBadges.length > 0 || domesticBadges.length > 0) && (
           <div className="cdp-badge-section">
             {domesticBadges.map(m => (
               <span key={m.nseKey} className="cdp-badge cdp-badge--index">{m.displayName}</span>
@@ -186,48 +140,23 @@ const CompanyDetailPage = () => {
         )}
       </div>
 
-      {/* ── 52-week range ─────────────────────────────────────────────────── */}
-      {rangePos !== null && (
-        <div className="cdp-range-section">
-          <div className="cdp-range-header">52-Week Range</div>
-          <div className="cdp-range-label-row">
-            <span className="cdp-range-low">₹{fmt(lo52)}</span>
-            <span className="cdp-range-high">₹{fmt(hi52)}</span>
-          </div>
-          <div className="cdp-range-track">
-            <div className="cdp-range-fill" style={{ width: `${rangePos}%` }} />
-            <div className="cdp-range-dot" style={{ left: `calc(${rangePos}% - 7px)` }} />
-          </div>
+      {/* ── Stats grid ────────────────────────────────────────────────────── */}
+      {(allTimeHigh != null || allTimeLow != null) && (
+        <div className="cdp-stats-grid">
+          {allTimeHigh != null && (
+            <div className="cdp-stat">
+              <div className="cdp-stat-label">All-Time High</div>
+              <div className="cdp-stat-value">₹{fmt(allTimeHigh)}</div>
+            </div>
+          )}
+          {allTimeLow != null && (
+            <div className="cdp-stat">
+              <div className="cdp-stat-label">All-Time Low</div>
+              <div className="cdp-stat-value">₹{fmt(allTimeLow)}</div>
+            </div>
+          )}
         </div>
       )}
-
-      {/* ── Stats grid ────────────────────────────────────────────────────── */}
-      <div className="cdp-stats-grid">
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">Prev Close</div>
-          <div className="cdp-stat-value">₹{fmt(data.previousClose)}</div>
-        </div>
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">52W High</div>
-          <div className="cdp-stat-value cdp-stat--gain">₹{fmt(hi52)}</div>
-        </div>
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">52W Low</div>
-          <div className="cdp-stat-value cdp-stat--loss">₹{fmt(lo52)}</div>
-        </div>
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">All-Time High</div>
-          <div className="cdp-stat-value">₹{fmt(data.allTimeHigh)}</div>
-        </div>
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">All-Time Low</div>
-          <div className="cdp-stat-value">₹{fmt(data.allTimeLow)}</div>
-        </div>
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">Volume</div>
-          <div className="cdp-stat-value">{fmtVolume(data.tradedVolume)}</div>
-        </div>
-      </div>
 
       {/* ── News & Events ─────────────────────────────────────────────────── */}
       <div className="cdp-insights">

@@ -30,12 +30,6 @@ const Navbar = () => {
           <NavLink to="/market/domestic" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             Domestic
           </NavLink>
-          <NavLink to="/market/fast-movers" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            Fast Movers
-          </NavLink>
-          <NavLink to="/market/nifty50" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            Nifty 50
-          </NavLink>
           <NavLink to="/market/calendar" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             Calendar
           </NavLink>

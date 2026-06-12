@@ -2,14 +2,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import './WatchlistTable.css';
 
 const TABLE_COLUMNS = [
-  { key: 'companyCode', label: 'Company Code', sortable: true },
+  { key: 'companyCode', label: 'Symbol', sortable: true },
   { key: 'companyName', label: 'Company', sortable: true },
-  { key: 'week52Low', label: '52 Week Low', sortable: true },
-  { key: 'week52High', label: '52 Week High', sortable: true },
-  { key: 'allTimeLow', label: 'All Time Low', sortable: true },
-  { key: 'allTimeHigh', label: 'All Time High', sortable: true },
-  { key: 'currentValue', label: 'Current Value', sortable: true },
-  { key: 'tradedVolume', label: 'Traded Volume (Lakhs)', sortable: true },
+  { key: 'allTimeHigh', label: 'All-Time High', sortable: true },
+  { key: 'allTimeLow',  label: 'All-Time Low',  sortable: true },
 ];
 
 const ROWS_PER_PAGE = 25;
@@ -21,16 +17,8 @@ const DeleteIcon = () => (
   </svg>
 );
 
-const PriceCell = ({ value, pct }) => {
-  const formatted = value != null ? Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
-  if (pct == null) return <span>{formatted}</span>;
-  const up = Number(pct) > 0;
-  const down = Number(pct) < 0;
-  const cls = up ? 'wl-price-up' : down ? 'wl-price-down' : '';
-  const arrow = up ? '▲' : down ? '▼' : '';
-  const sign = up ? '+' : '';
-  return <span className={cls}>{arrow} {formatted} ({sign}{Number(pct).toFixed(2)}%)</span>;
-};
+const fmtPrice = (val) =>
+  val != null ? '₹' + Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
 
 const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -148,8 +136,8 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                 <td className="wl-sno">{getSerialNumber(index)}</td>
                 {TABLE_COLUMNS.map(col => (
                   <td key={col.key} className={col.key === 'companyName' ? 'wl-company-name' : ''}>
-                    {col.key === 'currentValue'
-                      ? <PriceCell value={entry.currentValue} pct={entry.percentChange} />
+                    {(col.key === 'allTimeHigh' || col.key === 'allTimeLow')
+                      ? fmtPrice(entry[col.key])
                       : formatCellValue(entry[col.key])}
                   </td>
                 ))}
