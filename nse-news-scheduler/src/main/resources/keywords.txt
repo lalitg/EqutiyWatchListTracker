@@ -23,6 +23,7 @@ India recession
 Indian natural disaster
 Indian terrorist attack
 India GDP
+Monsoon India stock price
 
 # Global (Global Market Tab)
 GDP growth recession
