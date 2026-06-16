@@ -17,7 +17,7 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-inner">
         <NavLink to="/watchlist" className="navbar-logo">
-          Equity Watchlist Tracker
+          Niveshflow
         </NavLink>
         <CompanySearchBar />
         <div className="navbar-links">

@@ -1,10 +1,7 @@
-import React, { useEffect, useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import SectorSelector from '../components/market/SectorSelector';
+import React, { useEffect, useCallback } from 'react';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import { useMarket } from '../context/MarketContext';
-import { fetchSectorIndices } from '../services/indicesService';
 
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
 
@@ -15,14 +12,7 @@ const DomesticMarketPage = () => {
     STALE_FOCUS_MS,
   } = useMarket();
 
-  const navigate = useNavigate();
-  const [sectorTabs, setSectorTabs] = useState([]);
-
   useEffect(() => { fetchDomestic('All'); }, [fetchDomestic]);
-
-  useEffect(() => {
-    fetchSectorIndices().then(setSectorTabs).catch(() => {});
-  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -54,20 +44,8 @@ const DomesticMarketPage = () => {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Domestic Market Insights</h1>
-        <button className="btn btn-secondary" onClick={() => {
-          fetchDomestic('All');
-          fetchSectorIndices().then(setSectorTabs).catch(() => {});
-        }}>Refresh</button>
+        <button className="btn btn-secondary" onClick={() => fetchDomestic('All')}>Refresh</button>
       </div>
-
-      {sectorTabs.length > 0 && (
-        <SectorSelector
-          options={sectorTabs.map(s => s.nseParam)}
-          selected={null}
-          onSelect={(nseParam) => navigate(`/market/domestic/sector/${encodeURIComponent(nseParam)}`)}
-          labels={sectorTabs.reduce((acc, s) => { acc[s.nseParam] = s.displayName; return acc; }, {})}
-        />
-      )}
 
       {domesticLoading && (
         <div className="page-loading"><p>Loading domestic insights...</p></div>
