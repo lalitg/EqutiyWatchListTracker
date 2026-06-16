@@ -1,6 +1,26 @@
 import { fetchNews } from './newsService';
 import { fetchEvents } from './eventsService';
 
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+function parseNewsDate(dateStr) {
+  if (!dateStr) return null;
+  let d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d;
+  // NSE format: "16-Jun-2026 14:25:17" — replace hyphens so browsers parse it
+  d = new Date(dateStr.replace(/-/g, ' '));
+  if (!isNaN(d.getTime())) return d;
+  return null;
+}
+
+function filterLast24h(items) {
+  const cutoff = Date.now() - TWENTY_FOUR_HOURS_MS;
+  return items.filter(item => {
+    const d = parseNewsDate(item.date);
+    return d !== null && d.getTime() >= cutoff;
+  });
+}
+
 /**
  * Maps each domestic sector tab to its corresponding news service keyword.
  *
@@ -147,13 +167,14 @@ export async function fetchGlobalInsights(region = 'India') {
   const mergedNews = newsResults.flatMap(r => r.news ?? []);
   const dedupNews  = [...new Map(mergedNews.filter(n => n.link).map(n => [n.link, n])).values()];
   dedupNews.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const filteredNews = filterLast24h(dedupNews);
 
   const mergedEvents = eventsResults.flatMap(r => r.events ?? []);
   const dedupEvents  = [...new Map(mergedEvents.filter(e => e.symbol).map(e => [e.symbol + e.date, e])).values()];
   dedupEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  console.log(`[marketService] Region '${region}' — news: ${dedupNews.length}, events: ${dedupEvents.length}`);
-  return { news: dedupNews, events: dedupEvents };
+  console.log(`[marketService] Region '${region}' — news: ${filteredNews.length} (24h), events: ${dedupEvents.length}`);
+  return { news: filteredNews, events: dedupEvents };
 }
 
 /**
@@ -182,7 +203,7 @@ export async function fetchDomesticInsights(sector = 'All') {
   ]);
 
   return {
-    news:   newsData.news   ?? [],
+    news:   filterLast24h(newsData.news ?? []),
     events: eventsData.events ?? [],
   };
 }
