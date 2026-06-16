@@ -2,10 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import './WatchlistTable.css';
 
 const TABLE_COLUMNS = [
-  { key: 'companyCode', label: 'Symbol', sortable: true },
+  { key: 'companyCode', label: 'Symbol',  sortable: true },
   { key: 'companyName', label: 'Company', sortable: true },
-  { key: 'allTimeHigh', label: 'All-Time High', sortable: true },
-  { key: 'allTimeLow',  label: 'All-Time Low',  sortable: true },
 ];
 
 const ROWS_PER_PAGE = 25;
@@ -16,9 +14,6 @@ const DeleteIcon = () => (
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
   </svg>
 );
-
-const fmtPrice = (val) =>
-  val != null ? '₹' + Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
 
 const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -136,9 +131,7 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                 <td className="wl-sno">{getSerialNumber(index)}</td>
                 {TABLE_COLUMNS.map(col => (
                   <td key={col.key} className={col.key === 'companyName' ? 'wl-company-name' : ''}>
-                    {(col.key === 'allTimeHigh' || col.key === 'allTimeLow')
-                      ? fmtPrice(entry[col.key])
-                      : formatCellValue(entry[col.key])}
+                    {formatCellValue(entry[col.key])}
                   </td>
                 ))}
                 <td className="wl-td-actions">
