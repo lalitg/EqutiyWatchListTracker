@@ -85,7 +85,7 @@ const DomesticMarketPage = () => {
           {getLastUpdatedLabel() && (
             <p className="last-updated-label">{getLastUpdatedLabel()}</p>
           )}
-          <NewsList news={domestic.news?.slice(0, 5)} />
+          <NewsList news={domestic.news ?? []} />
           <EventsList events={domestic.events} />
         </div>
       )}

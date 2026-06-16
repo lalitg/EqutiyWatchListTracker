@@ -80,7 +80,7 @@ const GlobalMarketPage = () => {
           {getLastUpdatedLabel() && (
             <p className="last-updated-label">{getLastUpdatedLabel()}</p>
           )}
-          <NewsList news={currentData.news?.slice(0, 5)} />
+          <NewsList news={currentData.news ?? []} />
           <EventsList events={currentData.events ?? []} />
         </div>
       )}
