@@ -1,11 +1,13 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import SectorSelector from '../components/market/SectorSelector';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
+import GlobalIndicesTable from '../components/market/GlobalIndicesTable';
 import { useMarket } from '../context/MarketContext';
 
 const REGIONS = ['Global', 'US', 'Asia', 'Europe', 'India'];
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
+const PRICE_REFRESH_MS = 5 * 60 * 1000;
 
 const GlobalMarketPage = () => {
   const {
@@ -14,6 +16,7 @@ const GlobalMarketPage = () => {
     STALE_FOCUS_MS,
   } = useMarket();
 
+  const [priceRefreshKey, setPriceRefreshKey] = useState(0);
   const currentData = globalCache[selectedRegion];
 
   useEffect(() => {
@@ -26,6 +29,11 @@ const GlobalMarketPage = () => {
     }, AUTO_REFRESH_MS);
     return () => clearInterval(interval);
   }, [selectedRegion, globalLoading, refreshGlobal]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setPriceRefreshKey(k => k + 1), PRICE_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleVisibilityChange = useCallback(() => {
     if (document.visibilityState === 'visible') {
@@ -51,12 +59,17 @@ const GlobalMarketPage = () => {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Global Market Insights</h1>
-        <button className="btn btn-secondary" onClick={() => refreshGlobal(selectedRegion)}>
+        <button className="btn btn-secondary" onClick={() => {
+          refreshGlobal(selectedRegion);
+          setPriceRefreshKey(k => k + 1);
+        }}>
           Refresh
         </button>
       </div>
 
       <SectorSelector options={REGIONS} selected={selectedRegion} onSelect={setRegion} />
+
+      <GlobalIndicesTable refreshKey={priceRefreshKey} region={selectedRegion} />
 
       {globalLoading && (
         <div className="page-loading"><p>Loading global insights...</p></div>
