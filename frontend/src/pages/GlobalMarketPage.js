@@ -4,7 +4,7 @@ import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import { useMarket } from '../context/MarketContext';
 
-const REGIONS = ['India', 'Global', 'US', 'Asia', 'Europe'];
+const REGIONS = ['Global', 'US', 'Asia', 'Europe', 'India'];
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
 
 const GlobalMarketPage = () => {

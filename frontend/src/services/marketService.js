@@ -110,6 +110,9 @@ const REGION_KEYWORD_MAP = {
     'European technology',
     'euro currency',
     'Europe Economy',
+    'Germany economy',
+    'France economy',
+    'UK economy',
   ],
 };
 
