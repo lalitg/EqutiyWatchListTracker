@@ -53,6 +53,7 @@ const REGION_KEYWORD_MAP = {
     'Indian natural disaster',
     'Indian terrorist attack',
     'India GDP',
+    'Monsoon India stock price',
   ],
   Global: [
     'GDP growth recession',
