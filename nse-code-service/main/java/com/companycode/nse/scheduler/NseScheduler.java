@@ -80,6 +80,13 @@ public class NseScheduler {
      */
     private void runSync() {
         nseSyncService.syncCompanies();
-        nseSectorSyncService.syncSectors();
+        try {
+            nseSectorSyncService.syncSectors();
+        } catch (Exception e) {
+            // Sector sync hits the NSE API which may be blocked by Akamai.
+            // A failure here must not crash the context — company master data
+            // is still available; sector data will be retried on the next weekly run.
+            logger.warn("Sector sync failed (non-fatal) — will retry on next scheduled run: {}", e.getMessage());
+        }
     }
 }

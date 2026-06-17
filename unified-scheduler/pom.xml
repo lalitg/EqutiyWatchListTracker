@@ -16,7 +16,7 @@
           2. nse-code-service          →  nse-enterprise-scheduler-1.0.0.jar
           3. nse-events-scheduler      →  nse-events-scheduler-0.0.1-SNAPSHOT.jar
           4. nse-news-scheduler        →  nse-news-scheduler-0.0.1-SNAPSHOT.jar
-          5. fast-movers-service       →  fast-movers-service-1.0.0.jar
+          5. sebi-data-service         →  sebi-data-service-1.0.0.jar
           6. fundamentals-service      →  fundamentals-service-0.0.1-SNAPSHOT.jar
           7. unified-scheduler         →  unified-scheduler-1.0.0.jar  (this module)
     -->
@@ -42,6 +42,8 @@
             The 6 service JARs — plain (non-exec) artifacts produced because each
             service's spring-boot-maven-plugin is configured with classifier=exec.
             Maven includes their classes and pulls in all transitive dependencies.
+
+            Services: global-watchlist, nse-code, nse-events, nse-news, sebi-data, fundamentals
         -->
         <dependency>
             <groupId>com.watchlist</groupId>
@@ -93,7 +95,7 @@
 
         <dependency>
             <groupId>com.equity</groupId>
-            <artifactId>fast-movers-service</artifactId>
+            <artifactId>sebi-data-service</artifactId>
             <version>1.0.0</version>
             <exclusions>
                 <exclusion>
@@ -201,6 +203,13 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <!-- jsoup — required by sebi-data-service for buybacks HTML parsing -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.17.2</version>
         </dependency>
 
         <!-- Jackson JSR310 — LocalDateTime serialization for multiple services -->

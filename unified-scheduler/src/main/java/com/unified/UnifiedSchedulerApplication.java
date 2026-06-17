@@ -2,7 +2,7 @@ package com.unified;
 
 import com.companynews.newsscheduler.NseNewsSchedulerApplication;
 import com.companycode.nse.NseEnterpriseSchedulerApplication;
-import com.equity.fastmovers.FastMoversApplication;
+import com.equity.sebi.SebiDataApplication;
 import com.equity.fundamentals.FundamentalsApplication;
 import com.nseevents.nse_events_scheduler.NseEventsSchedulerApplication;
 import com.watchlist.global.GlobalWatchlistApplication;
@@ -35,7 +35,8 @@ import java.util.concurrent.CountDownLatch;
  *   <li>nse-code          → 8082</li>
  *   <li>nse-events        → 8085</li>
  *   <li>nse-news          → 8084 (watchlist-service expects nse-news on 8084)</li>
- *   <li>fast-movers       → 8081</li>
+ *   <li>sebi-data         → 8089</li>
+ *   <li>fundamentals      → 8086</li>
  * </ul>
  *
  * <p><b>This class is intentionally NOT a {@code @SpringBootApplication}.</b>
@@ -69,7 +70,7 @@ public class UnifiedSchedulerApplication {
          */
         System.setProperty("logging.config", "classpath:log4j2-spring.xml");
 
-        log.info("=== Unified Scheduler starting — launching 6 service contexts ===");
+        log.info("=== Unified Scheduler starting — launching 6 service contexts: global-watchlist, nse-code, nse-events, nse-news, sebi-data, fundamentals ===");
 
         startService("global-watchlist", GlobalWatchlistApplication.class,
                 "application-global-watchlist", "8083");
@@ -83,8 +84,8 @@ public class UnifiedSchedulerApplication {
         startService("nse-news", NseNewsSchedulerApplication.class,
                 "application-nse-news", "8084");
 
-        startService("fast-movers", FastMoversApplication.class,
-                "application-fast-movers", "8081");
+        startService("sebi-data", SebiDataApplication.class,
+                "application-sebi-data", "8089");
 
         startService("fundamentals", FundamentalsApplication.class,
                 "application-fundamentals", "8086");

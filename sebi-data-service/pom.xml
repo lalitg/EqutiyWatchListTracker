@@ -5,46 +5,23 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.11</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<version>3.5.0</version>
+		<relativePath/>
 	</parent>
-	<groupId>com.nseevents</groupId>
-	<artifactId>nse-events-scheduler</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+	<groupId>com.equity</groupId>
+	<artifactId>sebi-data-service</artifactId>
+	<version>1.0.0</version>
+	<name>sebi-data-service</name>
+	<description>SEBI Data Service — RSS enforcement feed + buyback scraper with NSE company matching</description>
+
 	<properties>
 		<java.version>17</java.version>
 	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-			<!-- Exclude Logback — Log4j2 is used instead -->
-			<exclusions>
-				<exclusion>
-					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-starter-logging</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
-			<!-- Exclude Logback — Log4j2 is used instead -->
 			<exclusions>
 				<exclusion>
 					<groupId>org.springframework.boot</groupId>
@@ -52,29 +29,20 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-
-		<!-- Log4j2 — replaces the default Logback backend -->
-		<!-- SLF4J API stays the same; only the backend changes -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-log4j2</artifactId>
 		</dependency>
-
+		<!-- HTML parsing for buybacks page -->
 		<dependency>
-			<groupId>org.postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.17.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
-		</dependency>
-		
-		<!-- Jackson JSR310 — for LocalDateTime serialization -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.datatype</groupId>
-			<artifactId>jackson-datatype-jsr310</artifactId>
 		</dependency>
 	</dependencies>
 
@@ -84,6 +52,14 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<finalName>sebi-data-service-1.0.0</finalName>
+					<!--
+					    classifier=exec: Spring Boot produces TWO jars:
+					      1. sebi-data-service-1.0.0.jar        (plain, classes at root — used as library dependency by unified-scheduler)
+					      2. sebi-data-service-1.0.0-exec.jar   (fat executable jar — used for standalone deploy)
+					    Without this, Spring Boot replaces the plain jar with the fat jar, making
+					    it unusable as a Maven dependency inside unified-scheduler.
+					-->
 					<classifier>exec</classifier>
 				</configuration>
 			</plugin>

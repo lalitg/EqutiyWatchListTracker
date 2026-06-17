@@ -1,69 +1,85 @@
-# US
-US economy
-Fed rate hike or cut
-FOMC meeting
-US inflation (CPI, PPI)
-US job data (Nonfarm payrolls)
-US Federal Reserve
-Dollar index (DXY)
-Nasdaq
-Dow Jones
-Global liquidity
-Federal Reserve Economic Data
-
-# EUROPE
-Europe economy
-European Central Bank Policy
-
-# ASIA
-Asia markets
-China economy
-Japan economy
-Singapore economy
-BOJ Policy
-
-# INDIA
+# India (Global Market Tab)
 RBI monetary policy
-RBI policy / repo rate
-RBI Notifications
-Budget
+repo rate
+India Budget
 Union Budget
 Budget 2026
-Fiscal deficit
+India fiscal deficit
 GST changes
 inflation India
-Inflation (CPI/WPI India)
+CPI WPI India
 IIP data
-Trade deficit
-Economic survey
-FII investment
+India trade deficit
+India economic survey
+FII investment 
 Rupee vs Dollar
 Nifty 50
 Sensex
 Bank Nifty
 crude oil India
 India election results
-PIB India
+India war
+India recession
+Indian natural disaster
+Indian terrorist attack
+India GDP
+Monsoon India stock price
 
-# GLOBAL
-GDP growth / recession
+# Global (Global Market Tab)
+GDP growth recession
 Interest rates
-Bond yields (US 10Y yield)
-Quantitative tightening (QT)
-Quantitative easing (QE)
+Bond yields US 10Y yield
+Quantitative tightening
+Quantitative easing
 crude oil
 gold price
 silver price
 OPEC oil
 war commodity prices
-War
 Trade war
 Military strike
 Border tension
-Sanctions
+global sanctions
 Terrorist attack
 Political crisis
-China tariffs
-China tensions
+IMF
+world bank
+global trade
 Forex Reserves
+China tariffs
+
+# US (Global Market Tab)
+Nasdaq
+Dow Jones
+Global liquidity
+Federal Reserve Economic Data
+US economy
+Fed rate decision
+FOMC meeting
+US inflation CPI PPI
+US job data Nonfarm payrolls
+US Federal Reserve 
+Dollar index DXY
+US recession
+US war
+US technology sector
+US innovation
+
+# Asia (Global Market Tab)
 BOJ Policy
+Taiwan economy
+Hong Kong economy
+Asia markets
+China economy
+Japan economy
+Singapore economy
+
+# Europe (Global Market Tab)
+European Central Bank Policy
+European innovation
+European technology
+euro currency
+Europe Economy
+Germany economy
+France economy
+UK economy
