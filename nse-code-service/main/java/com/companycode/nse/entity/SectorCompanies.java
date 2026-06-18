@@ -4,57 +4,76 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * JPA entity mapping to the {@code sector_companies} table.
+ * JPA entity mapping to the {@code company_sectors} table.
  *
- * <p>Each row represents one NSE sectoral index (e.g. {@code "NIFTY IT"}) and stores
- * its constituent stock symbols as a JSON array string
- * (e.g. {@code ["INFY","TCS","WIPRO","HCLTECH"]}). Populated and refreshed by
- * {@link com.companycode.nse.service.NseSectorSyncService}.
+ * <p>One row per NSE-listed company from the Nifty 500 index. Stores the raw
+ * CSV industry classification alongside a display name and news keyword used
+ * by the Domestic Market page sector tabs.
+ *
+ * <p>Companies whose industry is not in the 10 configured domestic tabs still
+ * get a row (for company-page sector badges) but have a null {@code newsKeyword}.
  */
 @Entity
-@Table(name = "sector_companies")
+@Table(name = "company_sectors", uniqueConstraints = @UniqueConstraint(columnNames = "symbol"))
 public class SectorCompanies {
 
-    /** Auto-generated primary key. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Name of the NSE sectoral index (e.g. {@code "NIFTY IT"}, {@code "NIFTY PHARMA"}).
-     * Unique — one row per sector.
-     */
-    @Column(name = "sector_name", unique = true, nullable = false)
-    private String sectorName;
+    /** NSE stock symbol (e.g. {@code "INFY"}). One row per symbol. */
+    @Column(nullable = false)
+    private String symbol;
+
+    /** Full registered company name. */
+    @Column(name = "company_name")
+    private String companyName;
+
+    /** ISIN code from the Nifty 500 CSV. */
+    private String isin;
+
+    /** Raw industry value from Nifty 500 CSV (e.g. {@code "Information Technology"}). */
+    @Column(nullable = false)
+    private String industry;
 
     /**
-     * JSON array of stock symbols belonging to this sector,
-     * stored as plain text (e.g. {@code ["INFY","TCS","WIPRO"]}).
+     * Mapped display name shown on the UI (e.g. {@code "IT"}, {@code "Auto"}).
+     * Falls back to the raw {@code industry} value for unmapped industries.
      */
-    @Column(columnDefinition = "text", nullable = false)
-    private String companies;
+    @Column(name = "display_name")
+    private String displayName;
 
-    /** Timestamp of the last successful sync for this sector. */
+    /**
+     * Keyword used to fetch news for this sector from the news scheduler.
+     * Null for industries not configured as Domestic Market page tabs.
+     */
+    @Column(name = "news_keyword")
+    private String newsKeyword;
+
     @Column(name = "last_updated")
     private LocalDateTime lastUpdated;
 
-    /** @return the auto-generated primary key */
     public Long getId() { return id; }
-    /** @param id the auto-generated primary key */
     public void setId(Long id) { this.id = id; }
 
-    /** @return the NSE sectoral index name */
-    public String getSectorName() { return sectorName; }
-    /** @param sectorName the NSE sectoral index name */
-    public void setSectorName(String sectorName) { this.sectorName = sectorName; }
+    public String getSymbol() { return symbol; }
+    public void setSymbol(String symbol) { this.symbol = symbol; }
 
-    /** @return the JSON array of constituent stock symbols */
-    public String getCompanies() { return companies; }
-    /** @param companies the JSON array of constituent stock symbols */
-    public void setCompanies(String companies) { this.companies = companies; }
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
 
-    /** @return the timestamp of the last sync for this sector */
+    public String getIsin() { return isin; }
+    public void setIsin(String isin) { this.isin = isin; }
+
+    public String getIndustry() { return industry; }
+    public void setIndustry(String industry) { this.industry = industry; }
+
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+
+    public String getNewsKeyword() { return newsKeyword; }
+    public void setNewsKeyword(String newsKeyword) { this.newsKeyword = newsKeyword; }
+
     public LocalDateTime getLastUpdated() { return lastUpdated; }
-    /** @param lastUpdated the timestamp of the last sync */
     public void setLastUpdated(LocalDateTime lastUpdated) { this.lastUpdated = lastUpdated; }
 }

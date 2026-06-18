@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
  * <p>Triggers:
  * <ul>
  *   <li>Once on application startup (via {@link ApplicationReadyEvent})</li>
- *   <li>Every Sunday at 6:00 AM UTC (weekly refresh)</li>
+ *   <li>Quarterly on the 1st of January, April, July, October at 6:00 AM UTC</li>
  * </ul>
  */
 @Component
@@ -60,16 +60,14 @@ public class NseScheduler {
     }
 
     /**
-     * Runs both sync jobs every Sunday at 6:00 AM UTC.
-     *
-     * <p>Cron: {@code 0 0 6 ? * SUN} — keeps {@code company_master} and
-     * {@code sector_companies} up to date with any weekly changes published by NSE.
+     * Runs both sync jobs on the 1st of January, April, July, and October at 6:00 AM UTC.
+     * Aligns with NSE's quarterly index rebalance calendar.
      */
-    @Scheduled(cron = "0 0 6 ? * SUN")
-    public void runWeeklySync() {
-        logger.info("Weekly sync triggered");
+    @Scheduled(cron = "0 0 6 1 1,4,7,10 *")
+    public void runQuarterlySync() {
+        logger.info("Quarterly sync triggered");
         runSync();
-        logger.info("Weekly sync complete");
+        logger.info("Quarterly sync complete");
     }
 
     /**
