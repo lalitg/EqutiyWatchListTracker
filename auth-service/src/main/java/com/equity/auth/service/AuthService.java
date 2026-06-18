@@ -76,10 +76,15 @@ public class AuthService {
      * which owns the users table and BCrypt hashing.
      *
      * Steps:
-     *   1. Validate: at least one of email OR phoneNumber must be provided (LLD constraint).
-     *   2. Forward to user-service POST /api/v1/users/register.
-     *   3. user-service hashes the password, saves the user, returns the profile.
-     *   4. Return HTTP 201 with the user profile (no tokens — user must login separately).
+     *   1. Forward to user-service POST /api/v1/users/register.
+     *      Email is enforced as mandatory by @NotBlank @Email on SignupRequest.email,
+     *      so no additional runtime check is needed here.
+     *   2. user-service hashes the password, saves the user, returns the profile.
+     *   3. Return HTTP 201 with the user profile (no tokens — user must login separately).
+     *
+     * Why email is required:
+     * The forgot-password flow uses email as the sole reset identifier.
+     * A user without an email has no recovery path, so email is mandatory at signup.
      *
      * Why no auto-login after signup?
      * Clean separation of concerns. Signup = create account.
@@ -89,13 +94,6 @@ public class AuthService {
      * @return user profile map from user-service (id, username, name, investorCategory, etc.)
      */
     public Map<String, Object> signup(SignupRequest request) {
-        // Validate: at least email OR phone required (LLD Section 5.1)
-        boolean hasEmail = request.getEmail() != null && !request.getEmail().isBlank();
-        boolean hasPhone = request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank();
-        if (!hasEmail && !hasPhone) {
-            throw new IllegalArgumentException("At least one of email or phone number is required");
-        }
-
         Map<String, Object> userProfile = userServiceClient.registerUser(request);
         logger.info("Signup successful for username={}", request.getUsername());
         return userProfile;
