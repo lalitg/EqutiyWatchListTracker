@@ -6,8 +6,8 @@ export async function fetchSectorTabs() {
   return res.json(); // [{ displayName, newsKeyword }, ...]
 }
 
-export async function fetchCompanySector(symbol) {
+export async function fetchCompanySectors(symbol) {
   const res = await fetch(`${BASE}/sectors/company/${encodeURIComponent(symbol)}`);
-  if (!res.ok) return null;
-  return res.json(); // { symbol, displayName, industry, newsKeyword }
+  if (!res.ok) return [];
+  return res.json(); // [{ symbol, displayName, industry, newsKeyword }, ...]
 }

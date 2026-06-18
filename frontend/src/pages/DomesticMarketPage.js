@@ -1,5 +1,4 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import SectorSelector from '../components/market/SectorSelector';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import { useMarket } from '../context/MarketContext';
@@ -72,11 +71,17 @@ const DomesticMarketPage = () => {
         </button>
       </div>
 
-      <SectorSelector
-        options={sectors.map(s => s.displayName)}
-        selected={selectedSector.displayName}
-        onSelect={handleSectorChange}
-      />
+      <div className="sector-dropdown-wrap">
+        <select
+          className="sector-dropdown"
+          value={selectedSector.displayName}
+          onChange={e => handleSectorChange(e.target.value)}
+        >
+          {sectors.map(s => (
+            <option key={s.displayName} value={s.displayName}>{s.displayName}</option>
+          ))}
+        </select>
+      </div>
 
       {domesticLoading && (
         <div className="page-loading"><p>Loading domestic insights...</p></div>
