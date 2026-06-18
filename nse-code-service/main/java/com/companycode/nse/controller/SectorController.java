@@ -72,23 +72,23 @@ public class SectorController {
     }
 
     /**
-     * Returns the sector info for a specific NSE symbol.
-     * Used by the company detail page to show the sector badge.
+     * Returns all sectors for a specific NSE symbol (a company can belong to multiple).
+     * Used by the company detail page to show sector badges.
      *
-     * <p>Returns 404 if the symbol is not in the Nifty 500.
+     * <p>Returns an empty list if the symbol is not in the Nifty 500.
      */
     @GetMapping("/sectors/company/{symbol}")
-    public ResponseEntity<Map<String, String>> getSectorForSymbol(@PathVariable String symbol) {
-        return repository.findBySymbol(symbol.toUpperCase())
-                .map(c -> {
-                    Map<String, String> m = new LinkedHashMap<>();
-                    m.put("symbol",      c.getSymbol());
-                    m.put("displayName", c.getDisplayName());
-                    m.put("industry",    c.getIndustry());
-                    m.put("newsKeyword", c.getNewsKeyword() != null ? c.getNewsKeyword() : "");
-                    return ResponseEntity.ok(m);
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<List<Map<String, String>>> getSectorForSymbol(@PathVariable String symbol) {
+        List<SectorCompanies> rows = repository.findBySymbol(symbol.toUpperCase());
+        List<Map<String, String>> result = rows.stream().map(c -> {
+            Map<String, String> m = new LinkedHashMap<>();
+            m.put("symbol",      c.getSymbol());
+            m.put("displayName", c.getDisplayName());
+            m.put("industry",    c.getIndustry());
+            m.put("newsKeyword", c.getNewsKeyword() != null ? c.getNewsKeyword() : "");
+            return m;
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(result);
     }
 
     /**

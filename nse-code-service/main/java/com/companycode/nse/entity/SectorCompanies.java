@@ -14,14 +14,14 @@ import java.time.LocalDateTime;
  * get a row (for company-page sector badges) but have a null {@code newsKeyword}.
  */
 @Entity
-@Table(name = "company_sectors", uniqueConstraints = @UniqueConstraint(columnNames = "symbol"))
+@Table(name = "company_sectors", uniqueConstraints = @UniqueConstraint(columnNames = {"symbol", "display_name"}))
 public class SectorCompanies {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** NSE stock symbol (e.g. {@code "INFY"}). One row per symbol. */
+    /** NSE stock symbol (e.g. {@code "INFY"}). One company can have multiple rows (one per sector). */
     @Column(nullable = false)
     private String symbol;
 

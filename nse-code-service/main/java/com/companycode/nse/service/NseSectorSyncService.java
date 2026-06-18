@@ -44,15 +44,22 @@ public class NseSectorSyncService {
     static {
         INDUSTRY_MAP.put("Information Technology",            new String[]{"IT",                 "IT"});
         INDUSTRY_MAP.put("Healthcare",                        new String[]{"Pharma",             "Pharma"});
-        INDUSTRY_MAP.put("Financial Services",                new String[]{"Financial Services", "Banking"});
+        INDUSTRY_MAP.put("Financial Services",                new String[]{"Financial Services", "Financial Services"});
         INDUSTRY_MAP.put("Automobile and Auto Components",    new String[]{"Auto",               "Auto"});
         INDUSTRY_MAP.put("Fast Moving Consumer Goods",        new String[]{"FMCG",               "FMCG"});
-        INDUSTRY_MAP.put("Power",                             new String[]{"Energy",             "Oil Gas Energy"});
-        INDUSTRY_MAP.put("Oil Gas & Consumable Fuels",        new String[]{"Energy",             "Oil Gas Energy"});
+        INDUSTRY_MAP.put("Power",                             new String[]{"Energy",             "Energy"});
+        INDUSTRY_MAP.put("Oil Gas & Consumable Fuels",        new String[]{"Energy",             "Energy"});
         INDUSTRY_MAP.put("Metals & Mining",                   new String[]{"Metals",             "Metals"});
         INDUSTRY_MAP.put("Construction",                      new String[]{"Infra",              "Infrastructure"});
+        INDUSTRY_MAP.put("Construction Materials",            new String[]{"Infra",              "Infrastructure"});
         INDUSTRY_MAP.put("Media Entertainment & Publication", new String[]{"Media",              "Media"});
         INDUSTRY_MAP.put("Chemicals",                         new String[]{"Chemicals",          "Chemicals"});
+        INDUSTRY_MAP.put("Capital Goods",                     new String[]{"Capital Goods",      "Capital Goods"});
+        INDUSTRY_MAP.put("Consumer Durables",                 new String[]{"Consumer Durables",  "Consumer Durables"});
+        INDUSTRY_MAP.put("Consumer Services",                 new String[]{"Consumer Services",  "Consumer Services"});
+        INDUSTRY_MAP.put("Realty",                            new String[]{"Realty",             "Realty"});
+        INDUSTRY_MAP.put("Telecommunication",                 new String[]{"Telecom",            "Telecom"});
+        INDUSTRY_MAP.put("Services",                          new String[]{"Services",           "Services"});
     }
 
     private final SectorCompaniesRepository repository;
@@ -126,7 +133,7 @@ public class NseSectorSyncService {
                 }
             }
 
-            repository.deleteAll();
+            repository.deleteAllBulk();
             repository.saveAll(batch);
 
             long domesticTabCount = batch.stream()
