@@ -46,16 +46,12 @@ const LoginPage = () => {
   const handleSignup = async (e) => {
     e.preventDefault();
     setError('');
-    if (!email && !phone) {
-      setError('Please provide either email or phone number');
-      return;
-    }
     setLoading(true);
     try {
       await signup({
         username,
         name,
-        email: email || undefined,
+        email,
         phoneNumber: phone || undefined,
         password: signupPassword,
       });
@@ -196,16 +192,17 @@ const LoginPage = () => {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="Email address (optional if phone given)"
+                placeholder="Email address"
+                required
               />
             </div>
             <div className="login-field">
-              <label>Phone</label>
+              <label>Phone (optional)</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                placeholder="Phone number (optional if email given)"
+                placeholder="Phone number"
               />
             </div>
             <div className="login-field">
