@@ -61,6 +61,10 @@ public class ProxyController {
     @Value("${fundamentals.service.url:http://localhost:8086}")
     private String fundamentalsServiceUrl;
 
+    /** Base URL of the nse-code microservice (default: {@code http://localhost:8082}). */
+    @Value("${nse.code.service.url:http://localhost:8082}")
+    private String nseCodeServiceUrl;
+
     /**
      * Proxies all {@code /api/auth/**} requests to auth-service.
      * Path remapping: /api/auth/signup → /api/v1/auth/signup
@@ -142,6 +146,15 @@ public class ProxyController {
     public ResponseEntity<String> proxyFundamentals(HttpServletRequest request) throws URISyntaxException, IOException {
         logger.info("Proxying fundamentals request: {} {}", request.getMethod(), request.getRequestURI());
         return proxy(request, fundamentalsServiceUrl);
+    }
+
+    /**
+     * Proxies all {@code /api/nse-code/**} requests to the nse-code microservice.
+     */
+    @RequestMapping(value = "/api/nse-code/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
+    public ResponseEntity<String> proxyNseCode(HttpServletRequest request) throws URISyntaxException, IOException {
+        logger.info("Proxying nse-code request: {} {}", request.getMethod(), request.getRequestURI());
+        return proxy(request, nseCodeServiceUrl);
     }
 
     /**
