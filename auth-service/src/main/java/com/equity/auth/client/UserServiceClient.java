@@ -117,7 +117,7 @@ public class UserServiceClient {
         String url = userServiceUrl + "/api/v1/internal/users/validate";
 
         Map<String, String> body = new HashMap<>();
-        body.put("username", identifier);
+        body.put("identifier", identifier);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
