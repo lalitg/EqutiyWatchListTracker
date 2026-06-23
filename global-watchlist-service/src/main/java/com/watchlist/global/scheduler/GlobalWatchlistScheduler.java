@@ -1,6 +1,5 @@
 package com.watchlist.global.scheduler;
 
-import com.watchlist.global.service.DomesticIndexService;
 import com.watchlist.global.service.GlobalIndexService;
 import com.watchlist.global.service.GlobalWatchlistService;
 import org.apache.logging.log4j.LogManager;
@@ -17,14 +16,11 @@ public class GlobalWatchlistScheduler {
 
     private final GlobalWatchlistService service;
     private final GlobalIndexService     globalIndexService;
-    private final DomesticIndexService   domesticIndexService;
 
     public GlobalWatchlistScheduler(GlobalWatchlistService service,
-                                    GlobalIndexService globalIndexService,
-                                    DomesticIndexService domesticIndexService) {
-        this.service              = service;
-        this.globalIndexService   = globalIndexService;
-        this.domesticIndexService = domesticIndexService;
+                                    GlobalIndexService globalIndexService) {
+        this.service            = service;
+        this.globalIndexService = globalIndexService;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -33,8 +29,6 @@ public class GlobalWatchlistScheduler {
         service.refreshPrices();
         service.persistMarketClose();
         globalIndexService.refreshAll();
-        domesticIndexService.refreshDomesticIndices();
-        domesticIndexService.refreshSectorIndices();
         logger.info("Startup jobs complete");
     }
 
@@ -54,13 +48,6 @@ public class GlobalWatchlistScheduler {
     @Scheduled(cron = "0 */5 * * * *")
     public void refreshGlobalIndices() {
         globalIndexService.refreshAll();
-    }
-
-    /** Domestic + sector index headers — every 5 min during market hours */
-    @Scheduled(cron = "0 */5 9-15 * * MON-FRI")
-    public void refreshDomesticIndices() {
-        domesticIndexService.refreshDomesticIndices();
-        domesticIndexService.refreshSectorIndices();
     }
 
     /** Nifty 50 composition — bi-weekly */

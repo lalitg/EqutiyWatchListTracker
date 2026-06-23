@@ -3,7 +3,6 @@ package com.watchlist.global.client;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.watchlist.global.model.IndexCompanyEntry;
-import com.watchlist.global.model.IndexSummary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Component;
@@ -47,28 +46,6 @@ public class NseClient {
         List<String> symbols = new ArrayList<>(companies.size());
         for (IndexCompanyEntry e : companies) symbols.add(e.getSymbol());
         return symbols;
-    }
-
-    /**
-     * Returns the index-level summary (LTP, change, chg%) for the given NSE index.
-     * This is the first row returned by the equity-stockIndices API.
-     */
-    public IndexSummary fetchIndexHeader(String indexName) {
-        try {
-            JsonNode data = fetchData(indexName);
-            if (data == null || !data.isArray() || data.size() == 0) return null;
-            JsonNode row = data.get(0);
-            IndexSummary summary = new IndexSummary(indexName, indexName, true);
-            summary.setLtp(decimal(row, "lastPrice"));
-            summary.setChange(decimal(row, "change"));
-            summary.setChangePercent(decimal(row, "pChange"));
-            summary.setLastUpdated(LocalDateTime.now());
-            logger.debug("Fetched header for '{}': ltp={}, pChange={}", indexName, summary.getLtp(), summary.getChangePercent());
-            return summary;
-        } catch (Exception e) {
-            logger.error("Failed to fetch index header for '{}': {}", indexName, e.getMessage());
-            return null;
-        }
     }
 
     /**
