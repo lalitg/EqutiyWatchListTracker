@@ -32,27 +32,15 @@ public class GlobalWatchlistScheduler {
         logger.info("Startup jobs complete");
     }
 
-    /** NSE stock prices — every 5 min during market hours */
     @Scheduled(cron = "0 */5 9-15 * * MON-FRI")
-    public void refreshPrices() {
-        service.refreshPrices();
-    }
+    public void refreshPrices() { service.refreshPrices(); }
 
-    /** Market-close DB persist */
     @Scheduled(cron = "0 30 15 * * MON-FRI")
-    public void persistMarketClose() {
-        service.persistMarketClose();
-    }
+    public void persistMarketClose() { service.persistMarketClose(); }
 
-    /** Global indices (Yahoo) — every 5 min, 24/7 (markets in different timezones) */
     @Scheduled(cron = "0 */5 * * * *")
-    public void refreshGlobalIndices() {
-        globalIndexService.refreshAll();
-    }
+    public void refreshGlobalIndices() { globalIndexService.refreshAll(); }
 
-    /** Nifty 50 composition — bi-weekly */
     @Scheduled(cron = "0 0 2 1,15 * ?")
-    public void refreshNifty50Composition() {
-        service.refreshNifty50Composition();
-    }
+    public void refreshNifty50Composition() { service.refreshNifty50Composition(); }
 }

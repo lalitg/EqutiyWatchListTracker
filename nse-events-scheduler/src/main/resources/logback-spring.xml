@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ============================================================ -->
+    <!-- CONSOLE APPENDER — real-time terminal output                 -->
+    <!-- ============================================================ -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread] %logger{36} : %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ============================================================ -->
+    <!-- FILE APPENDER — rolling daily log with size cap              -->
+    <!-- SizeAndTimeBasedRollingPolicy: modern replacement for the    -->
+    <!-- deprecated SizeAndTimeBasedFNATP inner policy.               -->
+    <!-- Rotates daily AND when file exceeds maxFileSize.             -->
+    <!-- Deletes files older than 30 days; caps total at 300 MB.      -->
+    <!-- ============================================================ -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <!-- Current active log file -->
+        <file>logs/nse-events-scheduler.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Archived files: e.g. nse-events-scheduler.2026-03-24.0.log -->
+            <fileNamePattern>logs/nse-events-scheduler.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <!-- Keep last 30 days -->
+            <maxHistory>30</maxHistory>
+            <!-- Rotate when a single file reaches 10 MB -->
+            <maxFileSize>10MB</maxFileSize>
+            <!-- Hard cap on total log directory size -->
+            <totalSizeCap>300MB</totalSizeCap>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread] %logger{36} : %msg%n</pattern>
+        </encoder>
+
+    </appender>
+
+    <!-- ============================================================ -->
+    <!-- ASYNC FILE APPENDER — wraps FILE to make disk writes         -->
+    <!-- non-blocking; prevents I/O from stalling application threads -->
+    <!-- ============================================================ -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE" />
+        <!-- Drop DEBUG/TRACE when queue is 80% full; never drop WARN/ERROR -->
+        <discardingThreshold>20</discardingThreshold>
+        <!-- Queue capacity — adjust based on burst traffic -->
+        <queueSize>512</queueSize>
+    </appender>
+
+    <!-- ============================================================ -->
+    <!-- ROOT LOGGER                                                   -->
+    <!-- ============================================================ -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="ASYNC_FILE" />
+    </root>
+
+    <!-- ============================================================ -->
+    <!-- Reduce noise from Spring/Hibernate/HikariCP/Flyway internals -->
+    <!-- ============================================================ -->
+    <logger name="org.springframework" level="WARN" />
+    <logger name="org.hibernate"       level="WARN" />
+    <logger name="com.zaxxer.hikari"   level="WARN" />
+    <logger name="org.flywaydb"        level="WARN" />
+
+    <!-- ============================================================ -->
+    <!-- Application package — keep at INFO so all service logs show  -->
+    <!-- ============================================================ -->
+    <logger name="com.nseevents" level="INFO" />
+
+</configuration>

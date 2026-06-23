@@ -1,0 +1,84 @@
+.nifty-table-wrap {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  overflow: hidden;
+}
+
+.nifty-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.nifty-table thead {
+  background: linear-gradient(to right, #f8fafc, #f1f5f9);
+}
+
+.nifty-table thead th {
+  padding: 14px 18px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.nifty-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.2s ease;
+}
+
+.nifty-table tbody tr:nth-child(even) {
+  background-color: #fafbfc;
+}
+
+.nifty-table tbody tr:hover {
+  background: rgba(102, 126, 234, 0.04);
+}
+
+.nifty-clickable-row { cursor: pointer; }
+.nifty-clickable-row:hover { background: linear-gradient(to right, rgba(102, 126, 234, 0.07), rgba(118, 75, 162, 0.07)) !important; }
+
+.nifty-table tbody td {
+  padding: 14px 18px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.nifty-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 48px !important;
+  font-size: 14px;
+}
+
+.nifty-symbol {
+  font-weight: 600;
+  color: #667eea;
+}
+
+.nifty-table tbody td .nifty-gain,
+.nifty-gain {
+  font-weight: 700;
+  color: #16a34a;
+}
+
+.nifty-table tbody td .nifty-loss,
+.nifty-loss {
+  font-weight: 700;
+  color: #dc2626;
+}
+
+@media (max-width: 768px) {
+  .nifty-table-wrap {
+    overflow-x: auto;
+  }
+
+  .nifty-table {
+    min-width: 600px;
+  }
+}

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- CONSOLE APPENDER — keeps logging to terminal as before -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread]%X{keyword:+[}%X{keyword}%X{keyword:+]} %logger{36} : %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- FILE APPENDER — writes logs to a rolling file on disk -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <file>logs/nse-news-scheduler.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/nse-news-scheduler.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <timeBasedFileNamingAndTriggeringPolicy
+                class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>10MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread]%X{keyword:+[}%X{keyword}%X{keyword:+]} %logger{36} : %msg%n</pattern>
+        </encoder>
+
+    </appender>
+
+    <!-- ROOT LOGGER — sends all logs to both CONSOLE and FILE -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </root>
+
+    <!-- Reduce noise from framework logs -->
+    <logger name="org.springframework" level="WARN" />
+    <logger name="org.hibernate" level="WARN" />
+    <logger name="com.zaxxer.hikari" level="WARN" />
+    <logger name="org.flywaydb" level="WARN" />
+
+    <!-- Your own package — keep at INFO -->
+    <logger name="com.companynews.newsscheduler" level="INFO" />
+
+</configuration>

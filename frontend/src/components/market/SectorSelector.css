@@ -1,0 +1,44 @@
+.sector-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.sector-tab {
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 2px solid #e5e7eb;
+  border-radius: 20px;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sector-tab:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.sector-tab.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.sector-tab-pct {
+  font-size: 0.78em;
+  font-weight: 600;
+  margin-left: 3px;
+}
+
+.sector-tab-pct.gain { color: #16a34a; }
+.sector-tab-pct.loss { color: #dc2626; }
+
+.sector-tab.active .sector-tab-pct.gain,
+.sector-tab.active .sector-tab-pct.loss {
+  color: rgba(255, 255, 255, 0.9);
+}

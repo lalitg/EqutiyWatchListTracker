@@ -1,0 +1,55 @@
+.ci-watchlist-action {
+  padding: 0 0 16px 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ci-btn-watchlist {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border: none;
+  padding: 9px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.ci-btn-watchlist:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.ci-btn-watchlist:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.ci-btn-in-watchlist {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+  cursor: default;
+}
+
+.ci-btn-in-watchlist:hover:not(:disabled) {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+}
+
+.ci-loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #667eea;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.ci-tab-content {
+  min-height: 200px;
+}
+
+.ci-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+  font-size: 14px;
+}
