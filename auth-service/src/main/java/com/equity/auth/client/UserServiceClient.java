@@ -117,6 +117,8 @@ public class UserServiceClient {
         String url = userServiceUrl + "/api/v1/internal/users/validate";
 
         Map<String, String> body = new HashMap<>();
+        // user-service InternalValidateRequest expects the key "identifier"
+        // (it resolves username/email/phone). Must match or validation fails with 400.
         body.put("identifier", identifier);
 
         HttpHeaders headers = new HttpHeaders();
