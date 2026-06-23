@@ -11,3 +11,9 @@ export async function fetchCompanySectors(symbol) {
   if (!res.ok) return [];
   return res.json(); // [{ symbol, displayName, industry, newsKeyword }, ...]
 }
+
+export async function fetchSectorCompanies(displayName) {
+  const res = await fetch(`${BASE}/sectors/${encodeURIComponent(displayName)}/companies`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json(); // [{ symbol, companyName, isin }, ...]
+}

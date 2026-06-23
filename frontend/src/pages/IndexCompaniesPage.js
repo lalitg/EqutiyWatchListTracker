@@ -1,31 +1,50 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { fetchDomesticIndexCompanies } from '../services/indicesService';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { fetchIndexCompanies, fetchIndices } from '../services/indicesService';
 import './CompaniesPage.css';
 
 const INDEX_DESCRIPTIONS = {
-  'NIFTY 50':              'The 50 largest and most traded companies on NSE, representing ~66% of India\'s total market cap.',
-  'NIFTY 100':             'Top 100 large-cap companies on NSE — the Nifty 50 plus the next 50 most liquid stocks.',
-  'NIFTY 200':             'Top 200 companies by market cap, covering both the large-cap and upper mid-cap segments.',
-  'NIFTY 500':             'The 500 largest companies on NSE, together representing about 96% of total market capitalisation.',
-  'NIFTY MIDCAP 100':      '100 mid-sized companies ranked 101–200 by market cap — the growth engine between large and small caps.',
-  'NIFTY LARGEMIDCAP 250': 'A combined index of the top 100 large-cap and top 150 mid-cap companies on NSE.',
-  'NIFTY SMLCAP 100':      '100 small-cap companies ranked outside the top 250 — higher risk, higher potential growth.',
+  nifty50:            "The 50 largest and most traded companies on NSE, representing ~66% of India's total market cap.",
+  niftynext50:        'The next 50 large-cap companies after Nifty 50 — strong candidates for index promotion.',
+  nifty100:           'Top 100 large-cap companies on NSE — the Nifty 50 plus the Nifty Next 50.',
+  nifty200:           'Top 200 companies by market cap, covering both the large-cap and upper mid-cap segments.',
+  nifty500:           'The 500 largest companies on NSE, representing about 96% of total market capitalisation.',
+  niftymidcap50:      '50 mid-cap companies — the core of India\'s mid-sized growth engine.',
+  niftymidcap100:     '100 mid-sized companies ranked 101–200 by market cap.',
+  niftymidcap150:     '150 mid-cap companies offering broader mid-cap market exposure.',
+  niftysmallcap50:    'Top 50 small-cap companies — higher risk, higher growth potential.',
+  niftysmallcap100:   '100 small-cap companies ranked outside the top 250 by market cap.',
+  niftysmallcap250:   'Broad small-cap exposure across 250 companies outside the large/mid-cap universe.',
+  niftylargemidcap250:'A combined index of the top 100 large-cap and top 150 mid-cap companies on NSE.',
+  niftymicrocap250:   '250 micro-cap companies beyond the Nifty 500 universe.',
 };
 
 const IndexCompaniesPage = () => {
-  const { indexKey }  = useParams();
-  const navigate      = useNavigate();
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState(null);
-  const displayName = decodeURIComponent(indexKey);
-  const description = INDEX_DESCRIPTIONS[displayName];
+  const { indexKey } = useParams();
+  const navigate     = useNavigate();
+  const location     = useLocation();
+
+  const [companies, setCompanies]     = useState([]);
+  const [displayName, setDisplayName] = useState(location.state?.displayName || '');
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState(null);
+
+  // If displayName wasn't passed via router state, fetch it from the indices list
+  useEffect(() => {
+    if (!displayName) {
+      fetchIndices()
+        .then(list => {
+          const match = list.find(i => i.indexKey === indexKey);
+          if (match) setDisplayName(match.displayName);
+        })
+        .catch(() => {});
+    }
+  }, [indexKey, displayName]);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      setCompanies(await fetchDomesticIndexCompanies(indexKey));
+      setCompanies(await fetchIndexCompanies(indexKey));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -35,21 +54,22 @@ const IndexCompaniesPage = () => {
 
   useEffect(() => { load(); }, [load]);
 
+  const description = INDEX_DESCRIPTIONS[indexKey];
+  const title = displayName || indexKey;
+
   return (
     <div className="page-container">
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>← Back</button>
-          <h1 className="page-title">{displayName}</h1>
+          <h1 className="page-title">{title}</h1>
         </div>
         <button className="btn btn-secondary" onClick={load} disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
 
-      {description && (
-        <p className="cp-description">{description}</p>
-      )}
+      {description && <p className="cp-description">{description}</p>}
 
       {companies.length > 0 && (
         <div className="cp-sort-bar">
@@ -73,21 +93,23 @@ const IndexCompaniesPage = () => {
                 <th>#</th>
                 <th>Symbol</th>
                 <th>Company</th>
+                <th>Industry</th>
               </tr>
             </thead>
             <tbody>
               {companies.length === 0 ? (
-                <tr><td colSpan={3} className="nifty-empty">No data available</td></tr>
+                <tr><td colSpan={4} className="nifty-empty">No data available</td></tr>
               ) : (
                 companies.map((c, i) => (
                   <tr
                     key={c.symbol}
                     className="nifty-clickable-row"
-                    onClick={() => navigate(`/company/${encodeURIComponent(c.symbol)}`, { state: { index: displayName } })}
+                    onClick={() => navigate(`/company/${encodeURIComponent(c.symbol)}`)}
                   >
                     <td>{i + 1}</td>
                     <td><strong className="nifty-symbol">{c.symbol}</strong></td>
                     <td>{c.companyName || '—'}</td>
+                    <td>{c.industry || '—'}</td>
                   </tr>
                 ))
               )}

@@ -4,7 +4,7 @@ import {
   fetchQuarterlyResults,
   fetchBalanceSheet,
   fetchPeSnapshot,
-  fetchCompanyMemberships,
+  fetchCompanyIndices,
 } from '../services/indicesService';
 import { fetchNews } from '../services/newsService';
 import { fetchEvents } from '../services/eventsService';
@@ -44,33 +44,32 @@ const CompanyDetailPage = () => {
   const [loading,     setLoading]     = useState(true);
   const [error]                       = useState(null);
 
-  const [quarterly,   setQuarterly]   = useState([]);
-  const [balSheet,    setBalSheet]    = useState([]);
-  const [pe,          setPe]          = useState(null);
-  const [memberships, setMemberships] = useState(null);
-  const [fundLoading, setFundLoading] = useState(true);
-  const [activeTab,   setActiveTab]   = useState('quarterly');
+  const [quarterly,     setQuarterly]     = useState([]);
+  const [balSheet,      setBalSheet]      = useState([]);
+  const [pe,            setPe]            = useState(null);
+  const [fundLoading,   setFundLoading]   = useState(true);
+  const [activeTab,     setActiveTab]     = useState('quarterly');
 
-  const [news,        setNews]        = useState([]);
-  const [events,      setEvents]      = useState([]);
-  const [sebi,        setSebi]        = useState(null);
-  const [insightsTab, setInsightsTab] = useState('news');
+  const [news,          setNews]          = useState([]);
+  const [events,        setEvents]        = useState([]);
+  const [sebi,          setSebi]          = useState(null);
+  const [insightsTab,   setInsightsTab]   = useState('news');
   const [insightsLoading, setInsightsLoading] = useState(true);
   const [nse500Sectors, setNse500Sectors] = useState([]);
+  const [companyIndices, setCompanyIndices] = useState([]);
 
   useEffect(() => {
     fetchCompanySectors(symbol).then(setNse500Sectors).catch(() => {});
+    fetchCompanyIndices(symbol).then(setCompanyIndices).catch(() => {});
 
     Promise.allSettled([
       fetchQuarterlyResults(symbol),
       fetchBalanceSheet(symbol),
       fetchPeSnapshot(symbol),
-      fetchCompanyMemberships(symbol),
-    ]).then(([qRes, bRes, pRes, mRes]) => {
+    ]).then(([qRes, bRes, pRes]) => {
       if (qRes.status === 'fulfilled') setQuarterly(qRes.value || []);
       if (bRes.status === 'fulfilled') setBalSheet(bRes.value || []);
       if (pRes.status === 'fulfilled') setPe(pRes.value);
-      if (mRes.status === 'fulfilled') setMemberships(mRes.value);
     }).finally(() => setFundLoading(false));
 
     Promise.allSettled([
@@ -103,12 +102,6 @@ const CompanyDetailPage = () => {
 
   const peLabel = pe ? fmtPe(pe.trailingPe) : null;
 
-  const companyName    = memberships?.companyName || symbol;
-  const sectorBadges   = (memberships?.memberships || []).filter(m => m.type === 'SECTOR');
-  const domesticBadges = (memberships?.memberships || []).filter(m => m.type === 'DOMESTIC');
-  const allTimeHigh    = memberships?.allTimeHigh ?? null;
-  const allTimeLow     = memberships?.allTimeLow  ?? null;
-
   return (
     <div className="cdp-container">
       <div className="cdp-top-bar">
@@ -127,43 +120,30 @@ const CompanyDetailPage = () => {
         <div className="cdp-hero-top">
           <div className="cdp-identity">
             <div className="cdp-symbol">{symbol?.toUpperCase()}</div>
-            {companyName && <div className="cdp-company-name">{companyName}</div>}
           </div>
           {peLabel && <div className="cdp-pe-pill">P/E {peLabel}</div>}
         </div>
 
-        {(sectorBadges.length > 0 || domesticBadges.length > 0 || nse500Sectors.length > 0) && (
+        {(nse500Sectors.length > 0 || companyIndices.length > 0) && (
           <div className="cdp-badge-section">
             {nse500Sectors.map(s => (
               <span key={s.displayName} className="cdp-badge cdp-badge--nifty">{s.displayName}</span>
             ))}
-            {domesticBadges.map(m => (
-              <span key={m.nseKey} className="cdp-badge cdp-badge--index">{m.displayName}</span>
-            ))}
-            {sectorBadges.map(m => (
-              <span key={m.nseKey} className="cdp-badge cdp-badge--sector">{m.displayName}</span>
+            {companyIndices.map(idx => (
+              <span
+                key={idx.indexKey}
+                className="cdp-badge cdp-badge--index cdp-badge--clickable"
+                onClick={() => navigate(
+                  `/market/domestic/index/${encodeURIComponent(idx.indexKey)}`,
+                  { state: { displayName: idx.displayName } }
+                )}
+              >
+                {idx.displayName}
+              </span>
             ))}
           </div>
         )}
       </div>
-
-      {/* ── Stats grid ────────────────────────────────────────────────────── */}
-      {(allTimeHigh != null || allTimeLow != null) && (
-        <div className="cdp-stats-grid">
-          {allTimeHigh != null && (
-            <div className="cdp-stat">
-              <div className="cdp-stat-label">All-Time High</div>
-              <div className="cdp-stat-value">₹{fmt(allTimeHigh)}</div>
-            </div>
-          )}
-          {allTimeLow != null && (
-            <div className="cdp-stat">
-              <div className="cdp-stat-label">All-Time Low</div>
-              <div className="cdp-stat-value">₹{fmt(allTimeLow)}</div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── News & Events ─────────────────────────────────────────────────── */}
       <div className="cdp-insights">

@@ -1,27 +1,29 @@
 import React, { useEffect, useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import { useMarket } from '../context/MarketContext';
 import { fetchSectorTabs } from '../services/sectorService';
+import { fetchIndices } from '../services/indicesService';
 
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
-
 const ALL_TAB = { displayName: 'All', newsKeyword: 'Nifty 50' };
 
 const DomesticMarketPage = () => {
+  const navigate = useNavigate();
   const {
     domestic, domesticLoading, domesticError,
     fetchDomestic, refreshDomestic,
     STALE_FOCUS_MS,
   } = useMarket();
 
-  const [sectors, setSectors] = useState([ALL_TAB]);
+  const [sectors, setSectors]               = useState([ALL_TAB]);
   const [selectedSector, setSelectedSector] = useState(ALL_TAB);
+  const [indices, setIndices]               = useState([]);
 
   useEffect(() => {
-    fetchSectorTabs()
-      .then(tabs => setSectors([ALL_TAB, ...tabs]))
-      .catch(() => {});
+    fetchSectorTabs().then(tabs => setSectors([ALL_TAB, ...tabs])).catch(() => {});
+    fetchIndices().then(setIndices).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -71,44 +73,71 @@ const DomesticMarketPage = () => {
         </button>
       </div>
 
-      <div className="sector-dropdown-wrap">
-        <select
-          className="sector-dropdown"
-          value={selectedSector.displayName}
-          onChange={e => handleSectorChange(e.target.value)}
-        >
-          {sectors.map(s => (
-            <option key={s.displayName} value={s.displayName}>{s.displayName}</option>
-          ))}
-        </select>
-      </div>
-
-      {domesticLoading && (
-        <div className="page-loading"><p>Loading domestic insights...</p></div>
+      {/* ── Nifty Indices grid ─────────────────────────────────────────── */}
+      {indices.length > 0 && (
+        <div className="index-section">
+          <h2 className="index-section-title">Nifty Indices</h2>
+          <div className="index-grid">
+            {indices.map(idx => (
+              <button
+                key={idx.indexKey}
+                className="index-card"
+                onClick={() => navigate(
+                  `/market/domestic/index/${encodeURIComponent(idx.indexKey)}`,
+                  { state: { displayName: idx.displayName } }
+                )}
+              >
+                <div className="index-card__name">{idx.displayName}</div>
+                <div className="index-card__count">{idx.companyCount} companies</div>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
-      {domesticError && (
-        <div className="page-error">
-          <p>{domesticError}</p>
-          <button
-            onClick={() => refreshDomestic(selectedSector.newsKeyword)}
-            className="btn btn-primary"
-            style={{ marginTop: 16 }}
+      {/* ── Sector-filtered news ───────────────────────────────────────── */}
+      <div className="index-section">
+        <h2 className="index-section-title">Market News</h2>
+
+        <div className="sector-dropdown-wrap">
+          <select
+            className="sector-dropdown"
+            value={selectedSector.displayName}
+            onChange={e => handleSectorChange(e.target.value)}
           >
-            Retry
-          </button>
+            {sectors.map(s => (
+              <option key={s.displayName} value={s.displayName}>{s.displayName}</option>
+            ))}
+          </select>
         </div>
-      )}
 
-      {!domesticLoading && !domesticError && domestic && (
-        <div className="market-content">
-          {getLastUpdatedLabel() && (
-            <p className="last-updated-label">{getLastUpdatedLabel()}</p>
-          )}
-          <NewsList news={domestic.news ?? []} />
-          <EventsList events={domestic.events} />
-        </div>
-      )}
+        {domesticLoading && (
+          <div className="page-loading"><p>Loading domestic insights...</p></div>
+        )}
+
+        {domesticError && (
+          <div className="page-error">
+            <p>{domesticError}</p>
+            <button
+              onClick={() => refreshDomestic(selectedSector.newsKeyword)}
+              className="btn btn-primary"
+              style={{ marginTop: 16 }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!domesticLoading && !domesticError && domestic && (
+          <div className="market-content">
+            {getLastUpdatedLabel() && (
+              <p className="last-updated-label">{getLastUpdatedLabel()}</p>
+            )}
+            <NewsList news={domestic.news ?? []} />
+            <EventsList events={domestic.events} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

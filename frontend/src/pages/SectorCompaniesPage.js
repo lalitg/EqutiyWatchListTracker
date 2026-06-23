@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchSectorCompanies } from '../services/indicesService';
+import { fetchSectorCompanies } from '../services/sectorService';
 import './CompaniesPage.css';
 
 const SECTOR_DESCRIPTIONS = {
