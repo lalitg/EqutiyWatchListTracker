@@ -2,6 +2,7 @@ package com.companycode.nse.scheduler;
 
 import com.companycode.nse.service.NseSyncService;
 import com.companycode.nse.service.NseSectorSyncService;
+import com.companycode.nse.service.NseIndexSyncService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -12,12 +13,12 @@ import org.springframework.stereotype.Component;
 /**
  * Scheduler that triggers NSE data sync jobs.
  *
- * <p>Runs two sync operations in sequence on each trigger:
+ * <p>Runs three sync operations in sequence on each trigger:
  * <ol>
  *   <li><b>Company sync</b> — pulls all NSE-listed companies from
  *       {@code EQUITY_L.csv} into the {@code company_master} table</li>
- *   <li><b>Sector sync</b> — pulls sector-wise stock lists from the NSE API
- *       into the {@code sector_companies} table</li>
+ *   <li><b>Sector sync</b> — reads Nifty 500 CSV into the {@code company_sectors} table</li>
+ *   <li><b>Index sync</b> — reads 13 Nifty index CSVs into the {@code company_indices} table</li>
  * </ol>
  *
  * <p>Triggers:
@@ -33,16 +34,14 @@ public class NseScheduler {
 
     private final NseSyncService       nseSyncService;
     private final NseSectorSyncService nseSectorSyncService;
+    private final NseIndexSyncService  nseIndexSyncService;
 
-    /**
-     * Constructs the scheduler with required service dependencies.
-     *
-     * @param nseSyncService       service for syncing company master data
-     * @param nseSectorSyncService service for syncing sector-company mappings
-     */
-    public NseScheduler(NseSyncService nseSyncService, NseSectorSyncService nseSectorSyncService) {
+    public NseScheduler(NseSyncService nseSyncService,
+                        NseSectorSyncService nseSectorSyncService,
+                        NseIndexSyncService nseIndexSyncService) {
         this.nseSyncService       = nseSyncService;
         this.nseSectorSyncService = nseSectorSyncService;
+        this.nseIndexSyncService  = nseIndexSyncService;
     }
 
     /**
@@ -79,5 +78,6 @@ public class NseScheduler {
     private void runSync() {
         nseSyncService.syncCompanies();
         nseSectorSyncService.syncSectors();
+        nseIndexSyncService.syncIndices();
     }
 }
