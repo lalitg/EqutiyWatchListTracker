@@ -2,6 +2,7 @@ package com.companycode.nse.scheduler;
 
 import com.companycode.nse.service.NseSyncService;
 import com.companycode.nse.service.NseSectorSyncService;
+import com.companycode.nse.service.NseIndexSyncService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -12,18 +13,18 @@ import org.springframework.stereotype.Component;
 /**
  * Scheduler that triggers NSE data sync jobs.
  *
- * <p>Runs two sync operations in sequence on each trigger:
+ * <p>Runs three sync operations in sequence on each trigger:
  * <ol>
  *   <li><b>Company sync</b> — pulls all NSE-listed companies from
  *       {@code EQUITY_L.csv} into the {@code company_master} table</li>
- *   <li><b>Sector sync</b> — pulls sector-wise stock lists from the NSE API
- *       into the {@code sector_companies} table</li>
+ *   <li><b>Sector sync</b> — reads Nifty 500 CSV into the {@code company_sectors} table</li>
+ *   <li><b>Index sync</b> — reads 13 Nifty index CSVs into the {@code company_indices} table</li>
  * </ol>
  *
  * <p>Triggers:
  * <ul>
  *   <li>Once on application startup (via {@link ApplicationReadyEvent})</li>
- *   <li>Every Sunday at 6:00 AM UTC (weekly refresh)</li>
+ *   <li>Quarterly on the 1st of January, April, July, October at 6:00 AM UTC</li>
  * </ul>
  */
 @Component
@@ -33,16 +34,14 @@ public class NseScheduler {
 
     private final NseSyncService       nseSyncService;
     private final NseSectorSyncService nseSectorSyncService;
+    private final NseIndexSyncService  nseIndexSyncService;
 
-    /**
-     * Constructs the scheduler with required service dependencies.
-     *
-     * @param nseSyncService       service for syncing company master data
-     * @param nseSectorSyncService service for syncing sector-company mappings
-     */
-    public NseScheduler(NseSyncService nseSyncService, NseSectorSyncService nseSectorSyncService) {
+    public NseScheduler(NseSyncService nseSyncService,
+                        NseSectorSyncService nseSectorSyncService,
+                        NseIndexSyncService nseIndexSyncService) {
         this.nseSyncService       = nseSyncService;
         this.nseSectorSyncService = nseSectorSyncService;
+        this.nseIndexSyncService  = nseIndexSyncService;
     }
 
     /**
@@ -60,16 +59,14 @@ public class NseScheduler {
     }
 
     /**
-     * Runs both sync jobs every Sunday at 6:00 AM UTC.
-     *
-     * <p>Cron: {@code 0 0 6 ? * SUN} — keeps {@code company_master} and
-     * {@code sector_companies} up to date with any weekly changes published by NSE.
+     * Runs both sync jobs on the 1st of January, April, July, and October at 6:00 AM UTC.
+     * Aligns with NSE's quarterly index rebalance calendar.
      */
-    @Scheduled(cron = "0 0 6 ? * SUN")
-    public void runWeeklySync() {
-        logger.info("Weekly sync triggered");
+    @Scheduled(cron = "0 0 6 1 1,4,7,10 *")
+    public void runQuarterlySync() {
+        logger.info("Quarterly sync triggered");
         runSync();
-        logger.info("Weekly sync complete");
+        logger.info("Quarterly sync complete");
     }
 
     /**
@@ -81,5 +78,6 @@ public class NseScheduler {
     private void runSync() {
         nseSyncService.syncCompanies();
         nseSectorSyncService.syncSectors();
+        nseIndexSyncService.syncIndices();
     }
 }
