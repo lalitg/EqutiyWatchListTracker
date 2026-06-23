@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { forgotPassword, resetPassword } from '../services/authService';
 import './LoginPage.css';
@@ -28,6 +28,8 @@ const LoginPage = () => {
 
   const { login, signup } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const sessionExpired = location.state?.sessionExpired === true;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -126,6 +128,11 @@ const LoginPage = () => {
           </button>
         </div>
 
+        {sessionExpired && (
+          <div className="login-session-expired">
+            Your session expired due to inactivity. Please log in again.
+          </div>
+        )}
         {successMsg && <div className="login-success">{successMsg}</div>}
         {error && <div className="login-error">{error}</div>}
 
