@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { fetchSectorCompanies } from '../services/sectorService';
+import { fetchNews } from '../services/newsService';
+import NewsList from '../components/market/NewsList';
 import './CompaniesPage.css';
 
 const SECTOR_DESCRIPTIONS = {
@@ -25,24 +27,54 @@ const SECTOR_DESCRIPTIONS = {
 const SectorCompaniesPage = () => {
   const { sectorKey } = useParams();
   const navigate      = useNavigate();
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState(null);
-  const displayName = decodeURIComponent(sectorKey);
-  const description = SECTOR_DESCRIPTIONS[displayName];
+  const location      = useLocation();
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(null);
+  const displayName  = decodeURIComponent(sectorKey);
+  const newsKeyword  = location.state?.newsKeyword || displayName;
+  const description  = SECTOR_DESCRIPTIONS[displayName];
+
+  const [activeTab, setActiveTab] = useState('news');
+
+  const [news, setNews]               = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [newsError, setNewsError]     = useState(null);
+
+  const [companies, setCompanies]               = useState([]);
+  const [companiesLoading, setCompaniesLoading] = useState(false);
+  const [companiesError, setCompaniesError]     = useState(null);
+
+  const loadNews = useCallback(async () => {
+    setNewsLoading(true); setNewsError(null);
+    try {
+      const data = await fetchNews(newsKeyword);
+      setNews(data.news ?? []);
+    } catch (e) {
+      setNewsError(e.message);
+    } finally {
+      setNewsLoading(false);
+    }
+  }, [newsKeyword]);
+
+  const loadCompanies = useCallback(async () => {
+    setCompaniesLoading(true); setCompaniesError(null);
     try {
       setCompanies(await fetchSectorCompanies(sectorKey));
     } catch (e) {
-      setError(e.message);
+      setCompaniesError(e.message);
     } finally {
-      setLoading(false);
+      setCompaniesLoading(false);
     }
   }, [sectorKey]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    loadNews();
+    loadCompanies();
+  }, [loadNews, loadCompanies]);
+
+  const handleRefresh = () => {
+    if (activeTab === 'news') loadNews();
+    else loadCompanies();
+  };
 
   return (
     <div className="page-container">
@@ -51,57 +83,86 @@ const SectorCompaniesPage = () => {
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>← Back</button>
           <h1 className="page-title">{displayName}</h1>
         </div>
-        <button className="btn btn-secondary" onClick={load} disabled={loading}>
-          {loading ? 'Refreshing...' : 'Refresh'}
+        <button className="btn btn-secondary" onClick={handleRefresh}>
+          Refresh
         </button>
       </div>
 
-      {description && (
-        <p className="cp-description">{description}</p>
-      )}
+      {description && <p className="cp-description">{description}</p>}
 
-      {companies.length > 0 && (
-        <div className="cp-sort-bar">
-          <span className="cp-count">{companies.length} companies</span>
+      {/* ── Tab bar ─────────────────────────────────────────────────────── */}
+      <div className="sec-tabs">
+        <button
+          className={`sec-tab ${activeTab === 'news' ? 'active' : ''}`}
+          onClick={() => setActiveTab('news')}
+        >
+          News
+        </button>
+        <button
+          className={`sec-tab ${activeTab === 'companies' ? 'active' : ''}`}
+          onClick={() => setActiveTab('companies')}
+        >
+          Companies{companies.length > 0 ? ` (${companies.length})` : ''}
+        </button>
+      </div>
+
+      {/* ── News tab ────────────────────────────────────────────────────── */}
+      {activeTab === 'news' && (
+        <div>
+          {newsLoading && <div className="page-loading"><p>Loading news…</p></div>}
+          {newsError && (
+            <div className="page-error">
+              <p>{newsError}</p>
+              <button onClick={loadNews} className="btn btn-primary" style={{ marginTop: 16 }}>Retry</button>
+            </div>
+          )}
+          {!newsLoading && !newsError && <NewsList news={news} />}
         </div>
       )}
 
-      {loading && <div className="page-loading"><p>Loading companies…</p></div>}
-      {error && (
-        <div className="page-error">
-          <p>{error}</p>
-          <button onClick={load} className="btn btn-primary" style={{ marginTop: 16 }}>Retry</button>
-        </div>
-      )}
-
-      {!loading && !error && (
-        <div className="nifty-table-wrap">
-          <table className="nifty-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Symbol</th>
-                <th>Company</th>
-              </tr>
-            </thead>
-            <tbody>
-              {companies.length === 0 ? (
-                <tr><td colSpan={3} className="nifty-empty">No data available</td></tr>
-              ) : (
-                companies.map((c, i) => (
-                  <tr
-                    key={c.symbol}
-                    className="nifty-clickable-row"
-                    onClick={() => navigate(`/company/${encodeURIComponent(c.symbol)}`, { state: { sector: displayName } })}
-                  >
-                    <td>{i + 1}</td>
-                    <td><strong className="nifty-symbol">{c.symbol}</strong></td>
-                    <td>{c.companyName || '—'}</td>
+      {/* ── Companies tab ───────────────────────────────────────────────── */}
+      {activeTab === 'companies' && (
+        <div>
+          {companiesLoading && <div className="page-loading"><p>Loading companies…</p></div>}
+          {companiesError && (
+            <div className="page-error">
+              <p>{companiesError}</p>
+              <button onClick={loadCompanies} className="btn btn-primary" style={{ marginTop: 16 }}>Retry</button>
+            </div>
+          )}
+          {!companiesLoading && !companiesError && (
+            <div className="nifty-table-wrap">
+              <table className="nifty-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Symbol</th>
+                    <th>Company</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {companies.length === 0 ? (
+                    <tr><td colSpan={3} className="nifty-empty">No data available</td></tr>
+                  ) : (
+                    companies.map((c, i) => (
+                      <tr
+                        key={c.symbol}
+                        className="nifty-clickable-row"
+                        onClick={() => navigate(
+                          `/company/${encodeURIComponent(c.symbol)}`,
+                          { state: { sector: displayName } }
+                        )}
+                      >
+                        <td>{i + 1}</td>
+                        <td><strong className="nifty-symbol">{c.symbol}</strong></td>
+                        <td>{c.companyName || '—'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

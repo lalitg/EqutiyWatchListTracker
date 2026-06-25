@@ -54,6 +54,36 @@
   font-weight: 500;
 }
 
+/* === Sector page tabs === */
+.sec-tabs {
+  display: flex;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 24px;
+  gap: 0;
+}
+
+.sec-tab {
+  padding: 10px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #94a3b8;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.sec-tab:hover {
+  color: #667eea;
+}
+
+.sec-tab.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
 /* === Shared table styles (used by IndexCompaniesPage & SectorCompaniesPage) === */
 .nifty-table-wrap {
   background: #fff;

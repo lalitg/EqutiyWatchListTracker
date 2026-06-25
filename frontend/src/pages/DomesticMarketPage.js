@@ -105,7 +105,8 @@ const DomesticMarketPage = () => {
                 key={s.displayName}
                 className="index-card"
                 onClick={() => navigate(
-                  `/market/domestic/sector/${encodeURIComponent(s.displayName)}`
+                  `/market/domestic/sector/${encodeURIComponent(s.displayName)}`,
+                  { state: { newsKeyword: s.newsKeyword } }
                 )}
               >
                 <div className="index-card__name">{s.displayName}</div>

@@ -130,7 +130,10 @@ const CompanyDetailPage = () => {
               <span
                 key={s.displayName}
                 className="cdp-badge cdp-badge--nifty cdp-badge--clickable"
-                onClick={() => navigate(`/market/domestic/sector/${encodeURIComponent(s.displayName)}`)}
+                onClick={() => navigate(
+                  `/market/domestic/sector/${encodeURIComponent(s.displayName)}`,
+                  { state: { newsKeyword: s.newsKeyword } }
+                )}
               >
                 {s.displayName}
               </span>
