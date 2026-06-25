@@ -95,6 +95,26 @@ const DomesticMarketPage = () => {
         </div>
       )}
 
+      {/* ── Sectors grid ──────────────────────────────────────────────── */}
+      {sectors.length > 1 && (
+        <div className="index-section">
+          <h2 className="index-section-title">Sectors</h2>
+          <div className="index-grid">
+            {sectors.filter(s => s.displayName !== 'All').map(s => (
+              <button
+                key={s.displayName}
+                className="index-card"
+                onClick={() => navigate(
+                  `/market/domestic/sector/${encodeURIComponent(s.displayName)}`
+                )}
+              >
+                <div className="index-card__name">{s.displayName}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Sector-filtered news ───────────────────────────────────────── */}
       <div className="index-section">
         <h2 className="index-section-title">Market News</h2>
