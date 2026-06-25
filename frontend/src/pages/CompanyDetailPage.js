@@ -127,7 +127,13 @@ const CompanyDetailPage = () => {
         {(nse500Sectors.length > 0 || companyIndices.length > 0) && (
           <div className="cdp-badge-section">
             {nse500Sectors.map(s => (
-              <span key={s.displayName} className="cdp-badge cdp-badge--nifty">{s.displayName}</span>
+              <span
+                key={s.displayName}
+                className="cdp-badge cdp-badge--nifty cdp-badge--clickable"
+                onClick={() => navigate(`/market/domestic/sector/${encodeURIComponent(s.displayName)}`)}
+              >
+                {s.displayName}
+              </span>
             ))}
             {companyIndices.map(idx => (
               <span
