@@ -36,7 +36,8 @@ public class YahooFinanceClient {
     private static final Map<String, Region> REGION_MAP = Map.of(
         "US_MARKETS",        Region.US_MARKETS,
         "EUROPEAN_MARKETS",  Region.EUROPEAN_MARKETS,
-        "ASIAN_MARKETS",     Region.ASIAN_MARKETS
+        "ASIAN_MARKETS",     Region.ASIAN_MARKETS,
+        "INDIAN_MARKETS",    Region.INDIAN_MARKETS
     );
 
     private final HttpClient   httpClient   = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();

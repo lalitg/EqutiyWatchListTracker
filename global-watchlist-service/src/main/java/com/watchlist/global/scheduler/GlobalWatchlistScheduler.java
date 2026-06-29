@@ -38,7 +38,7 @@ public class GlobalWatchlistScheduler {
     @Scheduled(cron = "0 30 15 * * MON-FRI")
     public void persistMarketClose() { service.persistMarketClose(); }
 
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(cron = "0 */30 * * * *")
     public void refreshGlobalIndices() { globalIndexService.refreshAll(); }
 
     @Scheduled(cron = "0 0 2 1,15 * ?")
