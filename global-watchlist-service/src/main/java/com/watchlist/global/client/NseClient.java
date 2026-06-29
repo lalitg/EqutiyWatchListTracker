@@ -3,6 +3,7 @@ package com.watchlist.global.client;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.watchlist.global.model.IndexCompanyEntry;
+import com.watchlist.global.model.IndexSummary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,24 @@ public class NseClient {
     private static final String QUOTE_EQUITY_URL = "https://www.nseindia.com/api/quote-equity?symbol=";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public IndexSummary fetchIndexHeader(String indexName) {
+        try {
+            JsonNode data = fetchData(indexName);
+            if (data == null || !data.isArray() || data.isEmpty()) return null;
+            JsonNode header = data.get(0);
+            IndexSummary summary = new IndexSummary();
+            summary.setNseParam(indexName);
+            summary.setLtp(decimal(header, "lastPrice"));
+            summary.setChange(decimal(header, "change"));
+            summary.setChangePercent(decimal(header, "pChange"));
+            summary.setLastUpdated(java.time.LocalDateTime.now());
+            return summary;
+        } catch (Exception e) {
+            logger.error("Failed to fetch index header for '{}': {}", indexName, e.getMessage());
+            return null;
+        }
+    }
 
     public List<String> fetchNifty50Symbols() {
         return fetchIndexSymbols("NIFTY 50");
