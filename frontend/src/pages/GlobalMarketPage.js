@@ -7,7 +7,7 @@ import { useMarket } from '../context/MarketContext';
 
 const REGIONS = ['Global', 'US', 'Asia', 'Europe', 'India'];
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
-const PRICE_REFRESH_MS = 5 * 60 * 1000;
+const PRICE_REFRESH_MS = 30 * 60 * 1000;
 
 const GlobalMarketPage = () => {
   const {

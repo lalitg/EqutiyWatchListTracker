@@ -4,10 +4,23 @@ import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import { useMarket } from '../context/MarketContext';
 import { fetchSectorTabs } from '../services/sectorService';
-import { fetchIndices } from '../services/indicesService';
+import { fetchIndices, fetchGlobalIndices } from '../services/indicesService';
 
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
 const ALL_TAB = { displayName: 'All', newsKeyword: 'Nifty 50' };
+
+const SECTOR_INDEX_NAME = {
+  'Auto':              'Nifty Auto',
+  'Energy':            'Nifty Energy',
+  'FMCG':              'Nifty FMCG',
+  'Financial Services':'Nifty Bank',
+  'IT':                'Nifty IT',
+  'Infra':             'Nifty Infra',
+  'Media':             'Nifty Media',
+  'Metals':            'Nifty Metal',
+  'Pharma':            'Nifty Pharma',
+  'Realty':            'Nifty Realty',
+};
 
 const DomesticMarketPage = () => {
   const navigate = useNavigate();
@@ -20,10 +33,17 @@ const DomesticMarketPage = () => {
   const [sectors, setSectors]               = useState([ALL_TAB]);
   const [selectedSector, setSelectedSector] = useState(ALL_TAB);
   const [indices, setIndices]               = useState([]);
+  const [sectorPriceMap, setSectorPriceMap] = useState({});
 
   useEffect(() => {
     fetchSectorTabs().then(tabs => setSectors([ALL_TAB, ...tabs])).catch(() => {});
     fetchIndices().then(setIndices).catch(() => {});
+    fetchGlobalIndices().then(data => {
+      const indian = data.indianMarkets || [];
+      const map = {};
+      indian.forEach(idx => { map[idx.name] = idx; });
+      setSectorPriceMap(map);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -100,18 +120,35 @@ const DomesticMarketPage = () => {
         <div className="index-section">
           <h2 className="index-section-title">Sectors</h2>
           <div className="index-grid">
-            {sectors.filter(s => s.displayName !== 'All').map(s => (
-              <button
-                key={s.displayName}
-                className="index-card"
-                onClick={() => navigate(
-                  `/market/domestic/sector/${encodeURIComponent(s.displayName)}`,
-                  { state: { newsKeyword: s.newsKeyword } }
-                )}
-              >
-                <div className="index-card__name">{s.displayName}</div>
-              </button>
-            ))}
+            {sectors.filter(s => s.displayName !== 'All').map(s => {
+              const idxName = SECTOR_INDEX_NAME[s.displayName];
+              const price   = idxName ? sectorPriceMap[idxName] : null;
+              const chgPct  = price?.changePercent;
+              const isUp    = chgPct != null && Number(chgPct) > 0;
+              const isDown  = chgPct != null && Number(chgPct) < 0;
+              return (
+                <button
+                  key={s.displayName}
+                  className="index-card"
+                  onClick={() => navigate(
+                    `/market/domestic/sector/${encodeURIComponent(s.displayName)}`,
+                    { state: { newsKeyword: s.newsKeyword } }
+                  )}
+                >
+                  <div className="index-card__name">{s.displayName}</div>
+                  {price && (
+                    <>
+                      <div className="index-card__count">
+                        {Number(price.ltp).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                      <div className={`index-card__chg ${isUp ? 'idx-gain' : isDown ? 'idx-loss' : 'idx-neutral'}`}>
+                        {isUp ? '▲' : isDown ? '▼' : ''} {Math.abs(Number(chgPct)).toFixed(2)}%
+                      </div>
+                    </>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
