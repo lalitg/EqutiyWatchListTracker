@@ -3,9 +3,7 @@ package com.equity.fundamentals.service;
 import com.equity.fundamentals.client.YFinanceWrapperClient;
 import com.equity.fundamentals.dto.BalanceSheetDto;
 import com.equity.fundamentals.entity.BalanceSheet;
-import com.equity.fundamentals.entity.FundamentalsFetchLog;
 import com.equity.fundamentals.repository.BalanceSheetRepository;
-import com.equity.fundamentals.repository.FundamentalsFetchLogRepository;
 import com.equity.fundamentals.repository.GlobalWatchlistRepository;
 import com.equity.fundamentals.util.FiscalYearUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,8 +25,7 @@ import java.util.List;
  *   2. For each DTO, derive the fiscal year label (e.g. FY2024) using FiscalYearUtil
  *   3. Find-or-create the BalanceSheet row for (symbol, fiscalYear)
  *   4. Map DTO fields onto the entity and save
- *   5. Write a SUCCESS or FAILED row to fundamentals_fetch_log
- *   6. Sleep rateLimitDelayMs between companies
+ *   5. Sleep rateLimitDelayMs between companies
  *
  * Data never deleted:
  *   Old fiscal years accumulate in the DB. The API query in main-api-service
@@ -42,11 +39,9 @@ import java.util.List;
 public class BalanceSheetService {
 
     private static final Logger log = LoggerFactory.getLogger(BalanceSheetService.class);
-    private static final String FETCH_TYPE = "BALANCE_SHEET";
 
     private final GlobalWatchlistRepository globalWatchlistRepo;
     private final BalanceSheetRepository balanceSheetRepo;
-    private final FundamentalsFetchLogRepository fetchLogRepo;
     private final YFinanceWrapperClient apiClient;
     private final ObjectMapper objectMapper;
 
@@ -55,12 +50,10 @@ public class BalanceSheetService {
 
     public BalanceSheetService(GlobalWatchlistRepository globalWatchlistRepo,
                                BalanceSheetRepository balanceSheetRepo,
-                               FundamentalsFetchLogRepository fetchLogRepo,
                                YFinanceWrapperClient apiClient,
                                ObjectMapper objectMapper) {
         this.globalWatchlistRepo = globalWatchlistRepo;
         this.balanceSheetRepo    = balanceSheetRepo;
-        this.fetchLogRepo        = fetchLogRepo;
         this.apiClient           = apiClient;
         this.objectMapper        = objectMapper;
     }
@@ -88,8 +81,6 @@ public class BalanceSheetService {
                 success++;
             } catch (Exception e) {
                 log.error("Balance sheet failed for {}: {}", symbol, e.getMessage());
-                fetchLogRepo.save(new FundamentalsFetchLog(
-                    symbol, FETCH_TYPE, e.getMessage(), apiClient.getDataSource()));
                 failed++;
             }
 
@@ -115,8 +106,6 @@ public class BalanceSheetService {
 
         if (dtos.isEmpty()) {
             log.warn("No balance sheet data returned for {} — skipping", symbol);
-            fetchLogRepo.save(new FundamentalsFetchLog(
-                symbol, FETCH_TYPE, "No data returned by API", apiClient.getDataSource()));
             return;
         }
 
@@ -152,7 +141,6 @@ public class BalanceSheetService {
             balanceSheetRepo.save(entity);
         }
 
-        fetchLogRepo.save(new FundamentalsFetchLog(symbol, FETCH_TYPE, apiClient.getDataSource()));
         log.info("Balance sheets saved for {} ({} years)", symbol, dtos.size());
     }
 
