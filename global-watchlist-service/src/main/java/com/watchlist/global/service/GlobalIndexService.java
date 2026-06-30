@@ -44,12 +44,14 @@ public class GlobalIndexService {
         grouped.put("europeanMarkets", new ArrayList<>());
         grouped.put("asianMarkets", new ArrayList<>());
         grouped.put("indianMarkets", new ArrayList<>());
+        grouped.put("commodities", new ArrayList<>());
 
         for (GlobalIndexEntry e : cache) {
             if (e.getRegion() == Region.US_MARKETS)              grouped.get("usMarkets").add(e);
             else if (e.getRegion() == Region.EUROPEAN_MARKETS)   grouped.get("europeanMarkets").add(e);
             else if (e.getRegion() == Region.ASIAN_MARKETS)      grouped.get("asianMarkets").add(e);
             else if (e.getRegion() == Region.INDIAN_MARKETS)     grouped.get("indianMarkets").add(e);
+            else if (e.getRegion() == Region.COMMODITIES)        grouped.get("commodities").add(e);
         }
         return grouped;
     }

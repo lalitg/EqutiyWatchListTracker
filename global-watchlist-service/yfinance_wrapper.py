@@ -43,6 +43,13 @@ INDICES = [
     ("^HSI",   "Hang Seng",      "\U0001f1ed\U0001f1f0", "ASIAN_MARKETS"),
     ("^STI",   "Straits Times",  "\U0001f1f8\U0001f1ec", "ASIAN_MARKETS"),
     ("^KS11",  "KOSPI",          "\U0001f1f0\U0001f1f7", "ASIAN_MARKETS"),
+    # Commodities
+    ("GC=F",  "Gold",              "\U0001f7e1", "COMMODITIES"),
+    ("SI=F",  "Silver",            "⚪",     "COMMODITIES"),
+    ("HG=F",  "Copper",            "\U0001f7e0", "COMMODITIES"),
+    ("CL=F",  "Crude Oil (WTI)",   "\U0001f6e2", "COMMODITIES"),
+    ("BZ=F",  "Crude Oil (Brent)", "\U0001f6e2", "COMMODITIES"),
+    ("NG=F",  "Natural Gas",       "\U0001f525", "COMMODITIES"),
     # Indian — Broad Market
     ("^BSESN",               "Sensex",             "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
     ("^NSEI",                "Nifty 50",            "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),

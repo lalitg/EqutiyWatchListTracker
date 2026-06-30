@@ -37,7 +37,8 @@ public class YahooFinanceClient {
         "US_MARKETS",        Region.US_MARKETS,
         "EUROPEAN_MARKETS",  Region.EUROPEAN_MARKETS,
         "ASIAN_MARKETS",     Region.ASIAN_MARKETS,
-        "INDIAN_MARKETS",    Region.INDIAN_MARKETS
+        "INDIAN_MARKETS",    Region.INDIAN_MARKETS,
+        "COMMODITIES",       Region.COMMODITIES
     );
 
     private final HttpClient   httpClient   = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();

@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 public class GlobalIndexEntry {
 
-    public enum Region { US_MARKETS, EUROPEAN_MARKETS, ASIAN_MARKETS, INDIAN_MARKETS }
+    public enum Region { US_MARKETS, EUROPEAN_MARKETS, ASIAN_MARKETS, INDIAN_MARKETS, COMMODITIES }
 
     private String symbol;
     private String name;
