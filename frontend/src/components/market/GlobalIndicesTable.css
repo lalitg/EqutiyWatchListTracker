@@ -57,6 +57,7 @@
 .idx-name-cell { display: flex; align-items: center; gap: 10px; }
 .idx-flag { font-size: 20px; line-height: 1; }
 .idx-name { font-weight: 500; color: #1e293b; }
+.idx-unit { font-size: 11px; color: #94a3b8; margin-top: 2px; }
 
 .idx-ltp { font-weight: 600; color: #1e293b; font-variant-numeric: tabular-nums; }
 

@@ -15,7 +15,7 @@ function ChangeCell({ val }) {
   return <span className={cls}>{arrow} {fmt(Math.abs(val))}</span>;
 }
 
-function IndexTable({ title, rows }) {
+function IndexTable({ title, rows, unitMap = {} }) {
   if (!rows || rows.length === 0) return null;
   return (
     <div className="indices-section">
@@ -25,7 +25,7 @@ function IndexTable({ title, rows }) {
           <thead>
             <tr>
               <th>Name</th>
-              <th>LTP</th>
+              <th>Price</th>
               <th>Change</th>
               <th>Chg %</th>
             </tr>
@@ -36,7 +36,12 @@ function IndexTable({ title, rows }) {
                 <td>
                   <div className="idx-name-cell">
                     <span className="idx-flag">{r.flagEmoji}</span>
-                    <span className="idx-name">{r.name}</span>
+                    <div>
+                      <span className="idx-name">{r.name}</span>
+                      {unitMap[r.symbol] && (
+                        <div className="idx-unit">{unitMap[r.symbol]}</div>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td><span className="idx-ltp">{fmt(r.ltp)}</span></td>
@@ -50,6 +55,15 @@ function IndexTable({ title, rows }) {
     </div>
   );
 }
+
+const COMMODITY_UNITS = {
+  'GC=F':  'USD / troy oz',
+  'SI=F':  'USD / troy oz',
+  'HG=F':  'USD / lb',
+  'CL=F':  'USD / barrel',
+  'BZ=F':  'USD / barrel',
+  'NG=F':  'USD / MMBtu',
+};
 
 const INDIAN_BROAD = new Set([
   'Sensex', 'Nifty 50', 'Nifty Midcap 50', 'Nifty Midcap 150',
@@ -68,7 +82,7 @@ const REGION_SECTIONS = {
     ];
   },
   Global: (data) => [
-    { title: 'Commodities', rows: data.commodities },
+    { title: 'Commodities', rows: data.commodities, unitMap: COMMODITY_UNITS },
   ],
 };
 
@@ -94,7 +108,7 @@ const GlobalIndicesTable = ({ refreshKey = 0, region = 'Global' }) => {
 
   return (
     <div>
-      {sections.map(s => <IndexTable key={s.title} title={s.title} rows={s.rows} />)}
+      {sections.map(s => <IndexTable key={s.title} title={s.title} rows={s.rows} unitMap={s.unitMap} />)}
     </div>
   );
 };
