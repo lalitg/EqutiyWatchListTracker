@@ -49,3 +49,14 @@ export async function fetchPeSnapshot(symbol) {
   if (!res.ok) return null;
   return res.json();
 }
+
+const NEWS_BASE = '/api/news';
+
+export async function fetchMergedNews(keys, page = 0, size = 20) {
+  const keysParam = Array.isArray(keys) ? keys.join(',') : keys;
+  const res = await fetch(
+    `${NEWS_BASE}/merged?keys=${encodeURIComponent(keysParam)}&page=${page}&size=${size}`
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}

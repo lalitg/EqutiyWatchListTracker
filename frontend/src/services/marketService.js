@@ -47,7 +47,7 @@ const SECTOR_KEYWORD_MAP = {
  * (e.g. 'Japan economy', 'India election results') are fetched on-demand
  * by the news service and cached in its DB for subsequent requests.
  */
-const REGION_KEYWORD_MAP = {
+export const REGION_KEYWORD_MAP = {
   India: [
     'RBI monetary policy',
     'repo rate',

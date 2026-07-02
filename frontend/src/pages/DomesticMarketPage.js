@@ -4,9 +4,10 @@ import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import { useMarket } from '../context/MarketContext';
 import { fetchSectorTabs } from '../services/sectorService';
-import { fetchIndices, fetchGlobalIndices } from '../services/indicesService';
+import { fetchIndices, fetchGlobalIndices, fetchMergedNews } from '../services/indicesService';
 
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
+const NEWS_PAGE_SIZE  = 20;
 const ALL_TAB = { displayName: 'All', newsKeyword: 'Nifty 50' };
 
 const SECTOR_INDEX_NAME = {
@@ -25,7 +26,7 @@ const SECTOR_INDEX_NAME = {
 const DomesticMarketPage = () => {
   const navigate = useNavigate();
   const {
-    domestic, domesticLoading, domesticError,
+    domestic, domesticLoading,
     fetchDomestic, refreshDomestic,
     STALE_FOCUS_MS,
   } = useMarket();
@@ -34,6 +35,14 @@ const DomesticMarketPage = () => {
   const [selectedSector, setSelectedSector] = useState(ALL_TAB);
   const [indices, setIndices]               = useState([]);
   const [sectorPriceMap, setSectorPriceMap] = useState({});
+
+  // Paginated news local state
+  const [newsItems, setNewsItems]           = useState([]);
+  const [newsPage, setNewsPage]             = useState(0);
+  const [newsTotalPages, setNewsTotalPages] = useState(1);
+  const [newsLoading, setNewsLoading]       = useState(false);
+  const [newsError, setNewsError]           = useState(null);
+  const [retryKey, setRetryKey]             = useState(0);
 
   useEffect(() => {
     fetchSectorTabs().then(tabs => setSectors([ALL_TAB, ...tabs])).catch(() => {});
@@ -46,6 +55,21 @@ const DomesticMarketPage = () => {
     }).catch(() => {});
   }, []);
 
+  // Fetch paginated news whenever sector, page, or retryKey changes
+  useEffect(() => {
+    const keyword = selectedSector.newsKeyword;
+    setNewsLoading(true);
+    setNewsError(null);
+    fetchMergedNews([keyword], newsPage, NEWS_PAGE_SIZE)
+      .then(data => {
+        setNewsItems(data.content ?? []);
+        setNewsTotalPages(data.totalPages ?? 1);
+      })
+      .catch(e => setNewsError(e.message))
+      .finally(() => setNewsLoading(false));
+  }, [selectedSector, newsPage, retryKey]);
+
+  // Fetch events via context (lightweight — single keyword)
   useEffect(() => {
     fetchDomestic(selectedSector.newsKeyword);
   }, [selectedSector, fetchDomestic]);
@@ -72,6 +96,13 @@ const DomesticMarketPage = () => {
   const handleSectorChange = (displayName) => {
     const sector = sectors.find(s => s.displayName === displayName) || ALL_TAB;
     setSelectedSector(sector);
+    setNewsPage(0);
+  };
+
+  const handleRefresh = () => {
+    refreshDomestic(selectedSector.newsKeyword);
+    setNewsPage(0);
+    setRetryKey(k => k + 1);
   };
 
   const getLastUpdatedLabel = () => {
@@ -85,12 +116,7 @@ const DomesticMarketPage = () => {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Domestic Market Insights</h1>
-        <button
-          className="btn btn-secondary"
-          onClick={() => refreshDomestic(selectedSector.newsKeyword)}
-        >
-          Refresh
-        </button>
+        <button className="btn btn-secondary" onClick={handleRefresh}>Refresh</button>
       </div>
 
       {/* ── Nifty Indices grid ─────────────────────────────────────────── */}
@@ -169,15 +195,15 @@ const DomesticMarketPage = () => {
           </select>
         </div>
 
-        {domesticLoading && (
-          <div className="page-loading"><p>Loading domestic insights...</p></div>
+        {newsLoading && (
+          <div className="page-loading"><p>Loading market news...</p></div>
         )}
 
-        {domesticError && (
+        {newsError && !newsLoading && (
           <div className="page-error">
-            <p>{domesticError}</p>
+            <p>{newsError}</p>
             <button
-              onClick={() => refreshDomestic(selectedSector.newsKeyword)}
+              onClick={() => setRetryKey(k => k + 1)}
               className="btn btn-primary"
               style={{ marginTop: 16 }}
             >
@@ -186,13 +212,32 @@ const DomesticMarketPage = () => {
           </div>
         )}
 
-        {!domesticLoading && !domesticError && domestic && (
+        {!newsLoading && !newsError && (
           <div className="market-content">
             {getLastUpdatedLabel() && (
               <p className="last-updated-label">{getLastUpdatedLabel()}</p>
             )}
-            <NewsList news={domestic.news ?? []} />
-            <EventsList events={domestic.events} />
+            <NewsList news={newsItems} />
+            {newsTotalPages > 1 && (
+              <div className="pagination">
+                <button
+                  className="pagination-btn"
+                  disabled={newsPage === 0}
+                  onClick={() => setNewsPage(p => p - 1)}
+                >
+                  Prev
+                </button>
+                <span className="page-indicator">Page {newsPage + 1} of {newsTotalPages}</span>
+                <button
+                  className="pagination-btn"
+                  disabled={newsPage >= newsTotalPages - 1}
+                  onClick={() => setNewsPage(p => p + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+            <EventsList events={domestic?.events} />
           </div>
         )}
       </div>

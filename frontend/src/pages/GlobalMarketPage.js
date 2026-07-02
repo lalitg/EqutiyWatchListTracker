@@ -4,14 +4,17 @@ import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import GlobalIndicesTable from '../components/market/GlobalIndicesTable';
 import { useMarket } from '../context/MarketContext';
+import { fetchMergedNews } from '../services/indicesService';
+import { REGION_KEYWORD_MAP } from '../services/marketService';
 
 const REGIONS = ['Global', 'US', 'Asia', 'Europe', 'India'];
-const AUTO_REFRESH_MS = 15 * 60 * 1000;
+const AUTO_REFRESH_MS  = 15 * 60 * 1000;
 const PRICE_REFRESH_MS = 30 * 60 * 1000;
+const NEWS_PAGE_SIZE   = 20;
 
 const GlobalMarketPage = () => {
   const {
-    globalCache, globalLoading, globalError,
+    globalCache, globalLoading,
     selectedRegion, setRegion, fetchGlobal, refreshGlobal,
     STALE_FOCUS_MS,
   } = useMarket();
@@ -19,9 +22,38 @@ const GlobalMarketPage = () => {
   const [priceRefreshKey, setPriceRefreshKey] = useState(0);
   const currentData = globalCache[selectedRegion];
 
+  // Paginated news local state
+  const [newsItems, setNewsItems]           = useState([]);
+  const [newsPage, setNewsPage]             = useState(0);
+  const [newsTotalPages, setNewsTotalPages] = useState(1);
+  const [newsLoading, setNewsLoading]       = useState(false);
+  const [newsError, setNewsError]           = useState(null);
+  const [retryKey, setRetryKey]             = useState(0);
+
+  // Fetch events via context whenever region changes
   useEffect(() => {
     fetchGlobal(selectedRegion);
   }, [selectedRegion, fetchGlobal]);
+
+  // Reset news page when region changes
+  useEffect(() => {
+    setNewsPage(0);
+  }, [selectedRegion]);
+
+  // Fetch paginated news whenever region, page, or retryKey changes
+  useEffect(() => {
+    const keywords = REGION_KEYWORD_MAP[selectedRegion] || [];
+    if (keywords.length === 0) return;
+    setNewsLoading(true);
+    setNewsError(null);
+    fetchMergedNews(keywords, newsPage, NEWS_PAGE_SIZE)
+      .then(data => {
+        setNewsItems(data.content ?? []);
+        setNewsTotalPages(data.totalPages ?? 1);
+      })
+      .catch(e => setNewsError(e.message))
+      .finally(() => setNewsLoading(false));
+  }, [selectedRegion, newsPage, retryKey]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -48,6 +80,13 @@ const GlobalMarketPage = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [handleVisibilityChange]);
 
+  const handleRefresh = () => {
+    refreshGlobal(selectedRegion);
+    setPriceRefreshKey(k => k + 1);
+    setNewsPage(0);
+    setRetryKey(k => k + 1);
+  };
+
   const getLastUpdatedLabel = () => {
     if (!currentData?.fetchedAt) return null;
     const diffMin = Math.floor((Date.now() - currentData.fetchedAt) / 60000);
@@ -59,27 +98,22 @@ const GlobalMarketPage = () => {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Global Market Insights</h1>
-        <button className="btn btn-secondary" onClick={() => {
-          refreshGlobal(selectedRegion);
-          setPriceRefreshKey(k => k + 1);
-        }}>
-          Refresh
-        </button>
+        <button className="btn btn-secondary" onClick={handleRefresh}>Refresh</button>
       </div>
 
       <SectorSelector options={REGIONS} selected={selectedRegion} onSelect={setRegion} />
 
       <GlobalIndicesTable refreshKey={priceRefreshKey} region={selectedRegion} />
 
-      {globalLoading && (
-        <div className="page-loading"><p>Loading global insights...</p></div>
+      {newsLoading && (
+        <div className="page-loading"><p>Loading market news...</p></div>
       )}
 
-      {globalError && (
+      {newsError && !newsLoading && (
         <div className="page-error">
-          <p>{globalError}</p>
+          <p>{newsError}</p>
           <button
-            onClick={() => refreshGlobal(selectedRegion)}
+            onClick={() => setRetryKey(k => k + 1)}
             className="btn btn-primary"
             style={{ marginTop: 16 }}
           >
@@ -88,13 +122,32 @@ const GlobalMarketPage = () => {
         </div>
       )}
 
-      {!globalLoading && !globalError && currentData && (
+      {!newsLoading && !newsError && (
         <div className="market-content">
           {getLastUpdatedLabel() && (
             <p className="last-updated-label">{getLastUpdatedLabel()}</p>
           )}
-          <NewsList news={currentData.news ?? []} />
-          <EventsList events={currentData.events ?? []} />
+          <NewsList news={newsItems} />
+          {newsTotalPages > 1 && (
+            <div className="pagination">
+              <button
+                className="pagination-btn"
+                disabled={newsPage === 0}
+                onClick={() => setNewsPage(p => p - 1)}
+              >
+                Prev
+              </button>
+              <span className="page-indicator">Page {newsPage + 1} of {newsTotalPages}</span>
+              <button
+                className="pagination-btn"
+                disabled={newsPage >= newsTotalPages - 1}
+                onClick={() => setNewsPage(p => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
+          <EventsList events={currentData?.events ?? []} />
         </div>
       )}
     </div>
