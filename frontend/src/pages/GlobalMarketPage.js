@@ -42,17 +42,21 @@ const GlobalMarketPage = () => {
 
   // Fetch paginated news whenever region, page, or retryKey changes
   useEffect(() => {
+    let cancelled = false;
     const keywords = REGION_KEYWORD_MAP[selectedRegion] || [];
     if (keywords.length === 0) return;
     setNewsLoading(true);
     setNewsError(null);
     fetchMergedNews(keywords, newsPage, NEWS_PAGE_SIZE)
       .then(data => {
-        setNewsItems(data.content ?? []);
-        setNewsTotalPages(data.totalPages ?? 1);
+        if (!cancelled) {
+          setNewsItems(data.content ?? []);
+          setNewsTotalPages(data.totalPages ?? 1);
+        }
       })
-      .catch(e => setNewsError(e.message))
-      .finally(() => setNewsLoading(false));
+      .catch(e => { if (!cancelled) setNewsError(e.message); })
+      .finally(() => { if (!cancelled) setNewsLoading(false); });
+    return () => { cancelled = true; };
   }, [selectedRegion, newsPage, retryKey]);
 
   useEffect(() => {

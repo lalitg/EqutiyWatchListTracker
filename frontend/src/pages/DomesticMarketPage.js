@@ -55,19 +55,26 @@ const DomesticMarketPage = () => {
     }).catch(() => {});
   }, []);
 
-  // Fetch paginated news whenever sector, page, or retryKey changes
+  // Fetch paginated news whenever sector, page, retryKey, or sectors list changes
   useEffect(() => {
-    const keyword = selectedSector.newsKeyword;
+    let cancelled = false;
+    const keywords = selectedSector.displayName === 'All'
+      ? sectors.filter(s => s.displayName !== 'All').map(s => s.newsKeyword).filter(Boolean)
+      : [selectedSector.newsKeyword];
+    if (keywords.length === 0) return; // wait until sectors are loaded
     setNewsLoading(true);
     setNewsError(null);
-    fetchMergedNews([keyword], newsPage, NEWS_PAGE_SIZE)
+    fetchMergedNews(keywords, newsPage, NEWS_PAGE_SIZE)
       .then(data => {
-        setNewsItems(data.content ?? []);
-        setNewsTotalPages(data.totalPages ?? 1);
+        if (!cancelled) {
+          setNewsItems(data.content ?? []);
+          setNewsTotalPages(data.totalPages ?? 1);
+        }
       })
-      .catch(e => setNewsError(e.message))
-      .finally(() => setNewsLoading(false));
-  }, [selectedSector, newsPage, retryKey]);
+      .catch(e => { if (!cancelled) setNewsError(e.message); })
+      .finally(() => { if (!cancelled) setNewsLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedSector, newsPage, retryKey, sectors]);
 
   // Fetch events via context (lightweight — single keyword)
   useEffect(() => {
@@ -97,6 +104,7 @@ const DomesticMarketPage = () => {
     const sector = sectors.find(s => s.displayName === displayName) || ALL_TAB;
     setSelectedSector(sector);
     setNewsPage(0);
+    setRetryKey(k => k + 1);
   };
 
   const handleRefresh = () => {
