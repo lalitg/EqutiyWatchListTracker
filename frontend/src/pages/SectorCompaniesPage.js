@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { fetchSectorCompanies } from '../services/sectorService';
-import { fetchNews } from '../services/newsService';
+import { fetchMergedNews } from '../services/indicesService';
+import { getCachedSectorNews, setCachedSectorNews, invalidateSectorNews } from '../services/newsCache';
 import NewsList from '../components/market/NewsList';
 import './CompaniesPage.css';
+
+const NEWS_PAGE_SIZE = 20;
 
 const SECTOR_DESCRIPTIONS = {
   'Auto':                 'Leading automobile manufacturers and auto-component makers listed on NSE.',
@@ -29,31 +32,51 @@ const SectorCompaniesPage = () => {
   const navigate      = useNavigate();
   const location      = useLocation();
 
-  const displayName  = decodeURIComponent(sectorKey);
-  const newsKeyword  = location.state?.newsKeyword || displayName;
-  const description  = SECTOR_DESCRIPTIONS[displayName];
+  const displayName = decodeURIComponent(sectorKey);
+  const newsKeyword = location.state?.newsKeyword || displayName;
+  const description = SECTOR_DESCRIPTIONS[displayName];
 
   const [activeTab, setActiveTab] = useState('news');
 
-  const [news, setNews]               = useState([]);
-  const [newsLoading, setNewsLoading] = useState(false);
-  const [newsError, setNewsError]     = useState(null);
+  const [newsItems, setNewsItems]           = useState([]);
+  const [newsPage, setNewsPage]             = useState(0);
+  const [newsTotalPages, setNewsTotalPages] = useState(1);
+  const [newsLoading, setNewsLoading]       = useState(false);
+  const [newsError, setNewsError]           = useState(null);
+  const [newsRefreshKey, setNewsRefreshKey] = useState(0);
 
   const [companies, setCompanies]               = useState([]);
   const [companiesLoading, setCompaniesLoading] = useState(false);
   const [companiesError, setCompaniesError]     = useState(null);
 
-  const loadNews = useCallback(async () => {
-    setNewsLoading(true); setNewsError(null);
-    try {
-      const data = await fetchNews(newsKeyword);
-      setNews(data.news ?? []);
-    } catch (e) {
-      setNewsError(e.message);
-    } finally {
+  // Fetch news — checks LRU cache first, falls back to API
+  useEffect(() => {
+    let cancelled = false;
+
+    const cached = getCachedSectorNews(newsKeyword, newsPage);
+    if (cached) {
+      setNewsItems(cached.content ?? []);
+      setNewsTotalPages(cached.totalPages ?? 1);
       setNewsLoading(false);
+      setNewsError(null);
+      return;
     }
-  }, [newsKeyword]);
+
+    setNewsLoading(true);
+    setNewsError(null);
+    fetchMergedNews([newsKeyword], newsPage, NEWS_PAGE_SIZE)
+      .then(data => {
+        if (!cancelled) {
+          setCachedSectorNews(newsKeyword, newsPage, data);
+          setNewsItems(data.content ?? []);
+          setNewsTotalPages(data.totalPages ?? 1);
+        }
+      })
+      .catch(e => { if (!cancelled) setNewsError(e.message); })
+      .finally(() => { if (!cancelled) setNewsLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [newsKeyword, newsPage, newsRefreshKey]);
 
   const loadCompanies = useCallback(async () => {
     setCompaniesLoading(true); setCompaniesError(null);
@@ -67,13 +90,17 @@ const SectorCompaniesPage = () => {
   }, [sectorKey]);
 
   useEffect(() => {
-    loadNews();
     loadCompanies();
-  }, [loadNews, loadCompanies]);
+  }, [loadCompanies]);
 
   const handleRefresh = () => {
-    if (activeTab === 'news') loadNews();
-    else loadCompanies();
+    if (activeTab === 'news') {
+      invalidateSectorNews(newsKeyword);
+      setNewsPage(0);
+      setNewsRefreshKey(k => k + 1);
+    } else {
+      loadCompanies();
+    }
   };
 
   return (
@@ -83,9 +110,7 @@ const SectorCompaniesPage = () => {
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>← Back</button>
           <h1 className="page-title">{displayName}</h1>
         </div>
-        <button className="btn btn-secondary" onClick={handleRefresh}>
-          Refresh
-        </button>
+        <button className="btn btn-secondary" onClick={handleRefresh}>Refresh</button>
       </div>
 
       {description && <p className="cp-description">{description}</p>}
@@ -110,13 +135,44 @@ const SectorCompaniesPage = () => {
       {activeTab === 'news' && (
         <div>
           {newsLoading && <div className="page-loading"><p>Loading news…</p></div>}
-          {newsError && (
+
+          {newsError && !newsLoading && (
             <div className="page-error">
               <p>{newsError}</p>
-              <button onClick={loadNews} className="btn btn-primary" style={{ marginTop: 16 }}>Retry</button>
+              <button
+                onClick={() => { invalidateSectorNews(newsKeyword); setNewsRefreshKey(k => k + 1); }}
+                className="btn btn-primary"
+                style={{ marginTop: 16 }}
+              >
+                Retry
+              </button>
             </div>
           )}
-          {!newsLoading && !newsError && <NewsList news={news} />}
+
+          {!newsLoading && !newsError && (
+            <>
+              <NewsList news={newsItems} />
+              {newsTotalPages > 1 && (
+                <div className="pagination">
+                  <button
+                    className="pagination-btn"
+                    disabled={newsPage === 0}
+                    onClick={() => setNewsPage(p => p - 1)}
+                  >
+                    Prev
+                  </button>
+                  <span className="page-indicator">Page {newsPage + 1} of {newsTotalPages}</span>
+                  <button
+                    className="pagination-btn"
+                    disabled={newsPage >= newsTotalPages - 1}
+                    onClick={() => setNewsPage(p => p + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
