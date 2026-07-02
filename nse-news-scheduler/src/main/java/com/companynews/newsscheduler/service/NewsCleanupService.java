@@ -6,16 +6,15 @@ import com.companynews.newsscheduler.repository.CompanyNewsRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Applies the news retention policy to the {@code company_news} table.
@@ -32,12 +31,8 @@ public class NewsCleanupService {
 
     private static final Logger log = LogManager.getLogger(NewsCleanupService.class);
 
-    private static final DateTimeFormatter NSE_FORMAT =
-        DateTimeFormatter.ofPattern("dd-MMM-yyyy HH:mm:ss", Locale.ENGLISH);
-    private static final DateTimeFormatter RSS_FORMAT =
-        DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH);
-
     private final CompanyNewsRepository repository;
+    private final NewsStore newsStore;
 
     @Value("${news.retention.window-hours:24}")
     private int retentionWindowHours;
@@ -45,8 +40,9 @@ public class NewsCleanupService {
     @Value("${news.retention.min-count:15}")
     private int minCount;
 
-    public NewsCleanupService(CompanyNewsRepository repository) {
+    public NewsCleanupService(CompanyNewsRepository repository, NewsStore newsStore) {
         this.repository = repository;
+        this.newsStore  = newsStore;
     }
 
     /**
@@ -62,6 +58,7 @@ public class NewsCleanupService {
      *   <li>Skip the DB write if nothing changed (no old items existed).</li>
      * </ol>
      */
+    @CacheEvict(value = "mergedNews", allEntries = true)
     @Transactional
     public void cleanup() {
         ZonedDateTime cutoff = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"))
@@ -78,7 +75,7 @@ public class NewsCleanupService {
             List<NewsItem> old   = new ArrayList<>();
 
             for (NewsItem item : news) {
-                ZonedDateTime itemDate = tryParseDate(item.getDate());
+                ZonedDateTime itemDate = NewsDateParser.parse(item.getDate());
                 // Items with unparseable dates are kept (treated as fresh)
                 if (itemDate == null || itemDate.isAfter(cutoff)) {
                     fresh.add(item);
@@ -103,6 +100,7 @@ public class NewsCleanupService {
             record.setNews(retained);
             record.setLastUpdated(LocalDateTime.now());
             repository.save(record);
+            newsStore.put(record.getKeyword(), retained);
             rowsUpdated++;
 
             log.debug("Cleanup: keyword={} total={} (fresh={} floor_kept={})",
@@ -113,14 +111,4 @@ public class NewsCleanupService {
         log.info("Cleanup completed — {}/{} keyword rows updated", rowsUpdated, allRecords.size());
     }
 
-    private ZonedDateTime tryParseDate(String dateStr) {
-        if (dateStr == null || dateStr.isBlank()) return null;
-        try {
-            return LocalDateTime.parse(dateStr, NSE_FORMAT).atZone(ZoneId.of("Asia/Kolkata"));
-        } catch (Exception ignored) {}
-        try {
-            return ZonedDateTime.parse(dateStr, RSS_FORMAT);
-        } catch (Exception ignored) {}
-        return null;
-    }
 }
