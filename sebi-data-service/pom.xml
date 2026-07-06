@@ -53,14 +53,6 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
 					<finalName>sebi-data-service-1.0.0</finalName>
-					<!--
-					    classifier=exec: Spring Boot produces TWO jars:
-					      1. sebi-data-service-1.0.0.jar        (plain, classes at root — used as library dependency by unified-scheduler)
-					      2. sebi-data-service-1.0.0-exec.jar   (fat executable jar — used for standalone deploy)
-					    Without this, Spring Boot replaces the plain jar with the fat jar, making
-					    it unusable as a Maven dependency inside unified-scheduler.
-					-->
-					<classifier>exec</classifier>
 				</configuration>
 			</plugin>
 		</plugins>

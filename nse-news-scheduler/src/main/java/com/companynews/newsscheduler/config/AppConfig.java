@@ -3,11 +3,17 @@ package com.companynews.newsscheduler.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
@@ -31,6 +37,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * </ul>
  */
 @Configuration
+@EnableCaching
+@EnableAsync
 public class AppConfig {
 
     private static final Logger log = LogManager.getLogger(AppConfig.class);
@@ -190,5 +198,28 @@ public class AppConfig {
         scheduler.setThreadNamePrefix("startup-thread-");
         scheduler.initialize();
         return scheduler;
+    }
+
+    @Bean
+    public CacheManager cacheManager() {
+        log.info("Initializing CaffeineCacheManager (mergedNews + companyNews)");
+        CaffeineCacheManager manager = new CaffeineCacheManager();
+        manager.registerCustomCache("mergedNews",
+            Caffeine.newBuilder().maximumSize(500).recordStats().<Object, Object>build());
+        manager.registerCustomCache("companyNews",
+            Caffeine.newBuilder().maximumSize(100).recordStats().<Object, Object>build());
+        return manager;
+    }
+
+    @Bean(name = "cacheWarmExecutor")
+    public ThreadPoolTaskExecutor cacheWarmExecutor() {
+        log.info("Initializing cacheWarmExecutor (poolSize=2)");
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(2);
+        executor.setThreadNamePrefix("cache-warm-");
+        executor.setWaitForTasksToCompleteOnShutdown(false);
+        executor.initialize();
+        return executor;
     }
 }

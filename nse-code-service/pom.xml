@@ -77,7 +77,6 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>com.companycode.nse.NseEnterpriseSchedulerApplication</mainClass>
-                    <classifier>exec</classifier>
                 </configuration>
             </plugin>
         </plugins>

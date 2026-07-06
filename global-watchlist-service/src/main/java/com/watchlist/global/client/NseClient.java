@@ -16,7 +16,6 @@ import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -32,38 +31,17 @@ public class NseClient {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
-
-    /** Backward-compat wrapper — returns NIFTY 50 stock symbols only. */
-    public List<String> fetchNifty50Symbols() {
-        return fetchIndexSymbols("NIFTY 50");
-    }
-
-    /** Returns the list of stock symbols for any NSE index (excludes the index row itself). */
-    public List<String> fetchIndexSymbols(String indexName) {
-        List<IndexCompanyEntry> companies = fetchIndexCompanies(indexName);
-        List<String> symbols = new ArrayList<>(companies.size());
-        for (IndexCompanyEntry e : companies) symbols.add(e.getSymbol());
-        return symbols;
-    }
-
-    /**
-     * Returns the index-level summary (LTP, change, chg%) for the given NSE index.
-     * This is the first row returned by the equity-stockIndices API.
-     */
     public IndexSummary fetchIndexHeader(String indexName) {
         try {
             JsonNode data = fetchData(indexName);
-            if (data == null || !data.isArray() || data.size() == 0) return null;
-            JsonNode row = data.get(0);
-            IndexSummary summary = new IndexSummary(indexName, indexName, true);
-            summary.setLtp(decimal(row, "lastPrice"));
-            summary.setChange(decimal(row, "change"));
-            summary.setChangePercent(decimal(row, "pChange"));
-            summary.setLastUpdated(LocalDateTime.now());
-            logger.debug("Fetched header for '{}': ltp={}, pChange={}", indexName, summary.getLtp(), summary.getChangePercent());
+            if (data == null || !data.isArray() || data.isEmpty()) return null;
+            JsonNode header = data.get(0);
+            IndexSummary summary = new IndexSummary();
+            summary.setNseParam(indexName);
+            summary.setLtp(decimal(header, "lastPrice"));
+            summary.setChange(decimal(header, "change"));
+            summary.setChangePercent(decimal(header, "pChange"));
+            summary.setLastUpdated(java.time.LocalDateTime.now());
             return summary;
         } catch (Exception e) {
             logger.error("Failed to fetch index header for '{}': {}", indexName, e.getMessage());
@@ -71,10 +49,17 @@ public class NseClient {
         }
     }
 
-    /**
-     * Returns all constituent companies for the given NSE index with price data.
-     * The index row itself (first item) is excluded.
-     */
+    public List<String> fetchNifty50Symbols() {
+        return fetchIndexSymbols("NIFTY 50");
+    }
+
+    public List<String> fetchIndexSymbols(String indexName) {
+        List<IndexCompanyEntry> companies = fetchIndexCompanies(indexName);
+        List<String> symbols = new ArrayList<>(companies.size());
+        for (IndexCompanyEntry e : companies) symbols.add(e.getSymbol());
+        return symbols;
+    }
+
     public List<IndexCompanyEntry> fetchIndexCompanies(String indexName) {
         try {
             JsonNode data = fetchData(indexName);
@@ -83,7 +68,7 @@ public class NseClient {
             List<IndexCompanyEntry> result = new ArrayList<>();
             boolean first = true;
             for (JsonNode item : data) {
-                if (first) { first = false; continue; } // skip index row
+                if (first) { first = false; continue; }
                 IndexCompanyEntry entry = new IndexCompanyEntry();
                 entry.setSymbol(item.path("symbol").asText());
                 entry.setLtp(decimal(item, "lastPrice"));
@@ -103,14 +88,9 @@ public class NseClient {
         }
     }
 
-    /**
-     * Fetches company name and all index memberships for a symbol in a single NSE API call
-     * (quote-equity endpoint). Returns a two-element array: [companyName, List<String> indexKeys].
-     * Combines both fetches to avoid a double cookie handshake.
-     */
     public CompanyInfo fetchCompanyInfo(String symbol) {
         try {
-            HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
+            HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).version(HttpClient.Version.HTTP_1_1).build();
             String cookies = fetchSessionCookies(client);
             String encoded = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
             String json = fetchWithCookies(client, QUOTE_EQUITY_URL + encoded, cookies);
@@ -118,7 +98,6 @@ public class NseClient {
 
             String name = root.path("info").path("companyName").asText(null);
 
-            // pdSectorIndAll is an array of all index keys the stock belongs to
             List<String> indices = new ArrayList<>();
             JsonNode indAll = root.path("metadata").path("pdSectorIndAll");
             if (indAll.isArray()) {
@@ -136,7 +115,6 @@ public class NseClient {
         }
     }
 
-    /** Returns just the company name from NSE's quote-equity API. */
     public String fetchCompanyName(String symbol) {
         return fetchCompanyInfo(symbol).companyName;
     }
@@ -150,12 +128,8 @@ public class NseClient {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Internal helpers
-    // -------------------------------------------------------------------------
-
     private JsonNode fetchData(String indexName) throws Exception {
-        HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build();
+        HttpClient client = HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).version(HttpClient.Version.HTTP_1_1).build();
         String cookies = fetchSessionCookies(client);
         String encoded = URLEncoder.encode(indexName, StandardCharsets.UTF_8);
         String json = fetchWithCookies(client, INDEX_URL_TPL + encoded, cookies);

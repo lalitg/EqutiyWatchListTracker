@@ -143,6 +143,24 @@
       </exclusions>
     </dependency>
 
+    <!-- Spring Cache abstraction: enables @Cacheable, @CacheEvict annotations -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-cache</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-logging</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!-- Caffeine: high-performance in-process cache for mergedNews (L2) and companyNews (LRU) -->
+    <dependency>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -150,9 +168,6 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
-        <configuration>
-          <classifier>exec</classifier>
-        </configuration>
       </plugin>
     </plugins>
   </build>

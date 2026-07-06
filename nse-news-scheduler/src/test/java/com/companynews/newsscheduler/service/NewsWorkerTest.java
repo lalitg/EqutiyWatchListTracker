@@ -11,7 +11,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +25,9 @@ class NewsWorkerTest {
     @Mock
     private CompanyNewsRepository repository;
 
+    @Mock
+    private NewsStore newsStore;
+
     // Use real SimilarityChecker — it has no dependencies and pure deterministic logic
     @Spy
     private SimilarityChecker similarityChecker = new SimilarityChecker();
@@ -34,9 +36,7 @@ class NewsWorkerTest {
 
     @BeforeEach
     void setUp() {
-        newsWorker = new NewsWorker(repository, similarityChecker, new SimpleMeterRegistry());
-        // @Value field cannot be injected by Mockito — set manually
-        ReflectionTestUtils.setField(newsWorker, "newsLimit", 5);
+        newsWorker = new NewsWorker(repository, similarityChecker, newsStore, new SimpleMeterRegistry());
     }
 
     // ── Helper ─────────────────────────────────────────────────────────────
@@ -111,10 +111,10 @@ class NewsWorkerTest {
         verify(repository, never()).save(any());
     }
 
-    // ── News limit trim ────────────────────────────────────────────────────
+    // ── All deduplicated items are saved (no per-save limit — cleanup scheduler handles retention) ──
 
     @Test
-    void trims_news_to_configured_limit() {
+    void saves_all_deduplicated_items_without_limit() {
         when(repository.findByKeyword("INFY")).thenReturn(Optional.empty());
 
         List<NewsItem> sixItems = List.of(
@@ -130,7 +130,7 @@ class NewsWorkerTest {
 
         ArgumentCaptor<CompanyNews> captor = ArgumentCaptor.forClass(CompanyNews.class);
         verify(repository).save(captor.capture());
-        assertThat(captor.getValue().getNews()).hasSize(5); // limit = 5
+        assertThat(captor.getValue().getNews()).hasSize(6);
     }
 
     // ── Empty input ────────────────────────────────────────────────────────

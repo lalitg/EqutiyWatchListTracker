@@ -2,9 +2,7 @@ package com.equity.fundamentals.service;
 
 import com.equity.fundamentals.client.YFinanceWrapperClient;
 import com.equity.fundamentals.dto.QuarterlyResultDto;
-import com.equity.fundamentals.entity.FundamentalsFetchLog;
 import com.equity.fundamentals.entity.QuarterlyResult;
-import com.equity.fundamentals.repository.FundamentalsFetchLogRepository;
 import com.equity.fundamentals.repository.GlobalWatchlistRepository;
 import com.equity.fundamentals.repository.QuarterlyResultRepository;
 import com.equity.fundamentals.util.QuarterUtil;
@@ -27,8 +25,7 @@ import java.util.List;
  *   2. For each DTO, derive the quarter label (e.g. Q2FY25) using QuarterUtil
  *   3. Find-or-create the QuarterlyResult row for (symbol, quarter)
  *   4. Map DTO fields onto the entity and save
- *   5. Write a SUCCESS or FAILED row to fundamentals_fetch_log
- *   6. Sleep rateLimitDelayMs between companies to avoid rate-limiting
+ *   5. Sleep rateLimitDelayMs between companies to avoid rate-limiting
  *
  * Upsert pattern:
  *   findBySymbolAndQuarter → orElseGet(QuarterlyResult::new)
@@ -47,11 +44,9 @@ import java.util.List;
 public class QuarterlyResultsService {
 
     private static final Logger log = LoggerFactory.getLogger(QuarterlyResultsService.class);
-    private static final String FETCH_TYPE = "QUARTERLY_RESULTS";
 
     private final GlobalWatchlistRepository globalWatchlistRepo;
     private final QuarterlyResultRepository quarterlyResultRepo;
-    private final FundamentalsFetchLogRepository fetchLogRepo;
     private final YFinanceWrapperClient apiClient;
     private final ObjectMapper objectMapper;
 
@@ -60,12 +55,10 @@ public class QuarterlyResultsService {
 
     public QuarterlyResultsService(GlobalWatchlistRepository globalWatchlistRepo,
                                    QuarterlyResultRepository quarterlyResultRepo,
-                                   FundamentalsFetchLogRepository fetchLogRepo,
                                    YFinanceWrapperClient apiClient,
                                    ObjectMapper objectMapper) {
         this.globalWatchlistRepo = globalWatchlistRepo;
         this.quarterlyResultRepo = quarterlyResultRepo;
-        this.fetchLogRepo        = fetchLogRepo;
         this.apiClient           = apiClient;
         this.objectMapper        = objectMapper;
     }
@@ -94,8 +87,6 @@ public class QuarterlyResultsService {
                 success++;
             } catch (Exception e) {
                 log.error("Quarterly results failed for {}: {}", symbol, e.getMessage());
-                fetchLogRepo.save(new FundamentalsFetchLog(
-                    symbol, FETCH_TYPE, e.getMessage(), apiClient.getDataSource()));
                 failed++;
             }
 
@@ -121,8 +112,6 @@ public class QuarterlyResultsService {
 
         if (dtos.isEmpty()) {
             log.warn("No quarterly data returned for {} — skipping", symbol);
-            fetchLogRepo.save(new FundamentalsFetchLog(
-                symbol, FETCH_TYPE, "No data returned by API", apiClient.getDataSource()));
             return;
         }
 
@@ -151,7 +140,6 @@ public class QuarterlyResultsService {
             quarterlyResultRepo.save(entity);
         }
 
-        fetchLogRepo.save(new FundamentalsFetchLog(symbol, FETCH_TYPE, apiClient.getDataSource()));
         log.info("Quarterly results saved for {} ({} quarters)", symbol, dtos.size());
     }
 

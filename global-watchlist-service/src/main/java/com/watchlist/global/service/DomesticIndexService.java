@@ -1,6 +1,7 @@
 package com.watchlist.global.service;
 
 import com.watchlist.global.client.NseClient;
+import com.watchlist.global.model.CompanyMembershipsResponse.IndexLabel;
 import com.watchlist.global.model.IndexCompanyEntry;
 import com.watchlist.global.model.IndexSummary;
 import org.apache.logging.log4j.LogManager;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +63,10 @@ public class DomesticIndexService {
     private final Map<String, IndexSummary> domesticCache = new ConcurrentHashMap<>();
     private final Map<String, IndexSummary> sectorCache   = new ConcurrentHashMap<>();
 
+    // Separate reverse maps rebuilt independently so concurrent refreshes don't duplicate labels
+    private volatile Map<String, List<IndexLabel>> domesticMemberships = new ConcurrentHashMap<>();
+    private volatile Map<String, List<IndexLabel>> sectorMemberships   = new ConcurrentHashMap<>();
+
     public DomesticIndexService(NseClient nseClient) {
         this.nseClient = nseClient;
     }
@@ -71,6 +77,7 @@ public class DomesticIndexService {
 
     public void refreshDomesticIndices() {
         logger.info("Refreshing domestic index headers...");
+        Map<String, List<IndexLabel>> memberships = new HashMap<>();
         for (String[] meta : DOMESTIC_INDICES) {
             IndexSummary summary = nseClient.fetchIndexHeader(meta[0]);
             if (summary != null) {
@@ -78,12 +85,18 @@ public class DomesticIndexService {
                 summary.setHasConstituents(Boolean.parseBoolean(meta[2]));
                 domesticCache.put(meta[0], summary);
             }
+            IndexLabel label = new IndexLabel(meta[0], meta[1], "DOMESTIC");
+            for (IndexCompanyEntry company : nseClient.fetchIndexCompanies(meta[0])) {
+                memberships.computeIfAbsent(company.getSymbol(), k -> new ArrayList<>()).add(label);
+            }
         }
-        logger.info("Domestic index headers refreshed — {} entries", domesticCache.size());
+        domesticMemberships = new ConcurrentHashMap<>(memberships);
+        logger.info("Domestic index headers refreshed — {} entries, {} symbols mapped", domesticCache.size(), memberships.size());
     }
 
     public void refreshSectorIndices() {
         logger.info("Refreshing sector index headers...");
+        Map<String, List<IndexLabel>> memberships = new HashMap<>();
         for (String[] meta : SECTOR_INDICES) {
             IndexSummary summary = nseClient.fetchIndexHeader(meta[0]);
             if (summary != null) {
@@ -91,8 +104,13 @@ public class DomesticIndexService {
                 summary.setHasConstituents(Boolean.parseBoolean(meta[2]));
                 sectorCache.put(meta[0], summary);
             }
+            IndexLabel label = new IndexLabel(meta[0], meta[1], "SECTOR");
+            for (IndexCompanyEntry company : nseClient.fetchIndexCompanies(meta[0])) {
+                memberships.computeIfAbsent(company.getSymbol(), k -> new ArrayList<>()).add(label);
+            }
         }
-        logger.info("Sector index headers refreshed — {} entries", sectorCache.size());
+        sectorMemberships = new ConcurrentHashMap<>(memberships);
+        logger.info("Sector index headers refreshed — {} entries, {} symbols mapped", sectorCache.size(), memberships.size());
     }
 
     // -------------------------------------------------------------------------
@@ -125,6 +143,14 @@ public class DomesticIndexService {
 
     /** Returns the canonical NSE param for a URL-friendly index key (e.g. "NIFTY-50" → "NIFTY 50"). */
     public String resolveNseParam(String urlKey) {
+        // Try exact match first — preserves meaningful hyphens like "EX-BANK"
+        for (String[] meta : DOMESTIC_INDICES) {
+            if (meta[0].equalsIgnoreCase(urlKey)) return meta[0];
+        }
+        for (String[] meta : SECTOR_INDICES) {
+            if (meta[0].equalsIgnoreCase(urlKey)) return meta[0];
+        }
+        // Fallback: replace hyphens with spaces for URL-friendly forms like "NIFTY-50"
         String normalised = urlKey.replace("-", " ").toUpperCase();
         for (String[] meta : DOMESTIC_INDICES) {
             if (meta[0].equalsIgnoreCase(normalised)) return meta[0];
@@ -132,8 +158,7 @@ public class DomesticIndexService {
         for (String[] meta : SECTOR_INDICES) {
             if (meta[0].equalsIgnoreCase(normalised)) return meta[0];
         }
-        // fall back to the key itself (already in correct form)
-        return normalised;
+        return urlKey;
     }
 
     /**
@@ -159,5 +184,18 @@ public class DomesticIndexService {
             if (meta[0].equalsIgnoreCase(nseKey)) return "SECTOR";
         }
         return null;
+    }
+
+    /**
+     * Returns the precomputed list of index/sector memberships for a given symbol,
+     * or an empty list if the symbol was not found in any tracked index during the
+     * last refresh. Avoids the broken per-symbol NSE quote-equity API.
+     */
+    public List<IndexLabel> getSymbolMemberships(String symbol) {
+        String upper = symbol.toUpperCase();
+        List<IndexLabel> result = new ArrayList<>();
+        result.addAll(domesticMemberships.getOrDefault(upper, Collections.emptyList()));
+        result.addAll(sectorMemberships.getOrDefault(upper, Collections.emptyList()));
+        return result;
     }
 }
