@@ -77,6 +77,8 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>com.companycode.nse.NseEnterpriseSchedulerApplication</mainClass>
+                    <!-- classifier=exec: keep main jar consumable by unified-scheduler -->
+                    <classifier>exec</classifier>
                 </configuration>
             </plugin>
         </plugins>

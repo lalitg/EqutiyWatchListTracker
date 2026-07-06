@@ -83,6 +83,11 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<!-- classifier=exec: main jar stays a plain (consumable) library jar for
+				     unified-scheduler; the -exec jar is the standalone runnable fat jar. -->
+				<configuration>
+					<classifier>exec</classifier>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
