@@ -1,3 +1,21 @@
+# Domestic Sectors (Domestic Market Tab)
+Auto
+Capital Goods
+Chemicals
+Consumer Durables
+Consumer Services
+Energy
+FMCG
+Financial Services
+IT
+Infrastructure
+Media
+Metals
+Pharma
+Realty
+Services
+Telecom
+
 # India (Global Market Tab)
 RBI monetary policy
 repo rate
