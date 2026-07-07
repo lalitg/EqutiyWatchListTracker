@@ -69,7 +69,7 @@ public class InternalUserController {
      *   - If not → HTTP 403 (not 401, to avoid leaking that this endpoint exists).
      *
      * @param apiKey  value of the X-Internal-Api-Key header
-     * @param request body containing the username to look up
+     * @param request body containing the identifier (username, email, or phone)
      * @return InternalValidateResponse (includes passwordHash — internal use only)
      */
     @PostMapping("/validate")
@@ -83,7 +83,7 @@ public class InternalUserController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        InternalValidateResponse response = userService.validateUserInternal(request.getUsername());
+        InternalValidateResponse response = userService.validateUserInternal(request.getIdentifier());
         return ResponseEntity.ok(response);
     }
 

@@ -61,11 +61,7 @@ public class ProxyController {
     @Value("${fundamentals.service.url:http://localhost:8086}")
     private String fundamentalsServiceUrl;
 
-    /** Base URL of the SEBI data microservice (default: {@code http://localhost:8089}). */
-    @Value("${sebi.service.url:http://localhost:8089}")
-    private String sebiServiceUrl;
-
-    /** Base URL of the NSE code microservice (default: {@code http://localhost:8082}). */
+    /** Base URL of the nse-code microservice (default: {@code http://localhost:8082}). */
     @Value("${nse.code.service.url:http://localhost:8082}")
     private String nseCodeServiceUrl;
 
@@ -153,18 +149,7 @@ public class ProxyController {
     }
 
     /**
-     * Proxies all {@code /api/sebi/**} requests to the SEBI data microservice.
-     * Path remapping: /api/sebi/... → /api/v1/sebi/...
-     */
-    @RequestMapping(value = "/api/sebi/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
-    public ResponseEntity<String> proxySebi(HttpServletRequest request) throws URISyntaxException, IOException {
-        logger.info("Proxying SEBI request: {} {}", request.getMethod(), request.getRequestURI());
-        String suffix = request.getRequestURI().substring("/api/sebi".length());
-        return proxyWithPath(request, sebiServiceUrl, "/api/v1/sebi" + suffix);
-    }
-
-    /**
-     * Proxies all {@code /api/nse-code/**} requests to the NSE code microservice.
+     * Proxies all {@code /api/nse-code/**} requests to the nse-code microservice.
      */
     @RequestMapping(value = "/api/nse-code/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public ResponseEntity<String> proxyNseCode(HttpServletRequest request) throws URISyntaxException, IOException {

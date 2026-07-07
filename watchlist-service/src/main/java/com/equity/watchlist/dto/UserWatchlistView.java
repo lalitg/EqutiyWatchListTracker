@@ -11,7 +11,6 @@ public class UserWatchlistView {
     private Long userId;
     private String name;
     private LocalDateTime createdAt;
-    private int companyCount;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -24,7 +23,4 @@ public class UserWatchlistView {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-    public int getCompanyCount() { return companyCount; }
-    public void setCompanyCount(int companyCount) { this.companyCount = companyCount; }
 }

@@ -1,5 +1,6 @@
 package com.equity.auth.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -14,7 +15,9 @@ import jakarta.validation.constraints.Size;
  * Validation rules (from LLD Section 13):
  * - username: required, max 50 chars
  * - name: required, max 100 chars
- * - At least one of email OR phoneNumber must be provided — enforced in AuthService
+ * - email: required, valid email format, max 150 chars
+ *   (required because the forgot-password flow uses email as the only reset identifier)
+ * - phoneNumber: optional, max 15 chars
  * - password: min 8 chars, at least 1 uppercase, 1 digit, 1 special character
  * - investmentYears and investmentAmount: optional strings (enum names)
  */
@@ -28,6 +31,8 @@ public class SignupRequest {
     @Size(max = 100, message = "Name must be at most 100 characters")
     private String name;
 
+    @NotBlank(message = "Email is required")
+    @Email(message = "Must be a valid email address")
     @Size(max = 150, message = "Email must be at most 150 characters")
     private String email;
 
