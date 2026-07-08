@@ -99,7 +99,8 @@
 .cal-holiday-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
   padding: 12px 20px;
   border-bottom: 1px solid #f1f5f9;
   transition: background 0.15s;
@@ -247,5 +248,12 @@
   }
   .cal-holiday-date {
     min-width: 130px;
+  }
+}
+
+@media (max-width: 420px) {
+  .cal-holiday-date {
+    min-width: 0;
+    flex-basis: 100%;
   }
 }

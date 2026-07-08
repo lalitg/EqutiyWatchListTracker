@@ -72,3 +72,8 @@
   font-size: 14px;
 }
 .indices-error { color: #dc2626; }
+
+@media (max-width: 768px) {
+  .indices-table-wrap { overflow-x: auto; }
+  .indices-table { min-width: 480px; }
+}

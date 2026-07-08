@@ -67,6 +67,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   margin-bottom: 10px;
   gap: 12px;
 }
@@ -106,7 +107,8 @@
 .cdp-price-row {
   display: flex;
   align-items: baseline;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   margin-top: 12px;
 }
 
@@ -219,6 +221,14 @@
 
 @media (max-width: 600px) {
   .cdp-stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .cdp-container { padding: 16px 12px 40px; }
+  .cdp-hero { padding: 20px 18px 18px; }
+  .cdp-symbol { font-size: 21px; }
+  .cdp-ltp { font-size: 32px; }
+  .cdp-fund-tabs { overflow-x: auto; }
 }
 
 .cdp-stat {

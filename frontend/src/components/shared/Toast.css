@@ -13,6 +13,14 @@
   z-index: 2000;
   animation: toastIn 0.25s ease;
   white-space: nowrap;
+  max-width: calc(100vw - 32px);
+}
+
+@media (max-width: 480px) {
+  .toast {
+    white-space: normal;
+    text-align: center;
+  }
 }
 
 @keyframes toastIn {
