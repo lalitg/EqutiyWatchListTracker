@@ -329,3 +329,36 @@ body {
     align-items: flex-start;
   }
 }
+
+@media (max-width: 480px) {
+  .app-main {
+    padding: 14px;
+  }
+
+  /* Action buttons wrap and fill width */
+  .page-actions {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .page-actions .btn,
+  .page-actions .btn-add,
+  .page-actions .btn-secondary {
+    flex: 1 1 auto;
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  /* Smaller base button padding on mobile */
+  .btn { padding: 10px 16px; font-size: 13px; }
+  .btn-add { padding: 10px 16px; font-size: 13px; }
+
+  /* Sector dropdown full width */
+  .sector-dropdown { width: 100%; min-width: 0; }
+
+  /* Tighter page titles */
+  .page-title { font-size: 20px; }
+}

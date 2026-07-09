@@ -145,3 +145,49 @@
 .btn-danger:hover {
   background: #dc2626;
 }
+
+/* ── Mobile responsive ───────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Tabs: tighter and scrollable if needed */
+  .wl-tabs-row {
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .wl-tab {
+    padding: 8px 10px;
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  .wl-tab-name { max-width: 100px; }
+
+  .wl-new-tab-btn {
+    padding: 8px 12px;
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  /* Create form: stack input + buttons vertically */
+  .wl-new-form {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .wl-new-input { width: 100%; }
+
+  /* Delete confirm banner: column on narrow screens */
+  .wl-delete-confirm {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .wl-delete-confirm .btn-danger,
+  .wl-delete-confirm .btn-secondary {
+    width: 100%;
+    text-align: center;
+    min-height: 44px;
+  }
+}
