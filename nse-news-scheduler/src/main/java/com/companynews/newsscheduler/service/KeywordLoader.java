@@ -110,36 +110,4 @@ public class KeywordLoader {
         log.info("Total unique keywords to fetch: {}", keywords.size());
         return new ArrayList<>(keywords);
     }
-
-    /**
-     * Loads and returns the list of US market keywords from {@code us-keywords.txt}.
-     *
-     * <p>Used by the US-market-hours scheduler to fetch these keywords at higher frequency
-     * (every 30 min) during US trading hours (6 PM–2:30 AM IST), independently of the
-     * main keyword cycle.
-     *
-     * @return list of US market keywords; never {@code null}, but may be empty if the file is missing
-     */
-    public List<String> loadUsKeywords() {
-        List<String> keywords = new ArrayList<>();
-        try {
-            ClassPathResource resource = new ClassPathResource("us-keywords.txt");
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(resource.getInputStream()))) {
-                int count = 0;
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    line = line.trim();
-                    if (!line.isEmpty() && !line.startsWith("#")) {
-                        keywords.add(line);
-                        count++;
-                    }
-                }
-                log.info("Loaded {} US market keywords from us-keywords.txt", count);
-            }
-        } catch (Exception e) {
-            log.warn("us-keywords.txt not found or unreadable — skipping: {}", e.getMessage());
-        }
-        return keywords;
-    }
 }

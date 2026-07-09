@@ -126,91 +126,22 @@ public class GoogleRssScheduler {
     }
 
     /**
-     * Scheduled entry point for peak hours: weekdays 8 AM–5 PM IST, every 15 minutes.
+     * Scheduled entry point: every 15 minutes, all day, every day of the week.
      * Delegates to {@link #runFetch()}.
-     */
-    @Scheduled(cron = "${news.google.cron.peak}", zone = "${scheduler.timezone}")
-    public void runFetchPeak() {
-        runFetch();
-    }
-
-    /**
-     * Scheduled entry point for off-peak weekday hours: midnight–8 AM and 6 PM–11 PM, every hour.
-     * Delegates to {@link #runFetch()}.
-     */
-    @Scheduled(cron = "${news.google.cron.offpeak.weekday}", zone = "${scheduler.timezone}")
-    public void runFetchOffpeakWeekday() {
-        runFetch();
-    }
-
-    /**
-     * Scheduled entry point for weekends: every hour all day.
-     * Delegates to {@link #runFetch()}.
-     */
-    @Scheduled(cron = "${news.google.cron.offpeak.weekend}", zone = "${scheduler.timezone}")
-    public void runFetchOffpeakWeekend() {
-        runFetch();
-    }
-
-    /**
-     * Scheduled entry point for US market evening window: Mon–Fri, 6 PM–11:30 PM IST, every 30 min.
-     * Delegates to {@link #runUsFetch()}.
-     */
-    @Scheduled(cron = "${news.google.cron.us-market.evening}", zone = "${scheduler.timezone}")
-    public void runFetchUsMarketEvening() {
-        runUsFetch();
-    }
-
-    /**
-     * Scheduled entry point for US market overnight window: Tue–Sat, 12 AM–2:30 AM IST, every 30 min.
-     * Delegates to {@link #runUsFetch()}.
-     */
-    @Scheduled(cron = "${news.google.cron.us-market.morning}", zone = "${scheduler.timezone}")
-    public void runFetchUsMarketMorning() {
-        runUsFetch();
-    }
-
-    /**
-     * Runs the Google RSS fetch-dedup-save cycle for US market keywords only.
-     * Called by {@link #runFetchUsMarketEvening()} and {@link #runFetchUsMarketMorning()}.
      *
-     * <p>Reads from {@code us-keywords.txt} via {@link KeywordLoader#loadUsKeywords()}.
-     * Uses the same executor pool, URL dedup window, and rate-limit delay as the main cycle.
-     * Duplicate articles (also fetched by the main cycle at off-peak) are silently dropped
-     * by the existing {@link UrlWindow} dedup before reaching the database.
+     * <p>Previously this was split across 5 separate cron windows (weekday peak/off-peak,
+     * weekend, and two US-market-hours windows reading a separate {@code us-keywords.txt}
+     * file). All keywords — domestic, global, and US — now live together in
+     * {@code keywords.txt} and are fetched on this single unified cadence.
      */
-    public void runUsFetch() {
-        log.info("US market Google RSS fetch started — loading US keywords");
-
-        List<String> keywords = keywordLoader.loadUsKeywords();
-        if (keywords.isEmpty()) {
-            log.warn("No US keywords found — skipping US market fetch cycle");
-            return;
-        }
-
-        log.info("Submitting {} US keywords to executor pool", keywords.size());
-
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-        for (String keyword : keywords) {
-            futures.add(CompletableFuture.runAsync(() -> processKeyword(keyword), executor));
-
-            try {
-                Thread.sleep(fetchDelayMs);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn("US fetch delay interrupted — stopping remaining keyword submissions");
-                break;
-            }
-        }
-
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-
-        log.info("US market Google RSS fetch cycle completed — {} keywords processed", keywords.size());
+    @Scheduled(cron = "${news.google.cron}", zone = "${scheduler.timezone}")
+    public void runFetchScheduled() {
+        runFetch();
     }
 
     /**
      * Runs the full Google RSS fetch-dedup-save cycle.
-     * Called by the three scheduled entry points and the startup listener.
+     * Called by the scheduled entry point and the startup listener.
      *
      * <p>Submits one {@link CompletableFuture} per keyword to the managed executor pool
      * with a configurable delay between submissions to avoid rate-limiting.
@@ -223,6 +154,7 @@ public class GoogleRssScheduler {
      */
     public void runFetch() {
         log.info("Google RSS fetch started — loading keywords");
+        long startMs = System.currentTimeMillis();
 
         List<String> keywords = keywordLoader.load();
         if (keywords.isEmpty()) {
@@ -249,7 +181,9 @@ public class GoogleRssScheduler {
         // Wait for all submitted tasks to finish before returning
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
-        log.info("Google RSS fetch cycle completed — {} keywords processed", keywords.size());
+        long durationSec = (System.currentTimeMillis() - startMs) / 1000;
+        log.info("Google RSS fetch cycle completed — {} keywords processed, duration={}s",
+                 keywords.size(), durationSec);
     }
 
     /**
