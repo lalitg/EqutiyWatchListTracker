@@ -81,11 +81,7 @@ const REGION_SECTIONS = {
       { title: 'Sectoral Indices', rows: indian.filter(r => !INDIAN_BROAD.has(r.name)) },
     ];
   },
-  Global: (data) => [
-    { title: 'US Markets',       rows: data.usMarkets },
-    { title: 'European Markets', rows: data.europeanMarkets },
-    { title: 'Asian Markets',    rows: data.asianMarkets },
-  ],
+  Global: () => [],
   Commodities: (data) => [
     { title: 'Commodities', rows: data.commodities, unitMap: COMMODITY_UNITS },
   ],
