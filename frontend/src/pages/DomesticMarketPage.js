@@ -5,6 +5,7 @@ import EventsList from '../components/market/EventsList';
 import { useMarket } from '../context/MarketContext';
 import { fetchSectorTabs } from '../services/sectorService';
 import { fetchIndices, fetchGlobalIndices, fetchMergedNews } from '../services/indicesService';
+import { DOMESTIC_MACRO_KEYWORDS } from '../services/marketService';
 
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
 const NEWS_PAGE_SIZE  = 20;
@@ -59,7 +60,10 @@ const DomesticMarketPage = () => {
   useEffect(() => {
     let cancelled = false;
     const keywords = selectedSector.displayName === 'All'
-      ? sectors.filter(s => s.displayName !== 'All').map(s => s.newsKeyword).filter(Boolean)
+      ? [
+          ...sectors.filter(s => s.displayName !== 'All').map(s => s.newsKeyword).filter(Boolean),
+          ...DOMESTIC_MACRO_KEYWORDS,
+        ]
       : [selectedSector.newsKeyword];
     if (keywords.length === 0) return; // wait until sectors are loaded
     setNewsLoading(true);

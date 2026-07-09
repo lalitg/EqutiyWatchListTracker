@@ -65,26 +65,12 @@ const COMMODITY_UNITS = {
   'NG=F':  'USD / MMBtu',
 };
 
-const INDIAN_BROAD = new Set([
-  'Sensex', 'Nifty 50', 'Nifty Midcap 50', 'Nifty Midcap 150',
-  'Nifty Midcap Select', 'Nifty Smallcap', 'Nifty Microcap 250',
-]);
-
 const REGION_SECTIONS = {
-  US:     (data) => [{ title: 'US Markets',       rows: data.usMarkets }],
-  Europe: (data) => [{ title: 'European Markets', rows: data.europeanMarkets }],
-  Asia:   (data) => [{ title: 'Asian Markets',    rows: data.asianMarkets }],
-  India:  (data) => {
-    const indian = data.indianMarkets || [];
-    return [
-      { title: 'Broad Market',     rows: indian.filter(r => INDIAN_BROAD.has(r.name)) },
-      { title: 'Sectoral Indices', rows: indian.filter(r => !INDIAN_BROAD.has(r.name)) },
-    ];
-  },
-  Global: () => [],
-  Commodities: (data) => [
-    { title: 'Commodities', rows: data.commodities, unitMap: COMMODITY_UNITS },
-  ],
+  Global:      () => [],
+  US:          (data) => [{ title: 'US Markets',       rows: data.usMarkets }],
+  Europe:      (data) => [{ title: 'European Markets', rows: data.europeanMarkets }],
+  Asia:        (data) => [{ title: 'Asian Markets',    rows: data.asianMarkets }],
+  Commodities: (data) => [{ title: 'Commodities',      rows: data.commodities, unitMap: COMMODITY_UNITS }],
 };
 
 const GlobalIndicesTable = ({ refreshKey = 0, region = 'Global' }) => {

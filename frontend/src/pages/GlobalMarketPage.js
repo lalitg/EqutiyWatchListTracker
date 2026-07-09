@@ -7,7 +7,7 @@ import { useMarket } from '../context/MarketContext';
 import { fetchMergedNews } from '../services/indicesService';
 import { REGION_KEYWORD_MAP } from '../services/marketService';
 
-const REGIONS = ['Global', 'US', 'Asia', 'Europe', 'India', 'Commodities'];
+const REGIONS = ['Global', 'US', 'Asia', 'Europe', 'Commodities'];
 const AUTO_REFRESH_MS  = 15 * 60 * 1000;
 const PRICE_REFRESH_MS = 30 * 60 * 1000;
 const NEWS_PAGE_SIZE   = 20;
