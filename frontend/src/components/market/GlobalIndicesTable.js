@@ -82,6 +82,11 @@ const REGION_SECTIONS = {
     ];
   },
   Global: (data) => [
+    { title: 'US Markets',       rows: data.usMarkets },
+    { title: 'European Markets', rows: data.europeanMarkets },
+    { title: 'Asian Markets',    rows: data.asianMarkets },
+  ],
+  Commodities: (data) => [
     { title: 'Commodities', rows: data.commodities, unitMap: COMMODITY_UNITS },
   ],
 };
