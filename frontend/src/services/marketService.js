@@ -105,6 +105,7 @@ export const REGION_KEYWORD_MAP = {
     'commodity markets',
   ],
   US: [
+    'S&P 500',
     'Nasdaq',
     'Dow Jones',
     'Global liquidity',
@@ -122,6 +123,10 @@ export const REGION_KEYWORD_MAP = {
     'US innovation',
   ],
   Asia: [
+    'Nikkei 225',
+    'Hang Seng',
+    'Straits Times',
+    'KOSPI',
     'BOJ Policy',
     'Taiwan economy',
     'Hong Kong economy',
@@ -131,6 +136,9 @@ export const REGION_KEYWORD_MAP = {
     'Singapore economy',
   ],
   Europe: [
+    'FTSE 100',
+    'CAC 40',
+    'DAX',
     'European Central Bank Policy',
     'European innovation',
     'European technology',
