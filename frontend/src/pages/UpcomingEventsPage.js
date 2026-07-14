@@ -144,7 +144,6 @@ const UpcomingEventsPage = () => {
               <button
                 key={cat}
                 className={`ue-filter-chip ${categoryFilter === cat ? 'ue-filter-chip--active' : ''}`}
-                style={categoryFilter === cat ? { background: meta?.color, borderColor: meta?.color, color: '#fff' } : {}}
                 onClick={() => setCategory(cat)}
               >
                 {meta?.label || cat}

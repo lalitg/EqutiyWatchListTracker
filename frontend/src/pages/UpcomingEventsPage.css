@@ -27,14 +27,15 @@
 }
 
 .ue-filter-chip:hover {
-  border-color: var(--accent, #3b82f6);
-  color: var(--accent, #3b82f6);
+  border-color: #667eea;
+  color: #667eea;
 }
 
 .ue-filter-chip--active {
-  background: var(--accent, #3b82f6);
-  border-color: var(--accent, #3b82f6);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
   color: #fff;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 /* ── Month section ──────────────────────────────────────────────────────── */
