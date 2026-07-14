@@ -158,6 +158,15 @@ public class ProxyController {
     }
 
     /**
+     * Proxies all {@code /api/macro-events/**} requests to the events microservice.
+     */
+    @RequestMapping(value = "/api/macro-events/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
+    public ResponseEntity<String> proxyMacroEvents(HttpServletRequest request) throws URISyntaxException, IOException {
+        logger.info("Proxying macro-events request: {} {}", request.getMethod(), request.getRequestURI());
+        return proxy(request, eventsServiceUrl);
+    }
+
+    /**
      * Proxies all {@code /api/internal/**} requests to the news microservice.
      * Used for internal watchlist-added notifications consumed by the news service.
      *
