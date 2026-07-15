@@ -46,6 +46,9 @@ const Navbar = () => {
             <NavLink to="/market/domestic" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               Domestic
             </NavLink>
+            <NavLink to="/mutual-funds" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              Mutual Funds
+            </NavLink>
             <NavLink to="/upcoming-events" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               Upcoming Events
             </NavLink>

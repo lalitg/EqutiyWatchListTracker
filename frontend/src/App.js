@@ -10,6 +10,7 @@ import CompanyDetailPage from './pages/CompanyDetailPage';
 import LoginPage from './pages/LoginPage';
 import NseCalendarPage from './pages/NseCalendarPage';
 import UpcomingEventsPage from './pages/UpcomingEventsPage';
+import MutualFundsPage from './pages/MutualFundsPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WatchlistProvider } from './context/WatchlistContext';
 import { MarketProvider } from './context/MarketContext';
@@ -52,6 +53,7 @@ function AppContent() {
           <Route path="/market/domestic/index/:indexKey" element={<IndexCompaniesPage />} />
           <Route path="/market/domestic/sector/:sectorKey" element={<SectorCompaniesPage />} />
           <Route path="/company/:symbol" element={<CompanyDetailPage />} />
+          <Route path="/mutual-funds" element={<MutualFundsPage />} />
           <Route path="/upcoming-events" element={<UpcomingEventsPage />} />
           <Route path="/market/calendar" element={<NseCalendarPage />} />
         </Routes>
