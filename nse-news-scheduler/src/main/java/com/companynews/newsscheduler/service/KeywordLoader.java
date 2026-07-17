@@ -88,6 +88,27 @@ public class KeywordLoader {
             log.error("Failed to load sectors from sector_companies: {}", e.getMessage(), e);
         }
 
+        keywords.addAll(loadFileKeywords());
+
+        log.info("Total unique keywords to fetch: {}", keywords.size());
+        return new ArrayList<>(keywords);
+    }
+
+    /**
+     * Loads and returns just the {@code keywords.txt}-sourced keywords, on their own —
+     * without merging in company symbols or sector names.
+     *
+     * <p>Used by {@link com.companynews.newsscheduler.scheduler.GoogleRssScheduler} to decide
+     * which keywords are eligible for the in-memory 96-slot rolling-24-hour bucket cache
+     * ({@link KeywordNewsBucketCache}), which is scoped to Domestic/Global tab keywords only —
+     * never company symbols or sectors, which continue to read from {@link NewsStore}/the
+     * database directly.
+     *
+     * @return a deduplicated set of keywords.txt lines; never {@code null}, but may be empty
+     *         if the file is missing or unreadable
+     */
+    public Set<String> loadFileKeywords() {
+        Set<String> fileKeywords = new LinkedHashSet<>();
         try {
             ClassPathResource resource = new ClassPathResource("keywords.txt");
             try (BufferedReader reader = new BufferedReader(
@@ -97,7 +118,7 @@ public class KeywordLoader {
                 while ((line = reader.readLine()) != null) {
                     line = line.trim();
                     if (!line.isEmpty() && !line.startsWith("#")) {
-                        keywords.add(line);
+                        fileKeywords.add(line);
                         count++;
                     }
                 }
@@ -106,8 +127,6 @@ public class KeywordLoader {
         } catch (Exception e) {
             log.warn("keywords.txt not found or unreadable — skipping: {}", e.getMessage());
         }
-
-        log.info("Total unique keywords to fetch: {}", keywords.size());
-        return new ArrayList<>(keywords);
+        return fileKeywords;
     }
 }

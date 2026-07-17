@@ -8,8 +8,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -144,10 +142,6 @@ public class NewsWorker {
      * @param keyword  the keyword to save news under (company symbol, sector, or macro term)
      * @param newItems the list of candidate news items to deduplicate and save
      */
-    @Caching(evict = {
-        @CacheEvict(value = "mergedNews",  allEntries = true),
-        @CacheEvict(value = "companyNews", key = "#keyword")
-    })
     @Transactional
     public void saveNews(String keyword, List<NewsItem> newItems) {
         if (newItems == null || newItems.isEmpty()) return;
@@ -260,7 +254,6 @@ public class NewsWorker {
      *
      * @param keyword the keyword whose timestamp should be refreshed
      */
-    @CacheEvict(value = "companyNews", key = "#keyword")
     @Transactional
     public void touchLastUpdated(String keyword) {
         repository.findByKeyword(keyword).ifPresent(record -> {

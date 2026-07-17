@@ -6,7 +6,6 @@ import com.companynews.newsscheduler.model.CompanyNews;
 import com.companynews.newsscheduler.repository.CompanyNewsRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -17,13 +16,11 @@ import java.util.Optional;
 /**
  * Service layer for single-keyword company news lookups ({@code GET /api/news?key=}).
  *
- * <p>Wraps the on-demand fetch logic from the controller and adds an LRU cache
- * ({@code companyNews}) via {@code @Cacheable}. The cache holds up to 100 symbols;
- * Caffeine evicts the least-recently-used entry when the 101st distinct symbol is requested.
- *
- * <p>The cache entry for a keyword is evicted by {@link NewsWorker} via
- * {@code @CacheEvict(value="companyNews", key="#keyword")} whenever new articles are
- * written for that keyword — ensuring the next request reads the fresh DB row.
+ * <p>Wraps the on-demand fetch logic from the controller. No result caching — every call
+ * reads straight from the database via {@link CompanyNewsRepository}, or, on a miss,
+ * triggers an on-demand fetch. This endpoint is for company symbols and sector names, which
+ * never go through {@link KeywordNewsBucketCache} — that cache is scoped to keywords.txt-
+ * sourced keywords only (Domestic/Global tabs).
  */
 @Service
 public class CompanyNewsService {
@@ -52,10 +49,8 @@ public class CompanyNewsService {
     }
 
     /**
-     * Returns the news response for the given keyword, caching the result in the
-     * {@code companyNews} LRU cache (max 100 entries).
+     * Returns the news response for the given keyword.
      *
-     * <p>On a cache miss:
      * <ol>
      *   <li>Reads from DB — returns immediately if a row exists.</li>
      *   <li>On DB miss: triggers on-demand NSE + RSS fetch, saves, then reads back.</li>
@@ -65,9 +60,8 @@ public class CompanyNewsService {
      * @param key the keyword to look up (company symbol, sector name, or macro term)
      * @return map with {@code keyword}, {@code sentiments}, {@code news}, {@code lastUpdated}
      */
-    @Cacheable(value = "companyNews", key = "#key")
     public Map<String, Object> getNews(String key) {
-        log.debug("companyNews cache MISS — fetching for key={}", key);
+        log.debug("Fetching news for key={}", key);
 
         Optional<CompanyNews> existing = repository.findByKeyword(key);
         if (existing.isPresent()) {

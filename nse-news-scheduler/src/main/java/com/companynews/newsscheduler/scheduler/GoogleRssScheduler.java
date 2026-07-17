@@ -3,6 +3,8 @@ package com.companynews.newsscheduler.scheduler;
 import com.companynews.newsscheduler.dto.NewsItem;
 import com.companynews.newsscheduler.service.RssFetcher;
 import com.companynews.newsscheduler.service.KeywordLoader;
+import com.companynews.newsscheduler.service.KeywordNewsBucketCache;
+import com.companynews.newsscheduler.service.NewsStore;
 import com.companynews.newsscheduler.service.UrlWindow;
 import com.companynews.newsscheduler.service.NewsWorker;
 import org.apache.logging.log4j.LogManager;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
@@ -27,9 +30,13 @@ import java.util.concurrent.ExecutorService;
  *
  * <p>Fetch pipeline:
  * <ol>
- *   <li>Load all keywords from {@link KeywordLoader} (company symbols, sectors, macro terms).</li>
+ *   <li>Load all keywords from {@link KeywordLoader} (company symbols, sectors, macro terms),
+ *       plus the keywords.txt-only subset via {@link KeywordLoader#loadFileKeywords()}.</li>
  *   <li>Submit one fetch task per keyword to the managed {@code googleRssExecutor} thread pool.</li>
- *   <li>Each task: fetch from Google RSS → dedup by {@link UrlWindow} → save via {@link NewsWorker}.</li>
+ *   <li>Each task: fetch from Google RSS → dedup by {@link UrlWindow} → save via {@link NewsWorker}.
+ *       For keywords.txt-sourced keywords, also rebuild that keyword's entry in
+ *       {@link KeywordNewsBucketCache} — see {@link #processKeyword} for why this must happen
+ *       unconditionally, on every cycle, not just when new articles are found.</li>
  *   <li>Wait for all tasks to complete before returning (using {@link CompletableFuture#allOf}).</li>
  * </ol>
  *
@@ -37,7 +44,11 @@ import java.util.concurrent.ExecutorService;
  * between keyword submissions to avoid triggering Google's rate limits.
  *
  * <p>An immediate startup fetch is scheduled 5 seconds after {@link ApplicationReadyEvent}
- * to give the NSE scheduler time to complete its own startup fetch first.
+ * to give the NSE scheduler time to complete its own startup fetch first. This is also what
+ * naturally repopulates {@link KeywordNewsBucketCache} after a restart — the cache always
+ * starts empty in a fresh process, and this startup fetch rebuilds every keywords.txt
+ * keyword's entry from {@link NewsStore} (itself seeded from the database), with no
+ * separate "restore" logic needed.
  */
 @Component
 public class GoogleRssScheduler {
@@ -48,6 +59,8 @@ public class GoogleRssScheduler {
     private final NewsWorker newsWorker;
     private final KeywordLoader keywordLoader;
     private final UrlWindow urlWindow;
+    private final KeywordNewsBucketCache bucketCache;
+    private final NewsStore newsStore;
 
     /**
      * Injected singleton {@link ExecutorService} (defined in
@@ -92,6 +105,9 @@ public class GoogleRssScheduler {
      * @param newsWorker       handles deduplication and persistence of news items
      * @param keywordLoader    loads the merged keyword list from DB and classpath
      * @param urlWindow        in-memory sliding window for URL-based deduplication
+     * @param bucketCache      in-memory 96-slot rolling-24-hour cache for keywords.txt keywords
+     * @param newsStore        in-memory mirror of {@code company_news}, used as the rebuild
+     *                         source for {@code bucketCache}
      * @param executor         named fixed thread pool for parallel keyword processing
      * @param startupScheduler lightweight scheduler for the one-shot startup delay
      */
@@ -99,12 +115,16 @@ public class GoogleRssScheduler {
                                NewsWorker newsWorker,
                                KeywordLoader keywordLoader,
                                UrlWindow urlWindow,
+                               KeywordNewsBucketCache bucketCache,
+                               NewsStore newsStore,
                                @Qualifier("googleRssExecutor") ExecutorService executor,
                                @Qualifier("startupScheduler") TaskScheduler startupScheduler) {
         this.rssFetcher       = rssFetcher;
         this.newsWorker       = newsWorker;
         this.keywordLoader    = keywordLoader;
         this.urlWindow        = urlWindow;
+        this.bucketCache      = bucketCache;
+        this.newsStore        = newsStore;
         this.executor         = executor;
         this.startupScheduler = startupScheduler;
     }
@@ -162,11 +182,18 @@ public class GoogleRssScheduler {
             return;
         }
 
-        log.info("Submitting {} keywords to executor pool", keywords.size());
+        // keywords.txt-sourced subset — only these get a bucket-cache rebuild per keyword,
+        // and this same set defines what's allowed to remain in the cache at all.
+        Set<String> fileKeywords = keywordLoader.loadFileKeywords();
+        bucketCache.pruneRemovedKeywords(fileKeywords);
+
+        log.info("Submitting {} keywords to executor pool ({} keywords.txt-sourced)",
+                 keywords.size(), fileKeywords.size());
 
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (String keyword : keywords) {
-            futures.add(CompletableFuture.runAsync(() -> processKeyword(keyword), executor));
+            boolean isFileKeyword = fileKeywords.contains(keyword);
+            futures.add(CompletableFuture.runAsync(() -> processKeyword(keyword, isFileKeyword), executor));
 
             // Rate-limiting delay between submissions — controls how fast we send to Google
             try {
@@ -202,9 +229,20 @@ public class GoogleRssScheduler {
      * escaping (required by Resilience4j's proxy model), so it is caught here as a
      * {@code RuntimeException} whose cause can be inspected if needed.
      *
-     * @param keyword the keyword to fetch news for
+     * <p><b>WHY the bucket-cache rebuild lives in the {@code finally} block, not inside the
+     * "new items saved" branch:</b> {@link KeywordNewsBucketCache} needs to re-filter its
+     * 24-hour window on every single cycle, even when this keyword found nothing new this
+     * time. If the rebuild only ran when {@code saveNews} was called, a quiet keyword's cache
+     * entry would never get re-checked, and articles that have since aged past 24 hours would
+     * keep being served indefinitely instead of aging out on schedule. Running it in
+     * {@code finally} guarantees it fires on every path — empty fetch, all-duplicate, a real
+     * save, or even an exception — for every keywords.txt keyword, every cycle.
+     *
+     * @param keyword       the keyword to fetch news for
+     * @param isFileKeyword whether this keyword came from {@code keywords.txt} — only these
+     *                      get a bucket-cache rebuild; company symbols and sector names never do
      */
-    private void processKeyword(String keyword) {
+    private void processKeyword(String keyword, boolean isFileKeyword) {
         ThreadContext.put("keyword", keyword);
         try {
             log.debug("Processing keyword: {}", keyword);
@@ -235,6 +273,9 @@ public class GoogleRssScheduler {
             // RuntimeException wrapping IOException is caught here — inspect e.getCause() if needed.
             log.error("Error processing keyword [{}]: {}", keyword, e.getMessage(), e);
         } finally {
+            if (isFileKeyword) {
+                bucketCache.rebuild(keyword, newsStore.get(keyword));
+            }
             ThreadContext.remove("keyword");
         }
     }

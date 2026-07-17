@@ -6,7 +6,6 @@ import com.companynews.newsscheduler.repository.CompanyNewsRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,7 +57,6 @@ public class NewsCleanupService {
      *   <li>Skip the DB write if nothing changed (no old items existed).</li>
      * </ol>
      */
-    @CacheEvict(value = "mergedNews", allEntries = true)
     @Transactional
     public void cleanup() {
         ZonedDateTime cutoff = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"))
