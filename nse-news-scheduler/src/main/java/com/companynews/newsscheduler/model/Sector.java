@@ -27,7 +27,7 @@ public class Sector {
      * The display name of the sector (e.g., {@code Banking}, {@code Information Technology}).
      * Used as a search keyword in the Google RSS scheduler.
      */
-    @Column(name = "sector_name")
+    @Column(name = "news_keyword")
     private String sectorName;
 
     /**

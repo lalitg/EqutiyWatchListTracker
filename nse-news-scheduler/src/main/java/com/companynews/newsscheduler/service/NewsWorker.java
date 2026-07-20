@@ -8,19 +8,15 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,20 +47,9 @@ public class NewsWorker {
 
     private static final Logger log = LogManager.getLogger(NewsWorker.class);
 
-    /** Pre-compiled formatter for NSE date strings: {@code "12-Mar-2026 17:11:14"}. Thread-safe. */
-    private static final DateTimeFormatter NSE_FORMAT =
-        DateTimeFormatter.ofPattern("dd-MMM-yyyy HH:mm:ss", Locale.ENGLISH);
-
-    /** Pre-compiled formatter for Google RSS date strings: {@code "Thu, 12 Mar 2026 10:00:00 GMT"}. Thread-safe. */
-    private static final DateTimeFormatter RSS_FORMAT =
-        DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH);
-
     private final CompanyNewsRepository repository;
     private final SimilarityChecker similarityChecker;
-
-    /** Maximum number of news items to retain per keyword. Configurable via {@code news.limit}. */
-    @Value("${news.limit:5}")
-    private int newsLimit;
+    private final NewsStore newsStore;
 
     /**
      * Per-keyword {@link ReentrantLock} map.
@@ -105,9 +90,11 @@ public class NewsWorker {
      */
     public NewsWorker(CompanyNewsRepository repository,
                       SimilarityChecker similarityChecker,
+                      NewsStore newsStore,
                       MeterRegistry meterRegistry) {
         this.repository          = repository;
         this.similarityChecker   = similarityChecker;
+        this.newsStore           = newsStore;
         this.savedCounter        = Counter.builder("news.items.saved")
             .description("Total news items written to DB")
             .register(meterRegistry);
@@ -142,7 +129,8 @@ public class NewsWorker {
      * is applied inside the per-keyword lock so concurrent calls for the same keyword do not
      * produce race conditions or duplicate DB inserts.
      *
-     * <p>After dedup, items are sorted newest-first and trimmed to {@code news.limit}.
+     * <p>After dedup, items are sorted newest-first. The hourly cleanup job handles removing
+     * articles outside the 24-hour retention window.
      *
      * <p>Log4j2's {@link ThreadContext} is populated with the keyword so all log lines inside
      * this method carry the {@code keyword} field, making parallel log output traceable in
@@ -235,19 +223,17 @@ public class NewsWorker {
                 return;
             }
 
-            // Sort latest first, then trim to configured limit
+            // Sort latest first — the hourly cleanup job handles removing articles outside the retention window
             currentNews.sort((a, b) -> compareDates(b.getDate(), a.getDate()));
-            if (currentNews.size() > newsLimit) {
-                currentNews = currentNews.subList(0, newsLimit);
-            }
 
             record.setNews(currentNews);
             record.setLastUpdated(LocalDateTime.now());
             repository.save(record);
+            newsStore.put(keyword, currentNews);
 
-            savedCounter.increment(currentNews.size());
-            log.info("Saved {} item(s) for keyword: {} ({} new passed dedup, trimmed to {})",
-                    currentNews.size(), keyword, added, newsLimit);
+            savedCounter.increment(added);
+            log.info("Saved {} total item(s) for keyword: {} ({} new this run)",
+                    currentNews.size(), keyword, added);
 
         } catch (DataIntegrityViolationException e) {
             log.warn("Constraint violation on save — falling back to upsert for keyword: {}", keyword);
@@ -309,10 +295,6 @@ public class NewsWorker {
             currentNews.add(0, item);
         }
 
-        if (currentNews.size() > newsLimit) {
-            currentNews = currentNews.subList(0, newsLimit);
-        }
-
         record.setNews(currentNews);
         record.setLastUpdated(LocalDateTime.now());
         repository.save(record);
@@ -334,39 +316,11 @@ public class NewsWorker {
         if (dateA == null && dateB == null) return 0;
         if (dateA == null) return -1;
         if (dateB == null) return 1;
-
-        try {
-            return parseDate(dateA).compareTo(parseDate(dateB));
-        } catch (Exception e) {
-            log.warn("Date comparison fallback to string comparison: [{}] vs [{}]", dateA, dateB);
-            return dateA.compareTo(dateB);
-        }
-    }
-
-    /**
-     * Parses a date string into a {@link ZonedDateTime} using the NSE format first,
-     * then the Google RSS format.
-     *
-     * <p>NSE format: {@code "dd-MMM-yyyy HH:mm:ss"} (e.g., {@code "12-Mar-2026 17:11:14"}).
-     * Google RSS format: {@code "EEE, dd MMM yyyy HH:mm:ss z"} (e.g., {@code "Thu, 12 Mar 2026 10:00:00 GMT"}).
-     *
-     * @param dateStr the date string to parse; must not be {@code null}
-     * @return the parsed {@link ZonedDateTime}
-     * @throws IllegalArgumentException if the date string matches neither known format
-     */
-    private ZonedDateTime parseDate(String dateStr) {
-        // Try NSE format first: "12-Mar-2026 17:11:14"
-        try {
-            return LocalDateTime.parse(dateStr, NSE_FORMAT)
-                .atZone(ZoneId.of("Asia/Kolkata"));
-        } catch (Exception ignored) {}
-
-        // Try Google RSS format: "Thu, 12 Mar 2026 10:00:00 GMT"
-        try {
-            return ZonedDateTime.parse(dateStr, RSS_FORMAT);
-        } catch (Exception e) {
-            throw new IllegalArgumentException(
-                "Cannot parse date string — no matching format found for value: [" + dateStr + "]", e);
-        }
+        ZonedDateTime da = NewsDateParser.parse(dateA);
+        ZonedDateTime db = NewsDateParser.parse(dateB);
+        if (da == null && db == null) return dateA.compareTo(dateB);
+        if (da == null) return -1;
+        if (db == null) return 1;
+        return da.compareTo(db);
     }
 }
