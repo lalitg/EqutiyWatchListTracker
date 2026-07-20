@@ -21,7 +21,6 @@ RBI monetary policy
 repo rate
 India Budget
 Union Budget
-Budget 2026
 India fiscal deficit
 GST changes
 inflation India
@@ -41,7 +40,7 @@ India recession
 Indian natural disaster
 Indian terrorist attack
 India GDP
-Monsoon India stock price
+Monsoon stock exchange
 
 # Global (Global Market Tab)
 GDP growth recession
