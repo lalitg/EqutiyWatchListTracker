@@ -9,7 +9,6 @@ import { DOMESTIC_MACRO_KEYWORDS } from '../services/marketService';
 
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
 const NEWS_PAGE_SIZE  = 20;
-const ALL_TAB = { displayName: 'All', newsKeyword: 'Nifty 50' };
 
 const SECTOR_INDEX_NAME = {
   'Auto':              'Nifty Auto',
@@ -24,6 +23,41 @@ const SECTOR_INDEX_NAME = {
   'Realty':            'Nifty Realty',
 };
 
+const SECTOR_DESCRIPTIONS = {
+  'Auto':              'Leading automobile manufacturers and auto-component makers listed on NSE',
+  'Capital Goods':     'Industrial machinery, engineering and infrastructure equipment companies',
+  'Chemicals':         'Specialty chemical, agrochemical and petrochemical companies',
+  'Consumer Durables': 'White goods, electronics and home appliance manufacturers',
+  'Consumer Services': 'Hospitality, retail, education and consumer-facing service companies',
+  'Energy':            'Power generation, transmission and energy sector companies',
+  'FMCG':              'Fast-moving consumer goods — food, beverages, personal and home care',
+  'Financial Services':'Banks, NBFCs, insurance companies and financial intermediaries',
+  'IT':                'Software services, IT consulting and technology product companies',
+  'Infra':             'Infrastructure developers in roads, ports, airports and utilities',
+  'Media':             'Broadcasting, publishing, digital media and entertainment companies',
+  'Metals':            'Steel, aluminium, copper and other metal producers and processors',
+  'Pharma':            'Pharmaceutical manufacturers, API makers and drug distributors',
+  'Realty':            'Real estate developers and property management companies',
+  'Services':          'Logistics, staffing, facility management and business services',
+  'Telecom':           'Telecom operators, tower companies and related equipment providers',
+};
+
+const INDEX_DESCRIPTIONS = {
+  'Nifty 50':              'Top 50 large-cap companies by free-float market capitalisation',
+  'Nifty Next 50':         'Next 50 large-caps after Nifty 50 — ranks 51 to 100',
+  'Nifty 100':             'Top 100 large-cap companies — Nifty 50 + Next 50 combined',
+  'Nifty 200':             'Top 200 companies by market cap covering large and midcap segments',
+  'Nifty 500':             'Broad market index covering the top 500 listed companies',
+  'Nifty Midcap 50':       'Top 50 midcap companies by market capitalisation',
+  'Nifty Midcap 100':      'Top 100 midcap companies by market capitalisation',
+  'Nifty Midcap 150':      'Top 150 midcap companies by market capitalisation',
+  'Nifty LargeMidcap 250': 'Combined index of 100 large-cap and 150 midcap stocks',
+  'Nifty Smallcap 50':     'Top 50 small-cap companies by market capitalisation',
+  'Nifty Smallcap 100':    'Top 100 small-cap companies by market capitalisation',
+  'Nifty Smallcap 250':    'Top 250 small-cap companies by market capitalisation',
+  'Nifty Microcap 250':    'Top 250 microcap companies beyond the Nifty 500 universe',
+};
+
 const DomesticMarketPage = () => {
   const navigate = useNavigate();
   const {
@@ -32,12 +66,10 @@ const DomesticMarketPage = () => {
     STALE_FOCUS_MS,
   } = useMarket();
 
-  const [sectors, setSectors]               = useState([ALL_TAB]);
-  const [selectedSector, setSelectedSector] = useState(ALL_TAB);
+  const [sectors, setSectors]               = useState([]);
   const [indices, setIndices]               = useState([]);
   const [sectorPriceMap, setSectorPriceMap] = useState({});
 
-  // Paginated news local state
   const [newsItems, setNewsItems]           = useState([]);
   const [newsPage, setNewsPage]             = useState(0);
   const [newsTotalPages, setNewsTotalPages] = useState(1);
@@ -46,26 +78,23 @@ const DomesticMarketPage = () => {
   const [retryKey, setRetryKey]             = useState(0);
 
   useEffect(() => {
-    fetchSectorTabs().then(tabs => setSectors([ALL_TAB, ...tabs])).catch(() => {});
+    fetchSectorTabs().then(setSectors).catch(() => {});
     fetchIndices().then(setIndices).catch(() => {});
     fetchGlobalIndices().then(data => {
-      const indian = data.indianMarkets || [];
       const map = {};
-      indian.forEach(idx => { map[idx.name] = idx; });
+      (data.indianMarkets || []).forEach(idx => { map[idx.name] = idx; });
       setSectorPriceMap(map);
     }).catch(() => {});
   }, []);
 
-  // Fetch paginated news whenever sector, page, retryKey, or sectors list changes
+  // Always fetch all-sector merged news
   useEffect(() => {
     let cancelled = false;
-    const keywords = selectedSector.displayName === 'All'
-      ? [
-          ...sectors.filter(s => s.displayName !== 'All').map(s => s.newsKeyword).filter(Boolean),
-          ...DOMESTIC_MACRO_KEYWORDS,
-        ]
-      : [selectedSector.newsKeyword];
-    if (keywords.length === 0) return; // wait until sectors are loaded
+    const keywords = [
+      ...sectors.map(s => s.newsKeyword).filter(Boolean),
+      ...DOMESTIC_MACRO_KEYWORDS,
+    ];
+    if (keywords.length === 0) return;
     setNewsLoading(true);
     setNewsError(null);
     fetchMergedNews(keywords, newsPage, NEWS_PAGE_SIZE)
@@ -78,41 +107,33 @@ const DomesticMarketPage = () => {
       .catch(e => { if (!cancelled) setNewsError(e.message); })
       .finally(() => { if (!cancelled) setNewsLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedSector, newsPage, retryKey, sectors]);
+  }, [newsPage, retryKey, sectors]);
 
-  // Fetch events via context (lightweight — single keyword)
   useEffect(() => {
-    fetchDomestic(selectedSector.newsKeyword);
-  }, [selectedSector, fetchDomestic]);
+    fetchDomestic('Nifty 50');
+  }, [fetchDomestic]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!domesticLoading) refreshDomestic(selectedSector.newsKeyword);
+      if (!domesticLoading) refreshDomestic('Nifty 50');
     }, AUTO_REFRESH_MS);
     return () => clearInterval(interval);
-  }, [domesticLoading, refreshDomestic, selectedSector]);
+  }, [domesticLoading, refreshDomestic]);
 
   const handleVisibilityChange = useCallback(() => {
     if (document.visibilityState === 'visible') {
       const isStale = !domestic?.fetchedAt || (Date.now() - domestic.fetchedAt) > STALE_FOCUS_MS;
-      if (isStale && !domesticLoading) refreshDomestic(selectedSector.newsKeyword);
+      if (isStale && !domesticLoading) refreshDomestic('Nifty 50');
     }
-  }, [domestic, domesticLoading, refreshDomestic, STALE_FOCUS_MS, selectedSector]);
+  }, [domestic, domesticLoading, refreshDomestic, STALE_FOCUS_MS]);
 
   useEffect(() => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [handleVisibilityChange]);
 
-  const handleSectorChange = (displayName) => {
-    const sector = sectors.find(s => s.displayName === displayName) || ALL_TAB;
-    setSelectedSector(sector);
-    setNewsPage(0);
-    setRetryKey(k => k + 1);
-  };
-
   const handleRefresh = () => {
-    refreshDomestic(selectedSector.newsKeyword);
+    refreshDomestic('Nifty 50');
     setNewsPage(0);
     setRetryKey(k => k + 1);
   };
@@ -140,6 +161,7 @@ const DomesticMarketPage = () => {
               <button
                 key={idx.indexKey}
                 className="index-card"
+                data-tooltip={INDEX_DESCRIPTIONS[idx.displayName]}
                 onClick={() => navigate(
                   `/market/domestic/index/${encodeURIComponent(idx.indexKey)}`,
                   { state: { displayName: idx.displayName } }
@@ -154,11 +176,11 @@ const DomesticMarketPage = () => {
       )}
 
       {/* ── Sectors grid ──────────────────────────────────────────────── */}
-      {sectors.length > 1 && (
+      {sectors.length > 0 && (
         <div className="index-section">
           <h2 className="index-section-title">Sectors</h2>
           <div className="index-grid">
-            {sectors.filter(s => s.displayName !== 'All').map(s => {
+            {sectors.map(s => {
               const idxName = SECTOR_INDEX_NAME[s.displayName];
               const price   = idxName ? sectorPriceMap[idxName] : null;
               const chgPct  = price?.changePercent;
@@ -168,6 +190,7 @@ const DomesticMarketPage = () => {
                 <button
                   key={s.displayName}
                   className="index-card"
+                  data-tooltip={SECTOR_DESCRIPTIONS[s.displayName]}
                   onClick={() => navigate(
                     `/market/domestic/sector/${encodeURIComponent(s.displayName)}`,
                     { state: { newsKeyword: s.newsKeyword } }
@@ -191,21 +214,9 @@ const DomesticMarketPage = () => {
         </div>
       )}
 
-      {/* ── Sector-filtered news ───────────────────────────────────────── */}
+      {/* ── Market News (all sectors merged) ──────────────────────────── */}
       <div className="index-section">
         <h2 className="index-section-title">Market News</h2>
-
-        <div className="sector-dropdown-wrap">
-          <select
-            className="sector-dropdown"
-            value={selectedSector.displayName}
-            onChange={e => handleSectorChange(e.target.value)}
-          >
-            {sectors.map(s => (
-              <option key={s.displayName} value={s.displayName}>{s.displayName}</option>
-            ))}
-          </select>
-        </div>
 
         {newsLoading && (
           <div className="page-loading"><p>Loading market news...</p></div>
@@ -214,11 +225,7 @@ const DomesticMarketPage = () => {
         {newsError && !newsLoading && (
           <div className="page-error">
             <p>{newsError}</p>
-            <button
-              onClick={() => setRetryKey(k => k + 1)}
-              className="btn btn-primary"
-              style={{ marginTop: 16 }}
-            >
+            <button onClick={() => setRetryKey(k => k + 1)} className="btn btn-primary" style={{ marginTop: 16 }}>
               Retry
             </button>
           </div>
@@ -232,19 +239,11 @@ const DomesticMarketPage = () => {
             <NewsList news={newsItems} />
             {newsTotalPages > 1 && (
               <div className="pagination">
-                <button
-                  className="pagination-btn"
-                  disabled={newsPage === 0}
-                  onClick={() => setNewsPage(p => p - 1)}
-                >
+                <button className="pagination-btn" disabled={newsPage === 0} onClick={() => setNewsPage(p => p - 1)}>
                   Prev
                 </button>
                 <span className="page-indicator">Page {newsPage + 1} of {newsTotalPages}</span>
-                <button
-                  className="pagination-btn"
-                  disabled={newsPage >= newsTotalPages - 1}
-                  onClick={() => setNewsPage(p => p + 1)}
-                >
+                <button className="pagination-btn" disabled={newsPage >= newsTotalPages - 1} onClick={() => setNewsPage(p => p + 1)}>
                   Next
                 </button>
               </div>
