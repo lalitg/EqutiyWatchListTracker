@@ -51,6 +51,7 @@ const CompanyDetailPage = () => {
   const [activeTab,     setActiveTab]     = useState('quarterly');
 
   const [news,          setNews]          = useState([]);
+  const [importantNews, setImportantNews] = useState([]);
   const [events,        setEvents]        = useState([]);
   const [sebi,          setSebi]          = useState(null);
   const [insightsTab,   setInsightsTab]   = useState('news');
@@ -77,7 +78,10 @@ const CompanyDetailPage = () => {
       fetchEvents(symbol),
       fetchSebiActivity(symbol),
     ]).then(([nRes, eRes, sRes]) => {
-      if (nRes.status === 'fulfilled') setNews(nRes.value?.news ?? []);
+      if (nRes.status === 'fulfilled') {
+        setNews(nRes.value?.news ?? []);
+        setImportantNews(nRes.value?.importantNews ?? []);
+      }
       if (eRes.status === 'fulfilled') setEvents(eRes.value?.events ?? []);
       if (sRes.status === 'fulfilled') setSebi(sRes.value);
     }).finally(() => setInsightsLoading(false));
@@ -161,7 +165,16 @@ const CompanyDetailPage = () => {
             className={`cdp-fund-tab ${insightsTab === 'news' ? 'active' : ''}`}
             onClick={() => setInsightsTab('news')}
           >
-            News
+            Latest News
+          </button>
+          <button
+            className={`cdp-fund-tab ${insightsTab === 'important' ? 'active' : ''}`}
+            onClick={() => setInsightsTab('important')}
+          >
+            Important News
+            {importantNews.length > 0 && (
+              <span className="cdp-tab-badge">{importantNews.length}</span>
+            )}
           </button>
           <button
             className={`cdp-fund-tab ${insightsTab === 'events' ? 'active' : ''}`}
@@ -182,6 +195,10 @@ const CompanyDetailPage = () => {
           news.length === 0
             ? <div className="cdp-fund-empty">No news found for {symbol}.</div>
             : <NewsList news={news} />
+        ) : insightsTab === 'important' ? (
+          importantNews.length === 0
+            ? <div className="cdp-fund-empty">No important news found for {symbol}.</div>
+            : <NewsList news={importantNews} />
         ) : insightsTab === 'events' ? (
           events.length === 0
             ? <div className="cdp-fund-empty">No events found for {symbol}.</div>

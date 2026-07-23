@@ -293,6 +293,20 @@
   border-bottom-color: #4f46e5;
 }
 
+/* Count badge on the Important News tab */
+.cdp-tab-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #fff;
+  background: #ef4444;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+
 .cdp-fund-loading,
 .cdp-fund-empty {
   padding: 32px;
