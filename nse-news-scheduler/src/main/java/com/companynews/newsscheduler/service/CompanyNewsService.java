@@ -6,8 +6,12 @@ import com.companynews.newsscheduler.model.CompanyNews;
 import com.companynews.newsscheduler.repository.CompanyNewsRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,19 +37,34 @@ public class CompanyNewsService {
     private final NewsWorker newsWorker;
     private final SeqIdWindow seqIdWindow;
     private final UrlWindow urlWindow;
+    private final KeywordLoader keywordLoader;
+
+    /** Latest News window in days — items within this age appear on the Latest tab. */
+    @Value("${news.retention.company.latest-window-days:7}")
+    private int latestWindowDays;
+
+    /** Important News window in days — flagged items within this age appear on the Important tab. */
+    @Value("${news.retention.company.important-window-days:90}")
+    private int importantWindowDays;
+
+    /** Floor count so a quiet company's Latest tab is never empty (mirrors cleanup's floor). */
+    @Value("${news.retention.min-count:15}")
+    private int minCount;
 
     public CompanyNewsService(CompanyNewsRepository repository,
                               NseFetcher nseFetcher,
                               RssFetcher rssFetcher,
                               NewsWorker newsWorker,
                               SeqIdWindow seqIdWindow,
-                              UrlWindow urlWindow) {
-        this.repository  = repository;
-        this.nseFetcher  = nseFetcher;
-        this.rssFetcher  = rssFetcher;
-        this.newsWorker  = newsWorker;
-        this.seqIdWindow = seqIdWindow;
-        this.urlWindow   = urlWindow;
+                              UrlWindow urlWindow,
+                              KeywordLoader keywordLoader) {
+        this.repository    = repository;
+        this.nseFetcher    = nseFetcher;
+        this.rssFetcher    = rssFetcher;
+        this.newsWorker    = newsWorker;
+        this.seqIdWindow   = seqIdWindow;
+        this.urlWindow     = urlWindow;
+        this.keywordLoader = keywordLoader;
     }
 
     /**
@@ -63,10 +82,12 @@ public class CompanyNewsService {
     public Map<String, Object> getNews(String key) {
         log.debug("Fetching news for key={}", key);
 
+        boolean isCompany = keywordLoader.loadCompanySymbols().contains(key);
+
         Optional<CompanyNews> existing = repository.findByKeyword(key);
         if (existing.isPresent()) {
             log.info("DB hit for key={}", key);
-            return buildResponse(existing.get());
+            return buildResponse(existing.get(), isCompany);
         }
 
         log.info("DB miss — on-demand fetch for key={}", key);
@@ -83,7 +104,7 @@ public class CompanyNewsService {
             .toList();
 
         if (!nseMatching.isEmpty()) {
-            newsWorker.saveNews(key, nseMatching);
+            newsWorker.saveNews(key, nseMatching, isCompany);
         }
 
         List<NewsItem> googleItems = rssFetcher.fetch(key);
@@ -92,32 +113,88 @@ public class CompanyNewsService {
             .toList();
 
         if (!googleNew.isEmpty()) {
-            newsWorker.saveNews(key, googleNew);
+            newsWorker.saveNews(key, googleNew, isCompany);
         }
 
         Optional<CompanyNews> saved = repository.findByKeyword(key);
         if (saved.isPresent()) {
-            return buildResponse(saved.get());
+            return buildResponse(saved.get(), isCompany);
         }
 
         log.warn("No news found for key={} from any source", key);
-        return buildEmptyResponse(key);
+        return buildEmptyResponse(key, isCompany);
     }
 
-    private Map<String, Object> buildResponse(CompanyNews companyNews) {
+    /**
+     * Builds the API response for a keyword.
+     *
+     * <p>For sector/macro keywords ({@code isCompany == false}) the response is unchanged from
+     * the original single-list shape — {@code news} carries the full stored list. For company
+     * keywords the stored list (which cleanup retains as a superset: 7-day latest + 90-day
+     * important) is split into two views:
+     * <ul>
+     *   <li>{@code news} — the Latest tab: items within the {@code latest-window-days} window;
+     *       if fewer than {@code min-count}, floored with the newest items overall so the tab
+     *       is never empty for quiet companies (same floor semantics as cleanup).</li>
+     *   <li>{@code importantNews} — the Important tab: items flagged {@code category="important"}
+     *       within {@code important-window-days}, newest-first.</li>
+     * </ul>
+     * The two lists intentionally overlap: a recent important article appears in both tabs.
+     */
+    private Map<String, Object> buildResponse(CompanyNews companyNews, boolean isCompany) {
         Map<String, Object> response = new HashMap<>();
         response.put("keyword",     companyNews.getKeyword());
         response.put("sentiments",  companyNews.getSentiments() != null ? companyNews.getSentiments() : "");
-        response.put("news",        companyNews.getNews());
         response.put("lastUpdated", companyNews.getLastUpdated());
+
+        List<NewsItem> all = companyNews.getNews() != null ? companyNews.getNews() : List.of();
+
+        if (!isCompany) {
+            // Sectors/macro keywords: unchanged single-list response.
+            response.put("news", companyNews.getNews());
+            return response;
+        }
+
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+        ZonedDateTime latestCutoff    = now.minusDays(latestWindowDays);
+        ZonedDateTime importantCutoff = now.minusDays(importantWindowDays);
+
+        List<NewsItem> latest    = new ArrayList<>();
+        List<NewsItem> important = new ArrayList<>();
+
+        for (NewsItem item : all) {
+            ZonedDateTime date = NewsDateParser.parse(item.getDate());
+            boolean withinLatest    = date == null || date.isAfter(latestCutoff);
+            boolean withinImportant = date == null || date.isAfter(importantCutoff);
+            boolean isImportant = NewsImportanceClassifier.CATEGORY_IMPORTANT.equals(item.getCategory());
+
+            if (withinLatest) {
+                latest.add(item);
+            }
+            if (isImportant && withinImportant) {
+                important.add(item);
+            }
+        }
+
+        // Floor: if too few items in the Latest window, pad with the newest items overall
+        // (list is stored newest-first) so a quiet company's Latest tab is never empty.
+        if (latest.size() < minCount) {
+            latest = new ArrayList<>(all.subList(0, Math.min(minCount, all.size())));
+        }
+
+        response.put("news",          latest);
+        response.put("importantNews", important);
         return response;
     }
 
-    private Map<String, Object> buildEmptyResponse(String key) {
+    private Map<String, Object> buildEmptyResponse(String key, boolean isCompany) {
         Map<String, Object> response = new HashMap<>();
         response.put("keyword",     key);
         response.put("sentiments",  "");
         response.put("news",        List.of());
+        if (isCompany) {
+            response.put("importantNews", List.of());
+        }
         response.put("lastUpdated", null);
         return response;
     }

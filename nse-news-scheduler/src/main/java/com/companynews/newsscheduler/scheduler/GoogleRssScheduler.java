@@ -187,13 +187,18 @@ public class GoogleRssScheduler {
         Set<String> fileKeywords = keywordLoader.loadFileKeywords();
         bucketCache.pruneRemovedKeywords(fileKeywords);
 
-        log.info("Submitting {} keywords to executor pool ({} keywords.txt-sourced)",
-                 keywords.size(), fileKeywords.size());
+        // company-symbol subset — only these get importance classification (Important News tab).
+        // Loaded once per cycle so each keyword is a cheap in-memory membership check, not a DB call.
+        Set<String> companySymbols = keywordLoader.loadCompanySymbols();
+
+        log.info("Submitting {} keywords to executor pool ({} keywords.txt-sourced, {} companies)",
+                 keywords.size(), fileKeywords.size(), companySymbols.size());
 
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (String keyword : keywords) {
             boolean isFileKeyword = fileKeywords.contains(keyword);
-            futures.add(CompletableFuture.runAsync(() -> processKeyword(keyword, isFileKeyword), executor));
+            boolean isCompany = companySymbols.contains(keyword);
+            futures.add(CompletableFuture.runAsync(() -> processKeyword(keyword, isFileKeyword, isCompany), executor));
 
             // Rate-limiting delay between submissions — controls how fast we send to Google
             try {
@@ -241,8 +246,10 @@ public class GoogleRssScheduler {
      * @param keyword       the keyword to fetch news for
      * @param isFileKeyword whether this keyword came from {@code keywords.txt} — only these
      *                      get a bucket-cache rebuild; company symbols and sector names never do
+     * @param isCompany     whether this keyword is a company symbol — only then are fetched
+     *                      items classified for the "Important News" tab
      */
-    private void processKeyword(String keyword, boolean isFileKeyword) {
+    private void processKeyword(String keyword, boolean isFileKeyword, boolean isCompany) {
         ThreadContext.put("keyword", keyword);
         try {
             log.debug("Processing keyword: {}", keyword);
@@ -266,7 +273,7 @@ public class GoogleRssScheduler {
                 return;
             }
 
-            newsWorker.saveNews(keyword, newItems);
+            newsWorker.saveNews(keyword, newItems, isCompany);
 
         } catch (Exception e) {
             // One failed keyword must not stop other keywords from processing.

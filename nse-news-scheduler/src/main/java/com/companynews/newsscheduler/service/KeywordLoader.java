@@ -95,6 +95,32 @@ public class KeywordLoader {
     }
 
     /**
+     * Loads and returns just the company symbols from {@code global_watchlist}, on their own —
+     * without merging in sector names or {@code keywords.txt} keywords.
+     *
+     * <p>Used to identify which keywords are company symbols so that importance classification
+     * (the "Important News" tab) and the company-specific dual retention policy
+     * (7-day Latest / 90-day Important) apply to companies ONLY — never to sectors or macro
+     * keywords, which keep their existing 24-hour behavior unchanged.
+     *
+     * <p>Returns an empty set on DB failure rather than throwing, so a transient watchlist
+     * read error degrades gracefully to "classify nothing" instead of breaking the fetch cycle.
+     *
+     * @return a deduplicated set of company symbols; never {@code null}, but may be empty
+     *         if the table is empty or the read fails
+     */
+    @Transactional(readOnly = true)
+    public Set<String> loadCompanySymbols() {
+        Set<String> symbols = new LinkedHashSet<>();
+        try {
+            symbols.addAll(watchlistRepository.findAllSymbols());
+        } catch (Exception e) {
+            log.error("Failed to load company symbols from global_watchlist: {}", e.getMessage(), e);
+        }
+        return symbols;
+    }
+
+    /**
      * Loads and returns just the {@code keywords.txt}-sourced keywords, on their own —
      * without merging in company symbols or sector names.
      *
