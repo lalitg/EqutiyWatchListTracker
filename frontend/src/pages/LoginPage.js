@@ -102,12 +102,14 @@ const LoginPage = () => {
           <button
             className={`login-tab ${tab === 'login' ? 'active' : ''}`}
             onClick={() => switchTab('login')}
+            data-tooltip="Sign in with your existing Niveshflow account"
           >
             Login
           </button>
           <button
             className={`login-tab ${tab === 'signup' ? 'active' : ''}`}
             onClick={() => switchTab('signup')}
+            data-tooltip="Create a new Niveshflow account"
           >
             Sign Up
           </button>
@@ -129,7 +131,7 @@ const LoginPage = () => {
         {tab === 'login' ? (
           <form className="login-form" onSubmit={handleLogin}>
             <div className="login-field">
-              <label>Username / Email / Phone</label>
+              <label data-tooltip="You can log in using your username, registered email address, or phone number">Username / Email / Phone</label>
               <input
                 type="text"
                 value={identifier}
@@ -140,7 +142,7 @@ const LoginPage = () => {
               />
             </div>
             <div className="login-field">
-              <label>Password</label>
+              <label data-tooltip="Your account password — case sensitive">Password</label>
               <input
                 type="password"
                 value={password}
@@ -155,6 +157,7 @@ const LoginPage = () => {
             <button
               type="button"
               className="login-forgot-link"
+              data-tooltip="Reset your password via your registered email"
               onClick={() => switchTab('forgot')}
             >
               Forgot password?
@@ -163,7 +166,7 @@ const LoginPage = () => {
         ) : tab === 'signup' ? (
           <form className="login-form" onSubmit={handleSignup}>
             <div className="login-field">
-              <label>Username</label>
+              <label data-tooltip="Your unique login handle — only letters, numbers and underscores">Username</label>
               <input
                 type="text"
                 value={username}
@@ -174,7 +177,7 @@ const LoginPage = () => {
               />
             </div>
             <div className="login-field">
-              <label>Full Name</label>
+              <label data-tooltip="Your display name shown inside the app">Full Name</label>
               <input
                 type="text"
                 value={name}
@@ -184,7 +187,7 @@ const LoginPage = () => {
               />
             </div>
             <div className="login-field">
-              <label>Email</label>
+              <label data-tooltip="Used for account recovery and notifications">Email</label>
               <input
                 type="email"
                 value={email}
@@ -194,7 +197,7 @@ const LoginPage = () => {
               />
             </div>
             <div className="login-field">
-              <label>Phone (optional)</label>
+              <label data-tooltip="Optional — can also be used to log in instead of username or email">Phone (optional)</label>
               <input
                 type="tel"
                 value={phone}
@@ -203,7 +206,7 @@ const LoginPage = () => {
               />
             </div>
             <div className="login-field">
-              <label>Password</label>
+              <label data-tooltip="Min 8 characters · at least 1 uppercase · 1 number · 1 special character (@$!%*?&)">Password</label>
               <input
                 type="password"
                 value={signupPassword}
