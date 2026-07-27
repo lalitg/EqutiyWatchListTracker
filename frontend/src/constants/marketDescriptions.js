@@ -46,6 +46,14 @@ export const FINANCIALS_DESCRIPTIONS = {
   'Liabilities':  'Total obligations the company owes to creditors',
 };
 
+export const REGION_DESCRIPTIONS = {
+  'Global':      'Worldwide market indices, macro news and cross-border economic events',
+  'US':          'US stock indices — S&P 500, NASDAQ, Dow Jones and American market news',
+  'Asia':        'Asian markets — Nikkei, Hang Seng, Shanghai, KOSPI and regional news',
+  'Europe':      'European indices — FTSE, DAX, CAC 40 and EU economic updates',
+  'Commodities': 'Gold, silver, crude oil, natural gas and key commodity prices',
+};
+
 export const NAV_DESCRIPTIONS = {
   'Watchlist':       'Your personal list of tracked stocks with live prices',
   'Global':          'Global market indices, commodities and currencies across US, Asia and Europe',

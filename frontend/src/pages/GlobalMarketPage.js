@@ -6,6 +6,7 @@ import GlobalIndicesTable from '../components/market/GlobalIndicesTable';
 import { useMarket } from '../context/MarketContext';
 import { fetchMergedNews } from '../services/indicesService';
 import { REGION_KEYWORD_MAP } from '../services/marketService';
+import { REGION_DESCRIPTIONS } from '../constants/marketDescriptions';
 
 const REGIONS = ['Global', 'US', 'Asia', 'Europe', 'Commodities'];
 const AUTO_REFRESH_MS  = 15 * 60 * 1000;
@@ -105,7 +106,7 @@ const GlobalMarketPage = () => {
         <button className="btn btn-secondary" onClick={handleRefresh}>Refresh</button>
       </div>
 
-      <SectorSelector options={REGIONS} selected={selectedRegion} onSelect={setRegion} />
+      <SectorSelector options={REGIONS} selected={selectedRegion} onSelect={setRegion} tooltips={REGION_DESCRIPTIONS} />
 
       <GlobalIndicesTable refreshKey={priceRefreshKey} region={selectedRegion} />
 
