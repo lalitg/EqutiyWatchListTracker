@@ -8,6 +8,7 @@ import IndexCompaniesPage from './pages/IndexCompaniesPage';
 import SectorCompaniesPage from './pages/SectorCompaniesPage';
 import CompanyDetailPage from './pages/CompanyDetailPage';
 import LoginPage from './pages/LoginPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import NseCalendarPage from './pages/NseCalendarPage';
 import UpcomingEventsPage from './pages/UpcomingEventsPage';
 import MutualFundsPage from './pages/MutualFundsPage';
@@ -44,6 +45,7 @@ function AppContent() {
       <main className="app-main">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/" element={<Navigate to="/watchlist" replace />} />
           <Route path="/watchlist" element={
             <ProtectedRoute><WatchlistPage /></ProtectedRoute>
