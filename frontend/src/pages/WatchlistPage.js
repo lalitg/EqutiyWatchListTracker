@@ -59,13 +59,13 @@ const WatchlistPage = () => {
       <div className="page-header">
         <h1 className="page-title">My Watchlists</h1>
         <div className="page-actions">
-          <button className="btn btn-secondary" onClick={fetchEntries}>Refresh</button>
-          <button className="btn btn-secondary" onClick={() => setImportModalOpen(true)}>Import CSV</button>
+          <button className="btn btn-secondary" onClick={fetchEntries} data-tooltip="Refresh prices and data for all companies in this watchlist">Refresh</button>
+          <button className="btn btn-secondary" onClick={() => setImportModalOpen(true)} data-tooltip="Bulk-add companies by uploading a CSV file with NSE symbols">Import CSV</button>
           <button
             className="btn btn-add"
             onClick={() => setAddModalOpen(true)}
             disabled={isFull}
-            title={isFull ? `Watchlist is full (${MAX_COMPANIES}/${MAX_COMPANIES})` : '+ Add Company'}
+            data-tooltip={isFull ? `Watchlist is full — remove a company to add more` : 'Search and add a company to this watchlist'}
           >
             + Add Company
           </button>
@@ -81,7 +81,10 @@ const WatchlistPage = () => {
             onClick={() => switchWatchlist(w.id)}
           >
             <span className="wl-tab-name">{w.name}</span>
-            <span className={`wl-tab-count ${w.companyCount >= MAX_COMPANIES ? 'wl-tab-count--full' : ''}`}>
+            <span
+              className={`wl-tab-count ${w.companyCount >= MAX_COMPANIES ? 'wl-tab-count--full' : ''}`}
+              data-tooltip={`${w.companyCount} of ${MAX_COMPANIES} company slots used`}
+            >
               {w.companyCount}/{MAX_COMPANIES}
             </span>
             {watchlists.length > 1 && (
@@ -118,7 +121,7 @@ const WatchlistPage = () => {
             </button>
           </form>
         ) : (
-          <button className="wl-new-tab-btn" onClick={() => setCreatingList(true)}>
+          <button className="wl-new-tab-btn" onClick={() => setCreatingList(true)} data-tooltip="Create a new watchlist to organise companies by theme or strategy">
             + New Watchlist
           </button>
         )}

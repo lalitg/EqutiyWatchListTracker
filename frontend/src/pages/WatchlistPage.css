@@ -191,3 +191,47 @@
     min-height: 44px;
   }
 }
+
+/* ── Tooltips ─────────────────────────────────────────────────────── */
+.btn[data-tooltip],
+.wl-new-tab-btn[data-tooltip],
+.wl-tab-count[data-tooltip] {
+  position: relative;
+}
+
+.btn[data-tooltip]:hover::after,
+.wl-new-tab-btn[data-tooltip]:hover::after,
+.wl-tab-count[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  width: 200px;
+  text-align: center;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn[data-tooltip]:hover::before,
+.wl-new-tab-btn[data-tooltip]:hover::before,
+.wl-tab-count[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1e293b;
+  z-index: 200;
+  pointer-events: none;
+}

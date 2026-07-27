@@ -2,8 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import './WatchlistTable.css';
 
 const TABLE_COLUMNS = [
-  { key: 'companyCode', label: 'Symbol',  sortable: true },
-  { key: 'companyName', label: 'Company', sortable: true },
+  { key: 'companyCode', label: 'Symbol',  sortable: true, tooltip: 'NSE ticker symbol — click to sort' },
+  { key: 'companyName', label: 'Company', sortable: true, tooltip: 'Full registered company name — click to sort' },
 ];
 
 const ROWS_PER_PAGE = 25;
@@ -109,7 +109,7 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
             <tr>
               <th className="wl-th-sno">S.No.</th>
               {TABLE_COLUMNS.map(col => (
-                <th key={col.key} onClick={() => handleSortToggle(col.key)} className="wl-sortable">
+                <th key={col.key} onClick={() => handleSortToggle(col.key)} className="wl-sortable" data-tooltip={col.tooltip}>
                   <span className="wl-th-content">
                     {col.label}
                     <span className={`wl-sort-icon ${sortConfig.key === col.key ? 'active' : ''}`}>

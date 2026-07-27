@@ -350,3 +350,41 @@
   .wl-btn-row-delete { padding: 10px; opacity: 1; }
   .wl-btn-row-delete.selected { background: #ef4444; color: white; }
 }
+
+/* ── Tooltips ─────────────────────────────────────────────────────── */
+.wl-sortable[data-tooltip] {
+  position: relative;
+}
+
+.wl-sortable[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  width: 180px;
+  text-align: center;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.wl-sortable[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: #1e293b;
+  z-index: 200;
+  pointer-events: none;
+}
