@@ -13,7 +13,7 @@ import { fetchCompanySectors } from '../services/sectorService';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import { useWatchlist } from '../context/WatchlistContext';
-import { SECTOR_DESCRIPTIONS, INDEX_DESCRIPTIONS, FINANCIALS_DESCRIPTIONS } from '../constants/marketDescriptions';
+import { SECTOR_DESCRIPTIONS, INDEX_DESCRIPTIONS, FINANCIALS_DESCRIPTIONS, COMPANY_DESCRIPTIONS } from '../constants/marketDescriptions';
 import './CompanyDetailPage.css';
 
 function fmt(val) {
@@ -126,7 +126,7 @@ const CompanyDetailPage = () => {
           <div className="cdp-identity">
             <div className="cdp-symbol">{symbol?.toUpperCase()}</div>
           </div>
-          {peLabel && <div className="cdp-pe-pill" data-tooltip="Price-to-Earnings ratio — what you pay per ₹1 of company earnings. Lower = cheaper relative to peers.">P/E {peLabel}</div>}
+          {peLabel && <div className="cdp-pe-pill" data-tooltip={COMPANY_DESCRIPTIONS['pe']}>P/E {peLabel}</div>}
         </div>
 
         {(nse500Sectors.length > 0 || companyIndices.length > 0) && (

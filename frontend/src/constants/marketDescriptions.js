@@ -64,3 +64,30 @@ export const NAV_DESCRIPTIONS = {
   'Login':           'Sign in to your Niveshflow account',
   'Logout':          'Sign out of your Niveshflow account',
 };
+
+export const LOGIN_DESCRIPTIONS = {
+  'tab.login':           'Sign in with your existing Niveshflow account',
+  'tab.signup':          'Create a new Niveshflow account',
+  'field.identifier':    'You can log in using your username, registered email address, or phone number',
+  'field.password':      'Your account password — case sensitive',
+  'field.username':      'Your unique login handle — only letters, numbers and underscores',
+  'field.name':          'Your display name shown inside the app',
+  'field.email':         'Used for account recovery and notifications',
+  'field.phone':         'Optional — can also be used to log in instead of username or email',
+  'field.newPassword':   'Min 8 characters · at least 1 uppercase · 1 number · 1 special character (@$!%*?&)',
+  'link.forgotPassword': 'Reset your password via your registered email',
+};
+
+export const WATCHLIST_DESCRIPTIONS = {
+  'btn.refresh':    'Refresh prices and data for all companies in this watchlist',
+  'btn.importCsv':  'Bulk-add companies by uploading a CSV file with NSE symbols',
+  'btn.addCompany': 'Search and add a company to this watchlist',
+  'btn.addFull':    'Watchlist is full — remove a company to add more',
+  'btn.newList':    'Create a new watchlist to organise companies by theme or strategy',
+  'col.symbol':     'NSE ticker symbol — click to sort',
+  'col.company':    'Full registered company name — click to sort',
+};
+
+export const COMPANY_DESCRIPTIONS = {
+  'pe': 'Price-to-Earnings ratio — what you pay per ₹1 of company earnings. Lower = cheaper relative to peers.',
+};

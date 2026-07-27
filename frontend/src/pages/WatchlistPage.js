@@ -4,6 +4,7 @@ import WatchlistTable from '../components/watchlist/WatchlistTable';
 import AddCompanyModal from '../components/watchlist/AddCompanyModal';
 import ImportCsvModal from '../components/watchlist/ImportCsvModal';
 import { useWatchlist } from '../context/WatchlistContext';
+import { WATCHLIST_DESCRIPTIONS as WD } from '../constants/marketDescriptions';
 import './WatchlistPage.css';
 
 const MAX_COMPANIES = 10;
@@ -59,13 +60,13 @@ const WatchlistPage = () => {
       <div className="page-header">
         <h1 className="page-title">My Watchlists</h1>
         <div className="page-actions">
-          <button className="btn btn-secondary" onClick={fetchEntries} data-tooltip="Refresh prices and data for all companies in this watchlist">Refresh</button>
-          <button className="btn btn-secondary" onClick={() => setImportModalOpen(true)} data-tooltip="Bulk-add companies by uploading a CSV file with NSE symbols">Import CSV</button>
+          <button className="btn btn-secondary" onClick={fetchEntries} data-tooltip={WD['btn.refresh']}>Refresh</button>
+          <button className="btn btn-secondary" onClick={() => setImportModalOpen(true)} data-tooltip={WD['btn.importCsv']}>Import CSV</button>
           <button
             className="btn btn-add"
             onClick={() => setAddModalOpen(true)}
             disabled={isFull}
-            data-tooltip={isFull ? `Watchlist is full — remove a company to add more` : 'Search and add a company to this watchlist'}
+            data-tooltip={isFull ? WD['btn.addFull'] : WD['btn.addCompany']}
           >
             + Add Company
           </button>
@@ -121,7 +122,7 @@ const WatchlistPage = () => {
             </button>
           </form>
         ) : (
-          <button className="wl-new-tab-btn" onClick={() => setCreatingList(true)} data-tooltip="Create a new watchlist to organise companies by theme or strategy">
+          <button className="wl-new-tab-btn" onClick={() => setCreatingList(true)} data-tooltip={WD['btn.newList']}>
             + New Watchlist
           </button>
         )}

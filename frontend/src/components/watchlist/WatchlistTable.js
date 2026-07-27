@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { WATCHLIST_DESCRIPTIONS as WD } from '../../constants/marketDescriptions';
 import './WatchlistTable.css';
 
 const TABLE_COLUMNS = [
-  { key: 'companyCode', label: 'Symbol',  sortable: true, tooltip: 'NSE ticker symbol — click to sort' },
-  { key: 'companyName', label: 'Company', sortable: true, tooltip: 'Full registered company name — click to sort' },
+  { key: 'companyCode', label: 'Symbol',  sortable: true, tooltip: WD['col.symbol'] },
+  { key: 'companyName', label: 'Company', sortable: true, tooltip: WD['col.company'] },
 ];
 
 const ROWS_PER_PAGE = 25;
