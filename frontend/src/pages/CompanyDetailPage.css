@@ -510,3 +510,83 @@
 .cdp-sebi-link:hover {
   text-decoration: underline;
 }
+
+/* ── Tooltips ─────────────────────────────────────────────────────── */
+.cdp-badge[data-tooltip],
+.cdp-pe-pill[data-tooltip] {
+  position: relative;
+  cursor: default;
+}
+
+.cdp-badge[data-tooltip]:hover::after,
+.cdp-pe-pill[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  width: 220px;
+  text-align: center;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.cdp-badge[data-tooltip]:hover::before,
+.cdp-pe-pill[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1e293b;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.cdp-fund-table th[data-tooltip] {
+  position: relative;
+  cursor: default;
+}
+
+.cdp-fund-table th[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  width: 200px;
+  text-align: center;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.cdp-fund-table th[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: #1e293b;
+  z-index: 200;
+  pointer-events: none;
+}
