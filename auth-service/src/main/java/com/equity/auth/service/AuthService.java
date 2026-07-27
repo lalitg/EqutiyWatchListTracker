@@ -44,6 +44,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetService passwordResetService;
+    private final EmailService emailService;
 
     /**
      * When true, the raw reset token is included in the /forgot-password response.
@@ -57,12 +58,14 @@ public class AuthService {
                        JwtService jwtService,
                        RefreshTokenService refreshTokenService,
                        PasswordEncoder passwordEncoder,
-                       PasswordResetService passwordResetService) {
+                       PasswordResetService passwordResetService,
+                       EmailService emailService) {
         this.userServiceClient   = userServiceClient;
         this.jwtService          = jwtService;
         this.refreshTokenService = refreshTokenService;
         this.passwordEncoder     = passwordEncoder;
         this.passwordResetService = passwordResetService;
+        this.emailService        = emailService;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -251,38 +254,64 @@ public class AuthService {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Step 1 of the forgot-password flow: generates and returns a reset token.
+     * Step 1 of the forgot-password flow: emails a one-time reset link.
      *
      * Steps:
      *   1. Normalize the email (lowercase, trim).
-     *   2. Generate a one-time reset token via PasswordResetService.
-     *      The token is stored as a SHA-256 hash in password_reset_tokens.
-     *   3. Return the raw token in the response (development mode).
-     *      In production: email the token link to the user and return only
-     *      the generic success message (set auth.forgot-password.return-token-in-response=false).
+     *   2. Check server-side whether an active account with this email exists
+     *      (via user-service /validate). This check NEVER affects the response,
+     *      so it does not enable email enumeration — see the security note below.
+     *   3. Only if the account exists: generate a one-time reset token
+     *      (stored as a SHA-256 hash in password_reset_tokens) and email the reset
+     *      link to the user. This prevents sending "reset your password" emails to
+     *      addresses that never registered.
+     *   4. Email send is wrapped in try/catch: an SMTP failure is logged but never
+     *      surfaced to the caller, so the response is identical whether the email
+     *      succeeded, failed, or was never attempted.
      *
-     * Security: this endpoint always returns HTTP 200 with the same message
-     * regardless of whether the email is registered. This prevents an attacker
-     * from using this endpoint to discover which emails are registered.
+     * Security: this endpoint ALWAYS returns HTTP 200 with the same generic message,
+     * regardless of whether the email is registered or whether the email send worked.
+     * This prevents an attacker from discovering which emails are registered.
      * The token is valid for 15 minutes (configurable).
      *
+     * The raw token is only ever included in the response when
+     * {@code auth.forgot-password.return-token-in-response=true} — a local-development
+     * escape hatch that is false by default and must never be true in production.
+     *
      * @param email the email address submitted by the user
-     * @return map with "message" and optionally "resetToken" (dev mode only)
+     * @return map with a generic "message" (and "resetToken" only in dev mode)
      */
     public Map<String, Object> forgotPassword(String email) {
         String normalizedEmail = email.toLowerCase().trim();
-        String rawToken = passwordResetService.createResetToken(normalizedEmail);
 
         Map<String, Object> response = new HashMap<>();
         response.put("message",
-            "If an account with this email exists, a password reset token has been generated. " +
+            "If an account with this email exists, a password reset link has been sent. " +
             "It expires in 15 minutes and can only be used once.");
 
-        if (returnTokenInResponse) {
-            response.put("resetToken", rawToken);
+        // Existence check — server-side only, never reflected in the response (no enumeration).
+        Map<String, Object> userData = userServiceClient.validateUser(normalizedEmail);
+        boolean accountExists = userData != null && !"DELETED".equals(userData.get("status"));
+
+        if (!accountExists) {
+            logger.info("Forgot-password requested for unregistered/deleted email={} — no token issued", normalizedEmail);
+            return response;
         }
 
-        logger.info("Forgot-password requested for email={}", normalizedEmail);
+        String rawToken = passwordResetService.createResetToken(normalizedEmail);
+
+        try {
+            emailService.sendPasswordResetEmail(normalizedEmail, rawToken);
+        } catch (Exception e) {
+            // Never surface mail failures to the caller (uniform response + no info leak).
+            logger.error("Failed to send password reset email for email={}: {}", normalizedEmail, e.getMessage(), e);
+        }
+
+        if (returnTokenInResponse) {
+            response.put("resetToken", rawToken);   // local-dev only — false in production
+        }
+
+        logger.info("Forgot-password processed for email={}", normalizedEmail);
         return response;
     }
 
