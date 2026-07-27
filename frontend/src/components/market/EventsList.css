@@ -1,9 +1,10 @@
 .events-list {
+  padding: 20px 20px 0;
   margin-bottom: 28px;
 }
 
 .events-section {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .events-section-title {

@@ -13,6 +13,7 @@ import { fetchCompanySectors } from '../services/sectorService';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import { useWatchlist } from '../context/WatchlistContext';
+import { SECTOR_DESCRIPTIONS, INDEX_DESCRIPTIONS, FINANCIALS_DESCRIPTIONS } from '../constants/marketDescriptions';
 import './CompanyDetailPage.css';
 
 function fmt(val) {
@@ -125,7 +126,7 @@ const CompanyDetailPage = () => {
           <div className="cdp-identity">
             <div className="cdp-symbol">{symbol?.toUpperCase()}</div>
           </div>
-          {peLabel && <div className="cdp-pe-pill">P/E {peLabel}</div>}
+          {peLabel && <div className="cdp-pe-pill" data-tooltip="Price-to-Earnings ratio — what you pay per ₹1 of company earnings. Lower = cheaper relative to peers.">P/E {peLabel}</div>}
         </div>
 
         {(nse500Sectors.length > 0 || companyIndices.length > 0) && (
@@ -134,6 +135,7 @@ const CompanyDetailPage = () => {
               <span
                 key={s.displayName}
                 className="cdp-badge cdp-badge--nifty cdp-badge--clickable"
+                data-tooltip={SECTOR_DESCRIPTIONS[s.displayName]}
                 onClick={() => navigate(
                   `/market/domestic/sector/${encodeURIComponent(s.displayName)}`,
                   { state: { newsKeyword: s.newsKeyword } }
@@ -146,6 +148,7 @@ const CompanyDetailPage = () => {
               <span
                 key={idx.indexKey}
                 className="cdp-badge cdp-badge--index cdp-badge--clickable"
+                data-tooltip={INDEX_DESCRIPTIONS[idx.displayName]}
                 onClick={() => navigate(
                   `/market/domestic/index/${encodeURIComponent(idx.indexKey)}`,
                   { state: { displayName: idx.displayName } }
@@ -236,11 +239,11 @@ const CompanyDetailPage = () => {
                   <thead>
                     <tr>
                       <th>Quarter</th>
-                      <th>Revenue</th>
-                      <th>Gross Profit</th>
-                      <th>Op. Profit</th>
-                      <th>Net Profit</th>
-                      <th>EPS (₹)</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Revenue']}>Revenue</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Gross Profit']}>Gross Profit</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Op. Profit']}>Op. Profit</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Net Profit']}>Net Profit</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['EPS (₹)']}>EPS (₹)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -274,11 +277,11 @@ const CompanyDetailPage = () => {
                   <thead>
                     <tr>
                       <th>Year</th>
-                      <th>Total Assets</th>
-                      <th>Total Debt</th>
-                      <th>Equity</th>
-                      <th>Cash</th>
-                      <th>Liabilities</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Total Assets']}>Total Assets</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Total Debt']}>Total Debt</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Equity']}>Equity</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Cash']}>Cash</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Liabilities']}>Liabilities</th>
                     </tr>
                   </thead>
                   <tbody>

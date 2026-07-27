@@ -6,6 +6,7 @@ import { useMarket } from '../context/MarketContext';
 import { fetchSectorTabs } from '../services/sectorService';
 import { fetchIndices, fetchGlobalIndices, fetchMergedNews } from '../services/indicesService';
 import { DOMESTIC_MACRO_KEYWORDS } from '../services/marketService';
+import { SECTOR_DESCRIPTIONS, INDEX_DESCRIPTIONS } from '../constants/marketDescriptions';
 
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
 const NEWS_PAGE_SIZE  = 20;
@@ -23,40 +24,6 @@ const SECTOR_INDEX_NAME = {
   'Realty':            'Nifty Realty',
 };
 
-const SECTOR_DESCRIPTIONS = {
-  'Auto':              'Leading automobile manufacturers and auto-component makers listed on NSE',
-  'Capital Goods':     'Industrial machinery, engineering and infrastructure equipment companies',
-  'Chemicals':         'Specialty chemical, agrochemical and petrochemical companies',
-  'Consumer Durables': 'White goods, electronics and home appliance manufacturers',
-  'Consumer Services': 'Hospitality, retail, education and consumer-facing service companies',
-  'Energy':            'Power generation, transmission and energy sector companies',
-  'FMCG':              'Fast-moving consumer goods — food, beverages, personal and home care',
-  'Financial Services':'Banks, NBFCs, insurance companies and financial intermediaries',
-  'IT':                'Software services, IT consulting and technology product companies',
-  'Infra':             'Infrastructure developers in roads, ports, airports and utilities',
-  'Media':             'Broadcasting, publishing, digital media and entertainment companies',
-  'Metals':            'Steel, aluminium, copper and other metal producers and processors',
-  'Pharma':            'Pharmaceutical manufacturers, API makers and drug distributors',
-  'Realty':            'Real estate developers and property management companies',
-  'Services':          'Logistics, staffing, facility management and business services',
-  'Telecom':           'Telecom operators, tower companies and related equipment providers',
-};
-
-const INDEX_DESCRIPTIONS = {
-  'Nifty 50':              'Top 50 large-cap companies by free-float market capitalisation',
-  'Nifty Next 50':         'Next 50 large-caps after Nifty 50 — ranks 51 to 100',
-  'Nifty 100':             'Top 100 large-cap companies — Nifty 50 + Next 50 combined',
-  'Nifty 200':             'Top 200 companies by market cap covering large and midcap segments',
-  'Nifty 500':             'Broad market index covering the top 500 listed companies',
-  'Nifty Midcap 50':       'Top 50 midcap companies by market capitalisation',
-  'Nifty Midcap 100':      'Top 100 midcap companies by market capitalisation',
-  'Nifty Midcap 150':      'Top 150 midcap companies by market capitalisation',
-  'Nifty LargeMidcap 250': 'Combined index of 100 large-cap and 150 midcap stocks',
-  'Nifty Smallcap 50':     'Top 50 small-cap companies by market capitalisation',
-  'Nifty Smallcap 100':    'Top 100 small-cap companies by market capitalisation',
-  'Nifty Smallcap 250':    'Top 250 small-cap companies by market capitalisation',
-  'Nifty Microcap 250':    'Top 250 microcap companies beyond the Nifty 500 universe',
-};
 
 const DomesticMarketPage = () => {
   const navigate = useNavigate();
