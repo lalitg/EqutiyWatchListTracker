@@ -2,6 +2,7 @@ package com.companynews.newsscheduler.scheduler;
 
 import com.companynews.newsscheduler.dto.NseAnnouncement;
 import com.companynews.newsscheduler.dto.NewsItem;
+import com.companynews.newsscheduler.service.KeywordLoader;
 import com.companynews.newsscheduler.service.NseFetcher;
 import com.companynews.newsscheduler.service.SeqIdWindow;
 import com.companynews.newsscheduler.service.NewsWorker;
@@ -48,6 +49,7 @@ public class NseScheduler {
     private final NseFetcher nseFetcher;
     private final NewsWorker newsWorker;
     private final SeqIdWindow seqIdWindow;
+    private final KeywordLoader keywordLoader;
 
     /**
      * Guards against the startup fetch running more than once.
@@ -63,16 +65,21 @@ public class NseScheduler {
     /**
      * Constructs an {@code NseScheduler} with all required dependencies injected by Spring.
      *
-     * @param nseFetcher  fetches corporate announcements from the NSE API
-     * @param newsWorker  handles deduplication and persistence of news items
-     * @param seqIdWindow in-memory sliding window for NSE sequence ID deduplication
+     * @param nseFetcher    fetches corporate announcements from the NSE API
+     * @param newsWorker    handles deduplication and persistence of news items
+     * @param seqIdWindow   in-memory sliding window for NSE sequence ID deduplication
+     * @param keywordLoader provides the company-symbol set so importance classification is
+     *                      applied only to symbols also present in {@code global_watchlist} —
+     *                      consistent with the retention and read paths
      */
     public NseScheduler(NseFetcher nseFetcher,
                         NewsWorker newsWorker,
-                        SeqIdWindow seqIdWindow) {
-        this.nseFetcher  = nseFetcher;
-        this.newsWorker  = newsWorker;
-        this.seqIdWindow = seqIdWindow;
+                        SeqIdWindow seqIdWindow,
+                        KeywordLoader keywordLoader) {
+        this.nseFetcher    = nseFetcher;
+        this.newsWorker    = newsWorker;
+        this.seqIdWindow   = seqIdWindow;
+        this.keywordLoader = keywordLoader;
     }
 
     /**
@@ -146,12 +153,17 @@ public class NseScheduler {
                 Collectors.mapping(NseAnnouncement::getNewsItem, Collectors.toList())
             ));
 
+        // Company-symbol set — only symbols also in global_watchlist get importance classification,
+        // keeping "company" defined identically across the save, retention, and read paths.
+        Set<String> companySymbols = keywordLoader.loadCompanySymbols();
+
         // Step 4: Save per symbol — ThreadContext (Log4j2 MDC equivalent) set per symbol
         // so all log lines for that symbol carry the keyword field, traceable in log aggregators
         for (Map.Entry<String, List<NewsItem>> entry : bySymbol.entrySet()) {
             ThreadContext.put("keyword", entry.getKey());
             try {
-                newsWorker.saveNews(entry.getKey(), entry.getValue());
+                newsWorker.saveNews(entry.getKey(), entry.getValue(),
+                        companySymbols.contains(entry.getKey()));
             } finally {
                 ThreadContext.remove("keyword");
             }

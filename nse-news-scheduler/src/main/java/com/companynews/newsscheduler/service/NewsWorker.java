@@ -8,8 +8,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +50,7 @@ public class NewsWorker {
     private final CompanyNewsRepository repository;
     private final SimilarityChecker similarityChecker;
     private final NewsStore newsStore;
+    private final NewsImportanceClassifier importanceClassifier;
 
     /**
      * Per-keyword {@link ReentrantLock} map.
@@ -86,17 +85,21 @@ public class NewsWorker {
     /**
      * Constructs a {@code NewsWorker} with all required dependencies injected by Spring.
      *
-     * @param repository        repository for reading and writing {@link CompanyNews} records
-     * @param similarityChecker Jaccard similarity checker for near-duplicate headline detection
-     * @param meterRegistry     Micrometer registry for registering production counters
+     * @param repository           repository for reading and writing {@link CompanyNews} records
+     * @param similarityChecker    Jaccard similarity checker for near-duplicate headline detection
+     * @param newsStore            in-memory mirror of {@code company_news}
+     * @param importanceClassifier flags company headlines as important corporate-action news
+     * @param meterRegistry        Micrometer registry for registering production counters
      */
     public NewsWorker(CompanyNewsRepository repository,
                       SimilarityChecker similarityChecker,
                       NewsStore newsStore,
+                      NewsImportanceClassifier importanceClassifier,
                       MeterRegistry meterRegistry) {
-        this.repository          = repository;
-        this.similarityChecker   = similarityChecker;
-        this.newsStore           = newsStore;
+        this.repository           = repository;
+        this.similarityChecker    = similarityChecker;
+        this.newsStore            = newsStore;
+        this.importanceClassifier = importanceClassifier;
         this.savedCounter        = Counter.builder("news.items.saved")
             .description("Total news items written to DB")
             .register(meterRegistry);
@@ -141,15 +144,18 @@ public class NewsWorker {
      * <p>If a {@link DataIntegrityViolationException} is thrown (concurrent insert race),
      * {@link #upsert(String, List)} is called as a fallback to re-read and merge.
      *
-     * @param keyword  the keyword to save news under (company symbol, sector, or macro term)
-     * @param newItems the list of candidate news items to deduplicate and save
+     * <p>When {@code isCompany} is {@code true}, each newly-accepted item's headline is run
+     * through {@link NewsImportanceClassifier} and tagged {@code category="important"} if it
+     * matches a corporate-action phrase. Classification is skipped entirely for sectors and
+     * macro keywords so their behavior is unchanged.
+     *
+     * @param keyword   the keyword to save news under (company symbol, sector, or macro term)
+     * @param newItems  the list of candidate news items to deduplicate and save
+     * @param isCompany whether {@code keyword} is a company symbol — only then are items
+     *                  classified for the "Important News" tab
      */
-    @Caching(evict = {
-        @CacheEvict(value = "mergedNews",  allEntries = true),
-        @CacheEvict(value = "companyNews", key = "#keyword")
-    })
     @Transactional
-    public void saveNews(String keyword, List<NewsItem> newItems) {
+    public void saveNews(String keyword, List<NewsItem> newItems, boolean isCompany) {
         if (newItems == null || newItems.isEmpty()) return;
 
         ReentrantLock lock = getLock(keyword);
@@ -211,6 +217,12 @@ public class NewsWorker {
                     continue;
                 }
 
+                // Layer 5 (company keywords only): flag important corporate-action headlines
+                // for the "Important News" tab. Sectors/macro keywords are never classified.
+                if (isCompany) {
+                    item.setCategory(importanceClassifier.classify(summary));
+                }
+
                 currentNews.add(item);
                 savedUrls.add(link);
                 seenInBatch.add(link);
@@ -243,7 +255,7 @@ public class NewsWorker {
 
         } catch (DataIntegrityViolationException e) {
             log.warn("Constraint violation on save — falling back to upsert for keyword: {}", keyword);
-            upsert(keyword, newItems);
+            upsert(keyword, newItems, isCompany);
         } finally {
             ThreadContext.remove("keyword");
             lock.unlock();
@@ -260,7 +272,6 @@ public class NewsWorker {
      *
      * @param keyword the keyword whose timestamp should be refreshed
      */
-    @CacheEvict(value = "companyNews", key = "#keyword")
     @Transactional
     public void touchLastUpdated(String keyword) {
         repository.findByKeyword(keyword).ifPresent(record -> {
@@ -283,10 +294,11 @@ public class NewsWorker {
      * so adding {@code @Transactional} here would have no effect. The method already
      * participates in the caller's transaction via Spring's default REQUIRED propagation.
      *
-     * @param keyword  the keyword whose row encountered a concurrent insert
-     * @param newItems the items to merge into the existing row
+     * @param keyword   the keyword whose row encountered a concurrent insert
+     * @param newItems  the items to merge into the existing row
+     * @param isCompany whether {@code keyword} is a company symbol — only then are items classified
      */
-    private void upsert(String keyword, List<NewsItem> newItems) {
+    private void upsert(String keyword, List<NewsItem> newItems, boolean isCompany) {
         Optional<CompanyNews> existing = repository.findByKeyword(keyword);
         if (existing.isEmpty()) {
             log.warn("Upsert: row still not found for keyword: {} — giving up", keyword);
@@ -299,6 +311,9 @@ public class NewsWorker {
             : new ArrayList<>();
 
         for (NewsItem item : newItems) {
+            if (isCompany) {
+                item.setCategory(importanceClassifier.classify(item.getSummary()));
+            }
             currentNews.add(0, item);
         }
 

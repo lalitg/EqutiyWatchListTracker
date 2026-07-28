@@ -21,7 +21,6 @@ RBI monetary policy
 repo rate
 India Budget
 Union Budget
-Budget 2026
 India fiscal deficit
 GST changes
 inflation India
@@ -41,7 +40,7 @@ India recession
 Indian natural disaster
 Indian terrorist attack
 India GDP
-Monsoon India stock price
+Monsoon stock exchange
 
 # Global (Global Market Tab)
 GDP growth recession
@@ -82,6 +81,7 @@ US recession
 US war
 US technology sector
 US innovation
+S&P 500
 
 # Asia (Global Market Tab)
 BOJ Policy
@@ -91,6 +91,10 @@ Asia markets
 China economy
 Japan economy
 Singapore economy
+Nikkei 225
+Hang Seng
+Straits Times
+KOSPI
 
 # Europe (Global Market Tab)
 European Central Bank Policy
@@ -101,3 +105,6 @@ Europe Economy
 Germany economy
 France economy
 UK economy
+FTSE 100
+CAC 40
+DAX

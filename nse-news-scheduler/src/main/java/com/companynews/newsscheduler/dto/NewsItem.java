@@ -28,6 +28,20 @@ public class NewsItem {
     private String link;
 
     /**
+     * Importance category of this article.
+     *
+     * <p>{@code null} for normal news; {@code "important"} when the headline matched one of
+     * the corporate-action phrases in {@code important-keywords.txt} (dividend, buyback,
+     * stock split, bonus issue, merger, etc.). Set at save time by
+     * {@link com.companynews.newsscheduler.service.NewsImportanceClassifier}, but only for
+     * company-symbol keywords — never for sectors or macro keywords.
+     *
+     * <p>Stored inside the {@code news} JSONB array. Rows written before this field existed
+     * simply deserialize with {@code category == null}, so no migration is required.
+     */
+    private String category;
+
+    /**
      * Company symbol (e.g., {@code INFY}, {@code RELIANCE}).
      * Used only in-memory to route NSE announcements to the correct keyword bucket.
      * Never serialized to JSON — see {@link JsonIgnore} annotations below.
@@ -92,6 +106,20 @@ public class NewsItem {
      * @param link article or attachment URL
      */
     public void setLink(String link) { this.link = link; }
+
+    /**
+     * Returns the importance category of this news item.
+     *
+     * @return {@code "important"} if flagged, or {@code null} for normal news
+     */
+    public String getCategory() { return category; }
+
+    /**
+     * Sets the importance category of this news item.
+     *
+     * @param category {@code "important"} or {@code null}
+     */
+    public void setCategory(String category) { this.category = category; }
 
     /**
      * Returns the in-memory company symbol. Never included in JSON output.

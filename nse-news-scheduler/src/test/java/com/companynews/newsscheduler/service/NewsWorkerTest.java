@@ -36,7 +36,9 @@ class NewsWorkerTest {
 
     @BeforeEach
     void setUp() {
-        newsWorker = new NewsWorker(repository, similarityChecker, newsStore, new SimpleMeterRegistry());
+        NewsImportanceClassifier classifier = new NewsImportanceClassifier();
+        classifier.init();   // compile phrases from important-keywords.txt (on the test classpath)
+        newsWorker = new NewsWorker(repository, similarityChecker, newsStore, classifier, new SimpleMeterRegistry());
     }
 
     // ── Helper ─────────────────────────────────────────────────────────────
@@ -52,7 +54,7 @@ class NewsWorkerTest {
     void saves_new_items_when_no_existing_row() {
         when(repository.findByKeyword("INFY")).thenReturn(Optional.empty());
 
-        newsWorker.saveNews("INFY", List.of(item("https://a.com/1", "Infosys reports strong Q3")));
+        newsWorker.saveNews("INFY", List.of(item("https://a.com/1", "Infosys reports strong Q3")), true);
 
         ArgumentCaptor<CompanyNews> captor = ArgumentCaptor.forClass(CompanyNews.class);
         verify(repository).save(captor.capture());
@@ -71,7 +73,7 @@ class NewsWorkerTest {
         when(repository.findByKeyword("INFY")).thenReturn(Optional.of(record));
 
         // Submit the same URL again — should be skipped
-        newsWorker.saveNews("INFY", List.of(item("https://a.com/1", "Same URL different text")));
+        newsWorker.saveNews("INFY", List.of(item("https://a.com/1", "Same URL different text")), true);
 
         // Nothing new added → save should NOT be called
         verify(repository, never()).save(any());
@@ -87,7 +89,7 @@ class NewsWorkerTest {
         newsWorker.saveNews("INFY", List.of(
             item("https://a.com/1", "Article A"),
             item("https://a.com/1", "Article A again")
-        ));
+        ), true);
 
         ArgumentCaptor<CompanyNews> captor = ArgumentCaptor.forClass(CompanyNews.class);
         verify(repository).save(captor.capture());
@@ -106,7 +108,7 @@ class NewsWorkerTest {
 
         // Near-duplicate headline (different URL — so URL check passes, but similarity check fires)
         newsWorker.saveNews("INFY",
-            List.of(item("https://b.com/2", "Infosys Q3 results beat street estimates")));
+            List.of(item("https://b.com/2", "Infosys Q3 results beat street estimates")), true);
 
         verify(repository, never()).save(any());
     }
@@ -126,7 +128,7 @@ class NewsWorkerTest {
             item("https://a.com/6", "Article six on rupee depreciation")
         );
 
-        newsWorker.saveNews("INFY", sixItems);
+        newsWorker.saveNews("INFY", sixItems, true);
 
         ArgumentCaptor<CompanyNews> captor = ArgumentCaptor.forClass(CompanyNews.class);
         verify(repository).save(captor.capture());
@@ -137,13 +139,13 @@ class NewsWorkerTest {
 
     @Test
     void does_nothing_when_input_list_is_empty() {
-        newsWorker.saveNews("INFY", List.of());
+        newsWorker.saveNews("INFY", List.of(), true);
         verifyNoInteractions(repository);
     }
 
     @Test
     void does_nothing_when_input_list_is_null() {
-        newsWorker.saveNews("INFY", null);
+        newsWorker.saveNews("INFY", null, true);
         verifyNoInteractions(repository);
     }
 
@@ -154,7 +156,7 @@ class NewsWorkerTest {
         when(repository.findByKeyword("INFY")).thenReturn(Optional.empty());
 
         NewsItem noLink = new NewsItem("Mon, 01 Jan 2026 10:00:00 GMT", "Some news", null);
-        newsWorker.saveNews("INFY", List.of(noLink));
+        newsWorker.saveNews("INFY", List.of(noLink), true);
 
         verify(repository, never()).save(any());
     }

@@ -88,6 +88,53 @@ public class KeywordLoader {
             log.error("Failed to load sectors from sector_companies: {}", e.getMessage(), e);
         }
 
+        keywords.addAll(loadFileKeywords());
+
+        log.info("Total unique keywords to fetch: {}", keywords.size());
+        return new ArrayList<>(keywords);
+    }
+
+    /**
+     * Loads and returns just the company symbols from {@code global_watchlist}, on their own —
+     * without merging in sector names or {@code keywords.txt} keywords.
+     *
+     * <p>Used to identify which keywords are company symbols so that importance classification
+     * (the "Important News" tab) and the company-specific dual retention policy
+     * (7-day Latest / 90-day Important) apply to companies ONLY — never to sectors or macro
+     * keywords, which keep their existing 24-hour behavior unchanged.
+     *
+     * <p>Returns an empty set on DB failure rather than throwing, so a transient watchlist
+     * read error degrades gracefully to "classify nothing" instead of breaking the fetch cycle.
+     *
+     * @return a deduplicated set of company symbols; never {@code null}, but may be empty
+     *         if the table is empty or the read fails
+     */
+    @Transactional(readOnly = true)
+    public Set<String> loadCompanySymbols() {
+        Set<String> symbols = new LinkedHashSet<>();
+        try {
+            symbols.addAll(watchlistRepository.findAllSymbols());
+        } catch (Exception e) {
+            log.error("Failed to load company symbols from global_watchlist: {}", e.getMessage(), e);
+        }
+        return symbols;
+    }
+
+    /**
+     * Loads and returns just the {@code keywords.txt}-sourced keywords, on their own —
+     * without merging in company symbols or sector names.
+     *
+     * <p>Used by {@link com.companynews.newsscheduler.scheduler.GoogleRssScheduler} to decide
+     * which keywords are eligible for the in-memory 96-slot rolling-24-hour bucket cache
+     * ({@link KeywordNewsBucketCache}), which is scoped to Domestic/Global tab keywords only —
+     * never company symbols or sectors, which continue to read from {@link NewsStore}/the
+     * database directly.
+     *
+     * @return a deduplicated set of keywords.txt lines; never {@code null}, but may be empty
+     *         if the file is missing or unreadable
+     */
+    public Set<String> loadFileKeywords() {
+        Set<String> fileKeywords = new LinkedHashSet<>();
         try {
             ClassPathResource resource = new ClassPathResource("keywords.txt");
             try (BufferedReader reader = new BufferedReader(
@@ -97,7 +144,7 @@ public class KeywordLoader {
                 while ((line = reader.readLine()) != null) {
                     line = line.trim();
                     if (!line.isEmpty() && !line.startsWith("#")) {
-                        keywords.add(line);
+                        fileKeywords.add(line);
                         count++;
                     }
                 }
@@ -106,40 +153,6 @@ public class KeywordLoader {
         } catch (Exception e) {
             log.warn("keywords.txt not found or unreadable — skipping: {}", e.getMessage());
         }
-
-        log.info("Total unique keywords to fetch: {}", keywords.size());
-        return new ArrayList<>(keywords);
-    }
-
-    /**
-     * Loads and returns the list of US market keywords from {@code us-keywords.txt}.
-     *
-     * <p>Used by the US-market-hours scheduler to fetch these keywords at higher frequency
-     * (every 30 min) during US trading hours (6 PM–2:30 AM IST), independently of the
-     * main keyword cycle.
-     *
-     * @return list of US market keywords; never {@code null}, but may be empty if the file is missing
-     */
-    public List<String> loadUsKeywords() {
-        List<String> keywords = new ArrayList<>();
-        try {
-            ClassPathResource resource = new ClassPathResource("us-keywords.txt");
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(resource.getInputStream()))) {
-                int count = 0;
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    line = line.trim();
-                    if (!line.isEmpty() && !line.startsWith("#")) {
-                        keywords.add(line);
-                        count++;
-                    }
-                }
-                log.info("Loaded {} US market keywords from us-keywords.txt", count);
-            }
-        } catch (Exception e) {
-            log.warn("us-keywords.txt not found or unreadable — skipping: {}", e.getMessage());
-        }
-        return keywords;
+        return fileKeywords;
     }
 }

@@ -19,13 +19,13 @@ import java.util.stream.Collectors;
  *
  * <p>Two endpoints:
  * <ul>
- *   <li>{@code GET /api/news?key=} — single-keyword lookup for the company detail page.
- *       Results cached in the {@code companyNews} LRU cache (max 100 symbols) via
- *       {@link CompanyNewsService}.</li>
+ *   <li>{@code GET /api/news?key=} — single-keyword lookup for the company detail page
+ *       (company symbols and sector names). Reads straight from the database via
+ *       {@link CompanyNewsService} — no caching layer.</li>
  *   <li>{@code GET /api/news/merged?keys=&page=&size=} — multi-keyword paginated merge
- *       for tab-level views (Domestic sectors, Global market tabs). Results cached in the
- *       {@code mergedNews} Caffeine cache with 24-hour age filtering via
- *       {@link NewsAggregatorService}.</li>
+ *       for tab-level views (Domestic sectors, Global market tabs). Served entirely from
+ *       {@link com.companynews.newsscheduler.service.KeywordNewsBucketCache}, the in-memory
+ *       server-side 96-slot rolling-24-hour cache, via {@link NewsAggregatorService}.</li>
  * </ul>
  */
 @Validated
@@ -60,7 +60,8 @@ public class NewsController {
     /**
      * Returns a paginated merged-news response for multiple keywords.
      * Used by tab-level views (Domestic sector tabs, Global market tabs).
-     * Results are cached in the {@code mergedNews} Caffeine cache with 24-hour age filtering.
+     * Served entirely from the in-memory 96-slot rolling-24-hour bucket cache — see
+     * {@link NewsAggregatorService}.
      *
      * <p>Example: {@code GET /api/news/merged?keys=IT,Banking&page=0&size=20}
      *
@@ -83,7 +84,6 @@ public class NewsController {
         log.info("GET /api/news/merged keys={} page={} size={}", sortedKeys, page, size);
 
         Map<String, Object> result = aggregatorService.buildPage(sortedKeys, page, size);
-        aggregatorService.warmNextPage(sortedKeys, page, size);
         return ResponseEntity.ok(result);
     }
 }

@@ -6,7 +6,6 @@ import com.companynews.newsscheduler.repository.CompanyNewsRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,14 +14,22 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Applies the news retention policy to the {@code company_news} table.
  *
- * <p>Retention rule: for each keyword row, keep all articles published within the last
- * {@code news.retention.window-hours} hours. If fewer than {@code news.retention.min-count}
- * articles fall within that window, retain the newest older articles as a floor so the
- * frontend always has enough items to display.
+ * <p>Two policies, selected per row by keyword type:
+ * <ul>
+ *   <li><b>Sector / macro keywords</b> — unchanged: keep all articles within the last
+ *       {@code news.retention.window-hours} hours, with a {@code news.retention.min-count}
+ *       floor of newest older items so the frontend always has content.</li>
+ *   <li><b>Company symbols</b> — dual retention for the two-tab UI: keep an article if it is
+ *       within the {@code news.retention.company.latest-window-days} window (Latest tab) OR it
+ *       is flagged {@code category="important"} and within the
+ *       {@code news.retention.company.important-window-days} window (Important tab). The same
+ *       min-count floor is applied to the Latest portion for quiet companies.</li>
+ * </ul>
  *
  * <p>Articles with unparseable or missing dates are treated as fresh and never removed.
  */
@@ -33,6 +40,7 @@ public class NewsCleanupService {
 
     private final CompanyNewsRepository repository;
     private final NewsStore newsStore;
+    private final KeywordLoader keywordLoader;
 
     @Value("${news.retention.window-hours:24}")
     private int retentionWindowHours;
@@ -40,9 +48,18 @@ public class NewsCleanupService {
     @Value("${news.retention.min-count:15}")
     private int minCount;
 
-    public NewsCleanupService(CompanyNewsRepository repository, NewsStore newsStore) {
-        this.repository = repository;
-        this.newsStore  = newsStore;
+    @Value("${news.retention.company.latest-window-days:7}")
+    private int companyLatestWindowDays;
+
+    @Value("${news.retention.company.important-window-days:90}")
+    private int companyImportantWindowDays;
+
+    public NewsCleanupService(CompanyNewsRepository repository,
+                              NewsStore newsStore,
+                              KeywordLoader keywordLoader) {
+        this.repository    = repository;
+        this.newsStore     = newsStore;
+        this.keywordLoader = keywordLoader;
     }
 
     /**
@@ -58,11 +75,15 @@ public class NewsCleanupService {
      *   <li>Skip the DB write if nothing changed (no old items existed).</li>
      * </ol>
      */
-    @CacheEvict(value = "mergedNews", allEntries = true)
     @Transactional
     public void cleanup() {
-        ZonedDateTime cutoff = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"))
-            .minusHours(retentionWindowHours);
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+        ZonedDateTime sectorCutoff           = now.minusHours(retentionWindowHours);
+        ZonedDateTime companyLatestCutoff     = now.minusDays(companyLatestWindowDays);
+        ZonedDateTime companyImportantCutoff  = now.minusDays(companyImportantWindowDays);
+
+        // Loaded once per run (hourly) — cheap in-memory membership check per row afterwards.
+        Set<String> companySymbols = keywordLoader.loadCompanySymbols();
 
         List<CompanyNews> allRecords = repository.findAll();
         int rowsUpdated = 0;
@@ -71,31 +92,13 @@ public class NewsCleanupService {
             List<NewsItem> news = record.getNews();
             if (news == null || news.isEmpty()) continue;
 
-            List<NewsItem> fresh = new ArrayList<>();
-            List<NewsItem> old   = new ArrayList<>();
+            boolean isCompany = companySymbols.contains(record.getKeyword());
+            List<NewsItem> retained = isCompany
+                ? retainForCompany(news, companyLatestCutoff, companyImportantCutoff)
+                : retainForSector(news, sectorCutoff);
 
-            for (NewsItem item : news) {
-                ZonedDateTime itemDate = NewsDateParser.parse(item.getDate());
-                // Items with unparseable dates are kept (treated as fresh)
-                if (itemDate == null || itemDate.isAfter(cutoff)) {
-                    fresh.add(item);
-                } else {
-                    old.add(item);
-                }
-            }
-
-            // Nothing outside the window — no changes needed
-            if (old.isEmpty()) continue;
-
-            List<NewsItem> retained;
-            if (fresh.size() >= minCount) {
-                retained = fresh;
-            } else {
-                // Pad with the newest old items (list is already newest-first from NewsWorker)
-                retained = new ArrayList<>(fresh);
-                int needed = minCount - fresh.size();
-                retained.addAll(old.subList(0, Math.min(needed, old.size())));
-            }
+            // retained is always a subset in original order — equal size means nothing was removed.
+            if (retained.size() == news.size()) continue;
 
             record.setNews(retained);
             record.setLastUpdated(LocalDateTime.now());
@@ -103,12 +106,78 @@ public class NewsCleanupService {
             newsStore.put(record.getKeyword(), retained);
             rowsUpdated++;
 
-            log.debug("Cleanup: keyword={} total={} (fresh={} floor_kept={})",
-                record.getKeyword(), retained.size(), fresh.size(),
-                retained.size() - fresh.size());
+            log.debug("Cleanup: keyword={} isCompany={} kept={}/{}",
+                record.getKeyword(), isCompany, retained.size(), news.size());
         }
 
         log.info("Cleanup completed — {}/{} keyword rows updated", rowsUpdated, allRecords.size());
+    }
+
+    /**
+     * Sector/macro retention (unchanged behavior): keep items within the hours-based window;
+     * if fewer than {@code minCount} are fresh, pad with the newest older items as a floor.
+     *
+     * @return the retained subset in original (newest-first) order
+     */
+    private List<NewsItem> retainForSector(List<NewsItem> news, ZonedDateTime cutoff) {
+        List<NewsItem> fresh = new ArrayList<>();
+        List<NewsItem> old   = new ArrayList<>();
+
+        for (NewsItem item : news) {
+            ZonedDateTime itemDate = NewsDateParser.parse(item.getDate());
+            // Items with unparseable dates are kept (treated as fresh)
+            if (itemDate == null || itemDate.isAfter(cutoff)) {
+                fresh.add(item);
+            } else {
+                old.add(item);
+            }
+        }
+
+        if (old.isEmpty()) return news;                 // nothing outside window — unchanged
+        if (fresh.size() >= minCount) return fresh;     // enough fresh — drop all old
+
+        // Pad with the newest old items (list is already newest-first from NewsWorker)
+        List<NewsItem> retained = new ArrayList<>(fresh);
+        int needed = minCount - fresh.size();
+        retained.addAll(old.subList(0, Math.min(needed, old.size())));
+        return retained;
+    }
+
+    /**
+     * Company retention for the two-tab UI. Keeps an item if it is within the Latest window OR
+     * it is flagged important and within the Important window. Additionally force-keeps the
+     * newest {@code minCount} items overall so the read-path floor always has content for a
+     * quiet company's Latest tab (mirrors {@code CompanyNewsService}'s floor).
+     *
+     * @return the retained subset in original (newest-first) order
+     */
+    private List<NewsItem> retainForCompany(List<NewsItem> news,
+                                            ZonedDateTime latestCutoff,
+                                            ZonedDateTime importantCutoff) {
+        int floor = Math.min(minCount, news.size());
+        List<NewsItem> retained = new ArrayList<>();
+
+        for (int i = 0; i < news.size(); i++) {
+            NewsItem item = news.get(i);
+
+            // Floor: always keep the newest minCount items regardless of age/category.
+            if (i < floor) {
+                retained.add(item);
+                continue;
+            }
+
+            ZonedDateTime date = NewsDateParser.parse(item.getDate());
+            boolean withinLatest    = date == null || date.isAfter(latestCutoff);
+            boolean withinImportant = date == null || date.isAfter(importantCutoff);
+            boolean isImportant =
+                NewsImportanceClassifier.CATEGORY_IMPORTANT.equals(item.getCategory());
+
+            if (withinLatest || (isImportant && withinImportant)) {
+                retained.add(item);
+            }
+        }
+
+        return retained;
     }
 
 }

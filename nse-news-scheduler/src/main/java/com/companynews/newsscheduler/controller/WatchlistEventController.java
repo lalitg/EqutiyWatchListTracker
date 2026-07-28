@@ -91,7 +91,7 @@ public class WatchlistEventController {
             .toList();
 
         if (!googleNew.isEmpty()) {
-            newsWorker.saveNews(symbol, googleNew);
+            newsWorker.saveNews(symbol, googleNew, true);   // watchlist symbols are always companies
             totalSaved += googleNew.size();
             log.info("Google RSS: {} items saved for new symbol: {}", googleNew.size(), symbol);
         } else {
@@ -111,7 +111,7 @@ public class WatchlistEventController {
             .toList();
 
         if (!nseMatching.isEmpty()) {
-            newsWorker.saveNews(symbol, nseMatching);
+            newsWorker.saveNews(symbol, nseMatching, true);   // watchlist symbols are always companies
             totalSaved += nseMatching.size();
             log.info("NSE: {} items saved for new symbol: {}", nseMatching.size(), symbol);
         } else {

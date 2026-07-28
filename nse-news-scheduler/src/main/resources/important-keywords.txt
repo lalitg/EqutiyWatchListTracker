@@ -1,0 +1,25 @@
+# Important-news phrases for company headlines.
+# A company article whose HEADLINE contains any phrase below is flagged category="important"
+# and retained for 90 days on the "Important News" tab (vs. 7 days for Latest News).
+#
+# Matching is case-insensitive and word-boundary anchored ("results" matches, "consultant" does not).
+# Edit this file to tune precision — no redeploy of code needed, changes apply on next app restart.
+# Lines starting with '#' are comments; blank lines are ignored.
+
+# --- Corporate actions (high precision) ---
+dividend
+buyback
+share buyback
+bonus issue
+stock split
+merger
+amalgamation
+demerger
+rights issue
+open offer
+delisting
+
+# --- Broader terms (review after first week of live data — noise-prone) ---
+result
+target
+bids
