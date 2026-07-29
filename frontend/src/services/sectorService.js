@@ -3,11 +3,17 @@ const BASE = '/api/nse-code';
 export async function fetchSectorTabs() {
   const res = await fetch(`${BASE}/sectors`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return res.json(); // [{ displayName, newsKeyword }, ...]
 }
 
-export async function fetchCompanySector(symbol) {
+export async function fetchCompanySectors(symbol) {
   const res = await fetch(`${BASE}/sectors/company/${encodeURIComponent(symbol)}`);
-  if (!res.ok) return null;
-  return res.json();
+  if (!res.ok) return [];
+  return res.json(); // [{ symbol, displayName, industry, newsKeyword }, ...]
+}
+
+export async function fetchSectorCompanies(displayName) {
+  const res = await fetch(`${BASE}/sectors/${encodeURIComponent(displayName)}/companies`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json(); // [{ symbol, companyName, isin }, ...]
 }

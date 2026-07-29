@@ -67,6 +67,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   margin-bottom: 10px;
   gap: 12px;
 }
@@ -106,7 +107,8 @@
 .cdp-price-row {
   display: flex;
   align-items: baseline;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   margin-top: 12px;
 }
 
@@ -221,6 +223,14 @@
   .cdp-stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+@media (max-width: 480px) {
+  .cdp-container { padding: 16px 12px 40px; }
+  .cdp-hero { padding: 20px 18px 18px; }
+  .cdp-symbol { font-size: 21px; }
+  .cdp-ltp { font-size: 32px; }
+  .cdp-fund-tabs { overflow-x: auto; }
+}
+
 .cdp-stat {
   background: #fff;
   border-radius: 12px;
@@ -281,6 +291,20 @@
 .cdp-fund-tab.active {
   color: #4f46e5;
   border-bottom-color: #4f46e5;
+}
+
+/* Count badge on the Important News tab */
+.cdp-tab-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #fff;
+  background: #ef4444;
+  border-radius: 10px;
+  vertical-align: middle;
 }
 
 .cdp-fund-loading,
@@ -405,4 +429,164 @@
   border-bottom: 1px solid var(--color-border, #e2e8f0);
   padding: 0 20px;
   margin-bottom: 0;
+}
+
+/* ── SEBI Regulatory panel ──────────────────────────────────────────── */
+.cdp-sebi-panel {
+  padding: 8px 16px 12px;
+}
+
+.cdp-sebi-section {
+  margin-bottom: 16px;
+}
+
+.cdp-sebi-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.cdp-sebi-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cdp-sebi-item {
+  background: var(--color-bg, #f8fafc);
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.cdp-sebi-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.cdp-sebi-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cdp-sebi-badge--enforcement {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.cdp-sebi-badge--buyback {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.cdp-sebi-date {
+  font-size: 11px;
+  color: var(--color-text-secondary, #64748b);
+  margin-left: auto;
+}
+
+.cdp-sebi-title {
+  font-size: 13px;
+  color: var(--color-text, #1e293b);
+  line-height: 1.4;
+}
+
+.cdp-sebi-link {
+  color: var(--color-primary, #3b82f6);
+  text-decoration: none;
+}
+
+.cdp-sebi-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Tooltips ─────────────────────────────────────────────────────── */
+.cdp-badge[data-tooltip],
+.cdp-pe-pill[data-tooltip] {
+  position: relative;
+  cursor: default;
+}
+
+.cdp-badge[data-tooltip]:hover::after,
+.cdp-pe-pill[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  width: 220px;
+  text-align: center;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.cdp-badge[data-tooltip]:hover::before,
+.cdp-pe-pill[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1e293b;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.cdp-fund-table th[data-tooltip] {
+  position: relative;
+  cursor: default;
+}
+
+.cdp-fund-table th[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  width: 200px;
+  text-align: center;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.cdp-fund-table th[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: #1e293b;
+  z-index: 200;
+  pointer-events: none;
 }

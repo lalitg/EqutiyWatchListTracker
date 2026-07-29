@@ -8,6 +8,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
@@ -64,6 +65,10 @@ public class ProxyController {
     /** Base URL of the nse-code microservice (default: {@code http://localhost:8082}). */
     @Value("${nse.code.service.url:http://localhost:8082}")
     private String nseCodeServiceUrl;
+
+    /** Base URL of the SEBI data microservice (default: {@code http://localhost:8089}). */
+    @Value("${sebi.service.url:http://localhost:8089}")
+    private String sebiServiceUrl;
 
     /**
      * Proxies all {@code /api/auth/**} requests to auth-service.
@@ -158,6 +163,43 @@ public class ProxyController {
     }
 
     /**
+     * Proxies binary AMFI file downloads — PDF note and XLS report.
+     * Uses byte[] to avoid corruption of binary content.
+     */
+    @RequestMapping(value = "/api/amfi/files/{month}/note", method = RequestMethod.GET)
+    public ResponseEntity<byte[]> proxyAmfiNote(@PathVariable String month) throws URISyntaxException {
+        logger.info("Proxying amfi note for month: {}", month);
+        return proxyBinary(sebiServiceUrl + "/api/v1/amfi/files/" + month + "/note");
+    }
+
+    @RequestMapping(value = "/api/amfi/files/{month}/report", method = RequestMethod.GET)
+    public ResponseEntity<byte[]> proxyAmfiReport(@PathVariable String month) throws URISyntaxException {
+        logger.info("Proxying amfi report for month: {}", month);
+        return proxyBinary(sebiServiceUrl + "/api/v1/amfi/files/" + month + "/report");
+    }
+
+    /**
+     * Proxies all other {@code /api/amfi/**} and {@code /api/sebi/**} requests to the SEBI data microservice.
+     * Remaps /api/amfi/** → /api/v1/amfi/** and /api/sebi/** → /api/v1/sebi/**
+     */
+    @RequestMapping(value = {"/api/amfi/**", "/api/sebi/**"}, method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
+    public ResponseEntity<String> proxySebi(HttpServletRequest request) throws URISyntaxException, IOException {
+        logger.info("Proxying sebi request: {} {}", request.getMethod(), request.getRequestURI());
+        String suffix = request.getRequestURI().replaceFirst("^/api/(amfi|sebi)", "");
+        String downstreamPath = "/api/v1/" + request.getRequestURI().split("/")[2] + suffix;
+        return proxyWithPath(request, sebiServiceUrl, downstreamPath);
+    }
+
+    /**
+     * Proxies all {@code /api/macro-events/**} requests to the events microservice.
+     */
+    @RequestMapping(value = "/api/macro-events/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
+    public ResponseEntity<String> proxyMacroEvents(HttpServletRequest request) throws URISyntaxException, IOException {
+        logger.info("Proxying macro-events request: {} {}", request.getMethod(), request.getRequestURI());
+        return proxy(request, eventsServiceUrl);
+    }
+
+    /**
      * Proxies all {@code /api/internal/**} requests to the news microservice.
      * Used for internal watchlist-added notifications consumed by the news service.
      *
@@ -244,6 +286,25 @@ public class ProxyController {
             return ResponseEntity.status(response.getStatusCode()).headers(cleaned).body(response.getBody());
         } catch (HttpStatusCodeException ex) {
             return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAsString());
+        }
+    }
+
+    /** Binary proxy for file downloads — preserves content-type and avoids UTF-8 corruption. */
+    private ResponseEntity<byte[]> proxyBinary(String targetUrl) throws URISyntaxException {
+        logger.debug("Binary forwarding to: {}", targetUrl);
+        try {
+            ResponseEntity<byte[]> response = restTemplate.exchange(
+                    new URI(targetUrl), HttpMethod.GET, HttpEntity.EMPTY, byte[].class);
+            HttpHeaders cleaned = new HttpHeaders();
+            response.getHeaders().forEach((name, values) -> {
+                String lower = name.toLowerCase();
+                if (!lower.equals("transfer-encoding") && !lower.equals("connection")) {
+                    cleaned.addAll(name, values);
+                }
+            });
+            return ResponseEntity.status(response.getStatusCode()).headers(cleaned).body(response.getBody());
+        } catch (HttpStatusCodeException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAsByteArray());
         }
     }
 }

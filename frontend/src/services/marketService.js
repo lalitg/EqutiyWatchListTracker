@@ -1,6 +1,26 @@
 import { fetchNews } from './newsService';
 import { fetchEvents } from './eventsService';
 
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+function parseNewsDate(dateStr) {
+  if (!dateStr) return null;
+  let d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d;
+  // NSE format: "16-Jun-2026 14:25:17" — replace hyphens so browsers parse it
+  d = new Date(dateStr.replace(/-/g, ' '));
+  if (!isNaN(d.getTime())) return d;
+  return null;
+}
+
+function filterLast24h(items) {
+  const cutoff = Date.now() - TWENTY_FOUR_HOURS_MS;
+  return items.filter(item => {
+    const d = parseNewsDate(item.date);
+    return d !== null && d.getTime() >= cutoff;
+  });
+}
+
 /**
  * Maps each domestic sector tab to its corresponding news service keyword.
  *
@@ -27,28 +47,106 @@ const SECTOR_KEYWORD_MAP = {
  * (e.g. 'Japan economy', 'India election results') are fetched on-demand
  * by the news service and cached in its DB for subsequent requests.
  */
-const REGION_KEYWORD_MAP = {
-  India: [
-    'RBI Notifications',
-    'PIB India',
-  ],
+export const DOMESTIC_MACRO_KEYWORDS = [
+  'RBI monetary policy',
+  'repo rate',
+  'India Budget',
+  'Union Budget',
+  'Budget 2026',
+  'India fiscal deficit',
+  'GST changes',
+  'inflation India',
+  'CPI WPI India',
+  'IIP data',
+  'India trade deficit',
+  'India economic survey',
+  'FII investment',
+  'Rupee vs Dollar',
+  'Nifty 50',
+  'Sensex',
+  'Bank Nifty',
+  'crude oil India',
+  'India election results',
+  'India war',
+  'India recession',
+  'Indian natural disaster',
+  'Indian terrorist attack',
+  'India GDP',
+  'Monsoon India stock price',
+];
+
+export const REGION_KEYWORD_MAP = {
   Global: [
-    'China tariffs',
-    'China tensions',
+    'GDP growth recession',
+    'Interest rates',
+    'Bond yields US 10Y yield',
+    'Quantitative tightening',
+    'Quantitative easing',
+    'Trade war',
+    'Military strike',
+    'Border tension',
+    'global sanctions',
+    'Terrorist attack',
+    'Political crisis',
+    'IMF',
+    'world bank',
+    'global trade',
     'Forex Reserves',
-    'BOJ Policy',
+    'China tariffs',
+  ],
+  Commodities: [
+    'crude oil',
+    'OPEC oil',
+    'gold price',
+    'silver price',
+    'copper price',
+    'natural gas price',
+    'war commodity prices',
+    'commodity markets',
   ],
   US: [
+    'S&P 500',
     'Nasdaq',
     'Dow Jones',
     'Global liquidity',
     'Federal Reserve Economic Data',
+    'US economy',
+    'Fed rate decision',
+    'FOMC meeting',
+    'US inflation CPI PPI',
+    'US job data Nonfarm payrolls',
+    'US Federal Reserve',
+    'Dollar index DXY',
+    'US recession',
+    'US war',
+    'US technology sector',
+    'US innovation',
   ],
   Asia: [
+    'Nikkei 225',
+    'Hang Seng',
+    'Straits Times',
+    'KOSPI',
     'BOJ Policy',
+    'Taiwan economy',
+    'Hong Kong economy',
+    'Asia markets',
+    'China economy',
+    'Japan economy',
+    'Singapore economy',
   ],
   Europe: [
+    'FTSE 100',
+    'CAC 40',
+    'DAX',
     'European Central Bank Policy',
+    'European innovation',
+    'European technology',
+    'euro currency',
+    'Europe Economy',
+    'Germany economy',
+    'France economy',
+    'UK economy',
   ],
 };
 
@@ -83,13 +181,14 @@ export async function fetchGlobalInsights(region = 'India') {
   const mergedNews = newsResults.flatMap(r => r.news ?? []);
   const dedupNews  = [...new Map(mergedNews.filter(n => n.link).map(n => [n.link, n])).values()];
   dedupNews.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const filteredNews = filterLast24h(dedupNews);
 
   const mergedEvents = eventsResults.flatMap(r => r.events ?? []);
   const dedupEvents  = [...new Map(mergedEvents.filter(e => e.symbol).map(e => [e.symbol + e.date, e])).values()];
   dedupEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  console.log(`[marketService] Region '${region}' — news: ${dedupNews.length}, events: ${dedupEvents.length}`);
-  return { news: dedupNews, events: dedupEvents };
+  console.log(`[marketService] Region '${region}' — news: ${filteredNews.length} (24h), events: ${dedupEvents.length}`);
+  return { news: filteredNews, events: dedupEvents };
 }
 
 /**
@@ -118,7 +217,7 @@ export async function fetchDomesticInsights(sector = 'All') {
   ]);
 
   return {
-    news:   newsData.news   ?? [],
+    news:   filterLast24h(newsData.news ?? []),
     events: eventsData.events ?? [],
   };
 }

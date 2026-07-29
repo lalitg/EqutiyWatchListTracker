@@ -1,42 +1,36 @@
-const BASE = '/api/global-watchlist';
+const NSE_CODE_BASE = '/api/nse-code';
+const GLOBAL_BASE   = '/api/global-watchlist';
+const FUND_BASE     = '/api/fundamentals';
 
 export async function fetchGlobalIndices() {
-  const res = await fetch(`${BASE}/global-indices`);
+  const res = await fetch(`${GLOBAL_BASE}/global-indices`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
-export async function fetchDomesticIndices() {
-  const res = await fetch(`${BASE}/domestic-indices`);
+export async function fetchIndices() {
+  const res = await fetch(`${NSE_CODE_BASE}/indices`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return res.json(); // [{ indexKey, displayName, companyCount }, ...]
 }
 
-export async function fetchDomesticIndexCompanies(indexKey) {
-  const res = await fetch(`${BASE}/domestic-indices/${encodeURIComponent(indexKey)}/companies`);
+export async function fetchIndexCompanies(indexKey) {
+  const res = await fetch(`${NSE_CODE_BASE}/indices/${encodeURIComponent(indexKey)}/companies`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return res.json(); // [{ symbol, companyName, isin, industry }, ...]
 }
 
-export async function fetchSectorIndices() {
-  const res = await fetch(`${BASE}/sector-indices`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function fetchSectorCompanies(sectorKey) {
-  const res = await fetch(`${BASE}/sector-indices/${encodeURIComponent(sectorKey)}/companies`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+export async function fetchCompanyIndices(symbol) {
+  const res = await fetch(`${NSE_CODE_BASE}/indices/company/${encodeURIComponent(symbol)}`);
+  if (!res.ok) return [];
+  return res.json(); // [{ indexKey, displayName }, ...]
 }
 
 export async function fetchCompanyDetail(symbol) {
-  const res = await fetch(`${BASE}/company/${encodeURIComponent(symbol)}`);
+  const res = await fetch(`${GLOBAL_BASE}/company/${encodeURIComponent(symbol)}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
-
-const FUND_BASE = '/api/fundamentals';
 
 export async function fetchQuarterlyResults(symbol) {
   const res = await fetch(`${FUND_BASE}/${encodeURIComponent(symbol)}/quarterly-results`);
@@ -56,8 +50,13 @@ export async function fetchPeSnapshot(symbol) {
   return res.json();
 }
 
-export async function fetchCompanyMemberships(symbol) {
-  const res = await fetch(`/api/global-watchlist/company/${encodeURIComponent(symbol)}/memberships`);
-  if (!res.ok) return null;
+const NEWS_BASE = '/api/news';
+
+export async function fetchMergedNews(keys, page = 0, size = 20) {
+  const keysParam = Array.isArray(keys) ? keys.join(',') : keys;
+  const res = await fetch(
+    `${NEWS_BASE}/merged?keys=${encodeURIComponent(keysParam)}&page=${page}&size=${size}`
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
