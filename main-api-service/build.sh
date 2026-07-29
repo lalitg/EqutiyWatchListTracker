@@ -33,32 +33,44 @@ echo " Building main-api-service"
 echo " Repo root: $REPO_ROOT"
 echo "═══════════════════════════════════════════════"
 
-# ── Step 1: Install user-service plain JAR ───────────────────────────────────
+# ── Step 1: Build React frontend ─────────────────────────────────────────────
 echo ""
-echo "▶ [1/4] Installing user-service library JAR..."
+echo "▶ [1/5] Building React frontend..."
+cd "$REPO_ROOT/frontend"
+npm ci --silent
+npm run build --silent
+STATIC_DEST="$REPO_ROOT/main-api-service/src/main/resources/static"
+rm -rf "$STATIC_DEST"
+mkdir -p "$STATIC_DEST"
+cp -r "$REPO_ROOT/frontend/build/." "$STATIC_DEST/"
+echo "  ✓ frontend built and copied to main-api-service/src/main/resources/static/"
+
+# ── Step 2: Install user-service plain JAR ───────────────────────────────────
+echo ""
+echo "▶ [2/5] Installing user-service library JAR..."
 cd "$REPO_ROOT/user-service"
 mvn install -DskipTests -q
 echo "  ✓ user-service installed"
 
-# ── Step 2: Install auth-service plain JAR ───────────────────────────────────
+# ── Step 3: Install auth-service plain JAR ───────────────────────────────────
 echo ""
-echo "▶ [2/4] Installing auth-service library JAR..."
+echo "▶ [3/5] Installing auth-service library JAR..."
 cd "$REPO_ROOT/auth-service"
 mvn install -DskipTests -q
 echo "  ✓ auth-service installed"
 
-# ── Step 3: Install watchlist-service plain JAR ──────────────────────────────
+# ── Step 4: Install watchlist-service plain JAR ──────────────────────────────
 echo ""
-echo "▶ [3/4] Installing watchlist-service library JAR..."
+echo "▶ [4/5] Installing watchlist-service library JAR..."
 cd "$REPO_ROOT/watchlist-service"
 mvn install -DskipTests -q
 echo "  ✓ watchlist-service installed"
 
-# ── Step 4: Build main-api-service fat JAR ───────────────────────────────────
+# ── Step 5: Build main-api-service fat JAR ───────────────────────────────────
 echo ""
-echo "▶ [4/4] Packaging main-api-service..."
+echo "▶ [5/5] Packaging main-api-service..."
 cd "$REPO_ROOT/main-api-service"
-mvn package -DskipTests -q
+mvn clean package -DskipTests -q
 echo "  ✓ main-api-service packaged"
 
 echo ""

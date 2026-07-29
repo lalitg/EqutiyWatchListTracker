@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.5</version>
+		<version>3.5.0</version>
 		<relativePath/>
 	</parent>
 	<groupId>com.equity</groupId>
@@ -68,13 +68,8 @@
 			</exclusions>
 		</dependency>
 
-		<!-- Log4j2 — replaces Logback; configured via log4j2.xml -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-log4j2</artifactId>
-		</dependency>
-
-		<!-- Spring Mail — for password-reset emails -->
+		<!-- Mail — sends transactional emails (password reset) via SMTP (AWS SES).
+		     Exclude Logback so Log4j2 remains the only logging impl, consistent with the other starters. -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
@@ -84,6 +79,12 @@
 					<artifactId>spring-boot-starter-logging</artifactId>
 				</exclusion>
 			</exclusions>
+		</dependency>
+
+		<!-- Log4j2 — replaces Logback; configured via log4j2.xml -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-log4j2</artifactId>
 		</dependency>
 
 		<!-- PostgreSQL driver -->

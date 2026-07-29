@@ -115,6 +115,18 @@
 			</exclusions>
 		</dependency>
 
+		<!-- Spring Mail — required for auth-service EmailService bean -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-logging</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
 		<!-- Log4j2 — single logging impl; replaces Logback from all starters -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
