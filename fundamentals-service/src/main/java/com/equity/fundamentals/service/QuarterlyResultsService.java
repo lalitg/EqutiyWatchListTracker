@@ -5,6 +5,7 @@ import com.equity.fundamentals.dto.QuarterlyResultDto;
 import com.equity.fundamentals.entity.QuarterlyResult;
 import com.equity.fundamentals.repository.GlobalWatchlistRepository;
 import com.equity.fundamentals.repository.QuarterlyResultRepository;
+import com.equity.fundamentals.util.BatchUtil;
 import com.equity.fundamentals.util.QuarterUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -16,16 +17,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Fetches quarterly P&L results for all companies in global_watchlist and persists them.
  *
- * Flow for each company:
- *   1. Call YFinanceWrapperClient.getQuarterlyResults(symbol) → list of QuarterlyResultDto
- *   2. For each DTO, derive the quarter label (e.g. Q2FY25) using QuarterUtil
- *   3. Find-or-create the QuarterlyResult row for (symbol, quarter)
- *   4. Map DTO fields onto the entity and save
- *   5. Sleep rateLimitDelayMs between companies to avoid rate-limiting
+ * Flow for the bulk job (fetchForAllCompanies):
+ *   1. Split all symbols into chunks (fundamentals.python.chunk-size)
+ *   2. Batch-fetch each chunk via YFinanceWrapperClient (one Python process per chunk;
+ *      the process itself paces requests to Yahoo — see YFinanceWrapperClient)
+ *   3. For each symbol's DTOs: derive the quarter label (e.g. Q2FY25) via QuarterUtil,
+ *      find-or-create the QuarterlyResult row for (symbol, quarter), save
  *
  * Upsert pattern:
  *   findBySymbolAndQuarter → orElseGet(QuarterlyResult::new)
@@ -50,8 +52,13 @@ public class QuarterlyResultsService {
     private final YFinanceWrapperClient apiClient;
     private final ObjectMapper objectMapper;
 
-    @Value("${fundamentals.rate-limit.delay-ms:1500}")
-    private long rateLimitDelayMs;
+    /**
+     * Max symbols per yfinance_wrapper.py invocation. See BatchUtil for why this
+     * is chunked rather than one process for the whole global_watchlist or one
+     * process per symbol.
+     */
+    @Value("${fundamentals.python.chunk-size:200}")
+    private int chunkSize;
 
     public QuarterlyResultsService(GlobalWatchlistRepository globalWatchlistRepo,
                                    QuarterlyResultRepository quarterlyResultRepo,
@@ -66,6 +73,14 @@ public class QuarterlyResultsService {
     /**
      * Fetches quarterly results for every company currently in global_watchlist.
      * Called by the scheduler — either nightly during results season or weekly off-season.
+     *
+     * <p>Symbols are split into chunks of {@code fundamentals.python.chunk-size} and
+     * fetched with one yfinance_wrapper.py process per chunk — not one process for
+     * all 2000+ symbols (an unreasonably long single invocation, all-or-nothing on
+     * failure) and not one process per symbol (interpreter/import startup cost paid
+     * thousands of times). The per-symbol rate-limit delay that used to sit between
+     * HTTP calls in this loop now lives inside the script itself, applied between
+     * symbols within each chunk — see YFinanceWrapperClient.
      */
     public void fetchForAllCompanies() {
         List<String> symbols = globalWatchlistRepo.findAllCompanyCodes();
@@ -75,22 +90,24 @@ public class QuarterlyResultsService {
             return;
         }
 
-        // Shuffle so that if a rate-limit cuts the run short, different companies fail each time
+        // Shuffle so that if a run is cut short, different companies are covered each time
         Collections.shuffle(symbols);
 
         int success = 0, failed = 0;
         long startMs = System.currentTimeMillis();
 
-        for (String symbol : symbols) {
-            try {
-                processCompany(symbol);
-                success++;
-            } catch (Exception e) {
-                log.error("Quarterly results failed for {}: {}", symbol, e.getMessage());
-                failed++;
-            }
+        for (List<String> chunk : BatchUtil.partition(symbols, chunkSize)) {
+            Map<String, List<QuarterlyResultDto>> batchResults = apiClient.getQuarterlyResultsBatch(chunk);
 
-            sleep(rateLimitDelayMs);
+            for (String symbol : chunk) {
+                try {
+                    List<QuarterlyResultDto> dtos = batchResults.getOrDefault(symbol, Collections.emptyList());
+                    if (persistQuarterlyResults(symbol, dtos)) success++;
+                } catch (Exception e) {
+                    log.error("Quarterly results failed for {}: {}", symbol, e.getMessage());
+                    failed++;
+                }
+            }
         }
 
         long durationSec = (System.currentTimeMillis() - startMs) / 1000;
@@ -100,19 +117,27 @@ public class QuarterlyResultsService {
 
     /**
      * Fetches and saves quarterly results for a single company.
-     * Marked @Transactional so all DB writes for one company commit atomically.
-     * Called both by the scheduled fetch (fetchForAllCompanies) and by the
-     * on-demand new-company detection job in FundamentalsScheduler.
+     * Called by the on-demand new-company detection job in FundamentalsScheduler
+     * (the bulk path above uses {@link #persistQuarterlyResults} directly on
+     * already-batch-fetched data instead of calling this).
      *
      * @param symbol NSE symbol e.g. "RELIANCE"
      */
-    @Transactional
     public void processCompany(String symbol) {
-        List<QuarterlyResultDto> dtos = apiClient.getQuarterlyResults(symbol);
+        persistQuarterlyResults(symbol, apiClient.getQuarterlyResults(symbol));
+    }
 
+    /**
+     * Persists already-fetched quarterly DTOs for one company.
+     * Marked @Transactional so all DB writes for one company commit atomically.
+     *
+     * @return true if at least one quarter was saved
+     */
+    @Transactional
+    public boolean persistQuarterlyResults(String symbol, List<QuarterlyResultDto> dtos) {
         if (dtos.isEmpty()) {
             log.warn("No quarterly data returned for {} — skipping", symbol);
-            return;
+            return false;
         }
 
         for (QuarterlyResultDto dto : dtos) {
@@ -141,6 +166,7 @@ public class QuarterlyResultsService {
         }
 
         log.info("Quarterly results saved for {} ({} quarters)", symbol, dtos.size());
+        return true;
     }
 
     private String toJson(Object obj) {
@@ -148,14 +174,6 @@ public class QuarterlyResultsService {
             return objectMapper.writeValueAsString(obj);
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    private void sleep(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
         }
     }
 }
