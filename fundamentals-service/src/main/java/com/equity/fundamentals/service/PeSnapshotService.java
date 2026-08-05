@@ -7,6 +7,7 @@ import com.equity.fundamentals.entity.QuarterlyResult;
 import com.equity.fundamentals.repository.CompanyPeSnapshotRepository;
 import com.equity.fundamentals.repository.GlobalWatchlistRepository;
 import com.equity.fundamentals.repository.QuarterlyResultRepository;
+import com.equity.fundamentals.util.BatchUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Calculates and persists daily P/E ratio snapshots for all companies in global_watchlist.
@@ -48,8 +50,13 @@ public class PeSnapshotService {
     private final CompanyPeSnapshotRepository peSnapshotRepo;
     private final YFinanceWrapperClient apiClient;
 
-    @Value("${fundamentals.rate-limit.delay-ms:1500}")
-    private long rateLimitDelayMs;
+    /**
+     * Max symbols per yfinance_wrapper.py invocation. See BatchUtil for why this
+     * is chunked rather than one process for the whole global_watchlist or one
+     * process per symbol.
+     */
+    @Value("${fundamentals.python.chunk-size:200}")
+    private int chunkSize;
 
     public PeSnapshotService(GlobalWatchlistRepository globalWatchlistRepo,
                              QuarterlyResultRepository quarterlyResultRepo,
@@ -64,6 +71,10 @@ public class PeSnapshotService {
     /**
      * Processes all companies in global_watchlist.
      * Called by the daily scheduler job.
+     *
+     * <p>Symbols are split into chunks and their closing prices batch-fetched with
+     * one yfinance_wrapper.py process per chunk — see the class-level doc. TTM EPS
+     * still comes from a per-symbol DB query (already fast, no external call).
      */
     public void processAllCompanies() {
         List<String> symbols = globalWatchlistRepo.findAllCompanyCodes();
@@ -76,15 +87,18 @@ public class PeSnapshotService {
         int success = 0, failed = 0, skipped = 0;
         long startMs = System.currentTimeMillis();
 
-        for (String symbol : symbols) {
-            try {
-                boolean processed = processCompany(symbol);
-                if (processed) success++; else skipped++;
-            } catch (Exception e) {
-                log.error("P/E snapshot failed for {}: {}", symbol, e.getMessage());
-                failed++;
+        for (List<String> chunk : BatchUtil.partition(symbols, chunkSize)) {
+            Map<String, ClosingPriceDto> priceBatch = apiClient.getClosingPricesBatch(chunk);
+
+            for (String symbol : chunk) {
+                try {
+                    Boolean processed = calculateAndPersist(symbol, priceBatch.get(symbol));
+                    if (processed) success++; else skipped++;
+                } catch (Exception e) {
+                    log.error("P/E snapshot failed for {}: {}", symbol, e.getMessage());
+                    failed++;
+                }
             }
-            sleep(rateLimitDelayMs);
         }
 
         long durationSec = (System.currentTimeMillis() - startMs) / 1000;
@@ -94,12 +108,27 @@ public class PeSnapshotService {
 
     /**
      * Calculates and saves the P/E snapshot for a single company.
+     * Called by the on-demand new-company detection job in FundamentalsScheduler
+     * (the bulk path above uses {@link #calculateAndPersist} directly on an
+     * already-batch-fetched price instead of calling this).
      *
      * @param symbol NSE symbol e.g. "RELIANCE"
      * @return true if a snapshot was saved, false if skipped (no EPS or no price data)
      */
-    @Transactional
     public boolean processCompany(String symbol) {
+        return calculateAndPersist(symbol, apiClient.getClosingPrice(symbol));
+    }
+
+    /**
+     * Calculates and saves the P/E snapshot for one company from an already-fetched
+     * closing price. Marked @Transactional so all DB writes commit atomically.
+     *
+     * @param priceDto the company's closing price, or {@code null} if the batch
+     *                 fetch didn't return one (treated the same as "unavailable")
+     * @return true if a snapshot was saved, false if skipped (no EPS or no price data)
+     */
+    @Transactional
+    public boolean calculateAndPersist(String symbol, ClosingPriceDto priceDto) {
 
         // Step 1 — Calculate TTM EPS from last 4 quarters stored in DB
         List<QuarterlyResult> last4 = quarterlyResultRepo
@@ -119,9 +148,7 @@ public class PeSnapshotService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         int quartersUsed = epsList.size();
 
-        // Step 2 — Fetch previous trading day's closing price
-        ClosingPriceDto priceDto = apiClient.getClosingPrice(symbol);
-
+        // Step 2 — Closing price must already be present (batch-fetched by the caller)
         if (priceDto == null || priceDto.getClosingPrice() == null || priceDto.getDate() == null) {
             log.warn("No closing price for {} — P/E snapshot skipped", symbol);
             return false;
@@ -154,13 +181,5 @@ public class PeSnapshotService {
                  symbol, priceDto.getDate(), priceDto.getClosingPrice(),
                  ttmEps, quartersUsed, trailingPe);
         return true;
-    }
-
-    private void sleep(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 }
