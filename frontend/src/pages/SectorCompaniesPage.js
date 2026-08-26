@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import SentimentBadge from '../components/shared/SentimentBadge';
+import { useSentiments } from '../hooks/useSentiments';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { fetchSectorCompanies } from '../services/sectorService';
 import { fetchMergedNews } from '../services/indicesService';
@@ -46,6 +48,9 @@ const SectorCompaniesPage = () => {
   const [newsRefreshKey, setNewsRefreshKey] = useState(0);
 
   const [companies, setCompanies]               = useState([]);
+
+  // One batched request for the whole table rather than one per row.
+  const { sentiments } = useSentiments(companies.map(c => c.symbol));
   const [companiesLoading, setCompaniesLoading] = useState(false);
   const [companiesError, setCompaniesError]     = useState(null);
 
@@ -194,11 +199,12 @@ const SectorCompaniesPage = () => {
                     <th>#</th>
                     <th>Symbol</th>
                     <th>Company</th>
+                    <th>News Sentiment</th>
                   </tr>
                 </thead>
                 <tbody>
                   {companies.length === 0 ? (
-                    <tr><td colSpan={3} className="nifty-empty">No data available</td></tr>
+                    <tr><td colSpan={4} className="nifty-empty">No data available</td></tr>
                   ) : (
                     companies.map((c, i) => (
                       <tr
@@ -212,6 +218,7 @@ const SectorCompaniesPage = () => {
                         <td>{i + 1}</td>
                         <td><strong className="nifty-symbol">{c.symbol}</strong></td>
                         <td>{c.companyName || '—'}</td>
+                        <td><SentimentBadge sentiment={sentiments[c.symbol]} compact /></td>
                       </tr>
                     ))
                   )}

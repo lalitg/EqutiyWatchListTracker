@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { WATCHLIST_DESCRIPTIONS as WD } from '../../constants/marketDescriptions';
 import './WatchlistTable.css';
+import SentimentBadge from '../shared/SentimentBadge';
+import { useSentiments } from '../../hooks/useSentiments';
 
 const TABLE_COLUMNS = [
   { key: 'companyCode', label: 'Symbol',  sortable: true, tooltip: WD['col.symbol'] },
@@ -44,6 +46,10 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
     const start = (currentPage - 1) * ROWS_PER_PAGE;
     return sortedEntries.slice(start, start + ROWS_PER_PAGE);
   }, [sortedEntries, currentPage]);
+
+  // Scoped to the current page rather than the whole watchlist: only one page of
+  // rows is rendered at a time, so fetching sentiment for every entry is wasted work.
+  const { sentiments } = useSentiments(paginatedEntries.map(e => e.companyCode));
 
   const totalPages = Math.ceil(sortedEntries.length / ROWS_PER_PAGE);
 
@@ -119,6 +125,7 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                   </span>
                 </th>
               ))}
+              <th className="wl-th-sentiment">News Sentiment</th>
               <th className="wl-th-actions"></th>
             </tr>
           </thead>
@@ -135,6 +142,9 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                     {formatCellValue(entry[col.key])}
                   </td>
                 ))}
+                <td className="wl-td-sentiment">
+                  <SentimentBadge sentiment={sentiments[entry.companyCode]} compact showScore />
+                </td>
                 <td className="wl-td-actions">
                   <button
                     className={`wl-btn-row-delete ${isRowSelected(entry.companyCode) ? 'selected' : ''}`}

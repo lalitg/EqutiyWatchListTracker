@@ -388,3 +388,18 @@
   z-index: 200;
   pointer-events: none;
 }
+
+/* ── News sentiment column ────────────────────────────────────────────────── */
+/* Left-aligned to match S.No. / Symbol / Company. Centring set this column apart
+   from every other one and left the badge visually detached from its header. */
+/* Selectors are qualified to match the specificity of `.wl-data-table thead th`,
+   which sets its own text-align. A bare `.wl-th-sentiment` loses to it. */
+.wl-data-table thead th.wl-th-sentiment {
+  white-space: nowrap;
+  text-align: left;
+}
+
+.wl-data-table tbody td.wl-td-sentiment {
+  text-align: left;
+  white-space: nowrap;
+}

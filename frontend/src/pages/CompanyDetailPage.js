@@ -7,6 +7,7 @@ import {
   fetchCompanyIndices,
 } from '../services/indicesService';
 import { fetchNews } from '../services/newsService';
+import SentimentBadge from '../components/shared/SentimentBadge';
 import { fetchEvents } from '../services/eventsService';
 import { fetchSebiActivity } from '../services/sebiService';
 import { fetchCompanySectors } from '../services/sectorService';
@@ -52,6 +53,7 @@ const CompanyDetailPage = () => {
   const [activeTab,     setActiveTab]     = useState('quarterly');
 
   const [news,          setNews]          = useState([]);
+  const [sentiment,     setSentiment]     = useState(null);
   const [importantNews, setImportantNews] = useState([]);
   const [events,        setEvents]        = useState([]);
   const [sebi,          setSebi]          = useState(null);
@@ -82,6 +84,9 @@ const CompanyDetailPage = () => {
       if (nRes.status === 'fulfilled') {
         setNews(nRes.value?.news ?? []);
         setImportantNews(nRes.value?.importantNews ?? []);
+        // currentSentiment rides along on the existing /api/news response, so the
+        // badge costs no extra request.
+        setSentiment(nRes.value?.currentSentiment ?? null);
       }
       if (eRes.status === 'fulfilled') setEvents(eRes.value?.events ?? []);
       if (sRes.status === 'fulfilled') setSebi(sRes.value);
@@ -127,6 +132,12 @@ const CompanyDetailPage = () => {
             <div className="cdp-symbol">{symbol?.toUpperCase()}</div>
           </div>
           {peLabel && <div className="cdp-pe-pill" data-tooltip={COMPANY_DESCRIPTIONS['pe']}>P/E {peLabel}</div>}
+          {sentiment && (
+            <div className="cdp-sentiment-pill">
+              <span className="cdp-sentiment-label">News</span>
+              <SentimentBadge sentiment={sentiment} compact showScore />
+            </div>
+          )}
         </div>
 
         {(nse500Sectors.length > 0 || companyIndices.length > 0) && (
