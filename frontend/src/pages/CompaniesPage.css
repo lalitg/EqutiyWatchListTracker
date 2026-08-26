@@ -53,3 +53,103 @@
   color: #94a3b8;
   font-weight: 500;
 }
+
+/* === Sector page tabs === */
+.sec-tabs {
+  display: flex;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 24px;
+  gap: 0;
+}
+
+.sec-tab {
+  padding: 10px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #94a3b8;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.sec-tab:hover {
+  color: #667eea;
+}
+
+.sec-tab.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+/* === Shared table styles (used by IndexCompaniesPage & SectorCompaniesPage) === */
+.nifty-table-wrap {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  overflow: hidden;
+}
+
+.nifty-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.nifty-table thead {
+  background: linear-gradient(to right, #f8fafc, #f1f5f9);
+}
+
+.nifty-table thead th {
+  padding: 14px 18px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.nifty-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.2s ease;
+}
+
+.nifty-table tbody tr:nth-child(even) {
+  background-color: #fafbfc;
+}
+
+.nifty-clickable-row {
+  cursor: pointer;
+}
+
+.nifty-table tbody tr:hover {
+  background: rgba(102, 126, 234, 0.04);
+}
+
+.nifty-table tbody td {
+  padding: 14px 18px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.nifty-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 48px !important;
+  font-size: 14px;
+}
+
+.nifty-symbol {
+  font-weight: 600;
+  color: #667eea;
+}
+
+@media (max-width: 768px) {
+  .nifty-table-wrap { overflow-x: auto; }
+  .nifty-table { min-width: 600px; }
+}

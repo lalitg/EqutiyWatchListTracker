@@ -1,0 +1,237 @@
+/* ── Watchlist tab row ───────────────────────────────────────────────────── */
+.wl-tabs-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.wl-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 20px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.wl-tab:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.wl-tab--active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+}
+
+.wl-tab-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wl-tab-count {
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(0,0,0,0.08);
+  padding: 1px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.wl-tab--active .wl-tab-count {
+  background: rgba(255,255,255,0.25);
+}
+
+.wl-tab-count--full {
+  background: #fecaca;
+  color: #dc2626;
+}
+
+.wl-tab--active .wl-tab-count--full {
+  background: #fca5a5;
+  color: #7f1d1d;
+}
+
+.wl-tab-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+  color: inherit;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.wl-tab-delete:hover {
+  opacity: 1;
+}
+
+/* ── New watchlist creation inline ──────────────────────────────────────── */
+.wl-new-tab-btn {
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px dashed #cbd5e1;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.wl-new-tab-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.wl-new-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wl-new-input {
+  padding: 6px 12px;
+  border: 1.5px solid #667eea;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  width: 160px;
+}
+
+/* ── Delete confirmation banner ─────────────────────────────────────────── */
+.wl-delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: #9a3412;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+/* ── Danger button ───────────────────────────────────────────────────────── */
+.btn-danger {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+/* ── Mobile responsive ───────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Tabs: tighter and scrollable if needed */
+  .wl-tabs-row {
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .wl-tab {
+    padding: 8px 10px;
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  .wl-tab-name { max-width: 100px; }
+
+  .wl-new-tab-btn {
+    padding: 8px 12px;
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  /* Create form: stack input + buttons vertically */
+  .wl-new-form {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .wl-new-input { width: 100%; }
+
+  /* Delete confirm banner: column on narrow screens */
+  .wl-delete-confirm {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .wl-delete-confirm .btn-danger,
+  .wl-delete-confirm .btn-secondary {
+    width: 100%;
+    text-align: center;
+    min-height: 44px;
+  }
+}
+
+/* ── Tooltips ─────────────────────────────────────────────────────── */
+.btn[data-tooltip],
+.wl-new-tab-btn[data-tooltip],
+.wl-tab-count[data-tooltip] {
+  position: relative;
+}
+
+.btn[data-tooltip]:hover::after,
+.wl-new-tab-btn[data-tooltip]:hover::after,
+.wl-tab-count[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  width: 200px;
+  text-align: center;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn[data-tooltip]:hover::before,
+.wl-new-tab-btn[data-tooltip]:hover::before,
+.wl-tab-count[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1e293b;
+  z-index: 200;
+  pointer-events: none;
+}

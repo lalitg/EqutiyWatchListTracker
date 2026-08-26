@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { forgotPassword, resetPassword } from '../services/authService';
+import { forgotPassword } from '../services/authService';
+import { LOGIN_DESCRIPTIONS as TT } from '../constants/marketDescriptions';
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -18,16 +19,17 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
-  // Forgot / reset password state
+  // Forgot password state
   const [forgotEmail, setForgotEmail] = useState('');
-  const [resetToken, setResetToken] = useState('');
-  const [newPassword, setNewPassword] = useState('');
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const { login, signup } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const sessionExpired = location.state?.sessionExpired === true;
+  const resetSuccess  = location.state?.resetSuccess === true;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -46,16 +48,12 @@ const LoginPage = () => {
   const handleSignup = async (e) => {
     e.preventDefault();
     setError('');
-    if (!email && !phone) {
-      setError('Please provide either email or phone number');
-      return;
-    }
     setLoading(true);
     try {
       await signup({
         username,
         name,
-        email: email || undefined,
+        email,
         phoneNumber: phone || undefined,
         password: signupPassword,
       });
@@ -74,28 +72,14 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
     try {
-      const data = await forgotPassword(forgotEmail);
-      setSuccessMsg(data.message || 'If this email is registered, a reset token has been sent.');
-      // In dev mode the token is returned in the response — pre-fill it for convenience
-      if (data.resetToken) {
-        setResetToken(data.resetToken);
-        setSuccessMsg(`Token: ${data.resetToken} — use it below to reset your password.`);
-      }
-      setTab('reset');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      await resetPassword(resetToken, newPassword);
-      setSuccessMsg('Password reset successfully! Please log in.');
+      await forgotPassword(forgotEmail);
+      // Never display the token. Show a generic confirmation and return to login.
+      // The reset link is delivered by email and opens the /reset-password page.
+      setSuccessMsg(
+        "If an account with that email exists, we've sent a password reset link. " +
+        'Please check your inbox (and spam). The link expires in 15 minutes.'
+      );
+      setForgotEmail('');
       setTab('login');
     } catch (err) {
       setError(err.message);
@@ -119,24 +103,36 @@ const LoginPage = () => {
           <button
             className={`login-tab ${tab === 'login' ? 'active' : ''}`}
             onClick={() => switchTab('login')}
+            data-tooltip={TT['tab.login']}
           >
             Login
           </button>
           <button
             className={`login-tab ${tab === 'signup' ? 'active' : ''}`}
             onClick={() => switchTab('signup')}
+            data-tooltip={TT['tab.signup']}
           >
             Sign Up
           </button>
         </div>
 
+        {sessionExpired && (
+          <div className="login-session-expired">
+            Your session expired due to inactivity. Please log in again.
+          </div>
+        )}
+        {resetSuccess && (
+          <div className="login-success">
+            Your password has been reset successfully. Please log in with your new password.
+          </div>
+        )}
         {successMsg && <div className="login-success">{successMsg}</div>}
         {error && <div className="login-error">{error}</div>}
 
         {tab === 'login' ? (
           <form className="login-form" onSubmit={handleLogin}>
             <div className="login-field">
-              <label>Username / Email / Phone</label>
+              <label data-tooltip={TT['field.identifier']}>Username / Email / Phone</label>
               <input
                 type="text"
                 value={identifier}
@@ -147,7 +143,7 @@ const LoginPage = () => {
               />
             </div>
             <div className="login-field">
-              <label>Password</label>
+              <label data-tooltip={TT['field.password']}>Password</label>
               <input
                 type="password"
                 value={password}
@@ -162,6 +158,7 @@ const LoginPage = () => {
             <button
               type="button"
               className="login-forgot-link"
+              data-tooltip={TT['link.forgotPassword']}
               onClick={() => switchTab('forgot')}
             >
               Forgot password?
@@ -170,7 +167,7 @@ const LoginPage = () => {
         ) : tab === 'signup' ? (
           <form className="login-form" onSubmit={handleSignup}>
             <div className="login-field">
-              <label>Username</label>
+              <label data-tooltip={TT['field.username']}>Username</label>
               <input
                 type="text"
                 value={username}
@@ -181,7 +178,7 @@ const LoginPage = () => {
               />
             </div>
             <div className="login-field">
-              <label>Full Name</label>
+              <label data-tooltip={TT['field.name']}>Full Name</label>
               <input
                 type="text"
                 value={name}
@@ -191,25 +188,26 @@ const LoginPage = () => {
               />
             </div>
             <div className="login-field">
-              <label>Email</label>
+              <label data-tooltip={TT['field.email']}>Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="Email address (optional if phone given)"
+                placeholder="Email address"
+                required
               />
             </div>
             <div className="login-field">
-              <label>Phone</label>
+              <label data-tooltip={TT['field.phone']}>Phone (optional)</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                placeholder="Phone number (optional if email given)"
+                placeholder="Phone number"
               />
             </div>
             <div className="login-field">
-              <label>Password</label>
+              <label data-tooltip={TT['field.newPassword']}>Password</label>
               <input
                 type="password"
                 value={signupPassword}
@@ -228,7 +226,7 @@ const LoginPage = () => {
         ) : tab === 'forgot' ? (
           <form className="login-form" onSubmit={handleForgotPassword}>
             <p className="login-hint" style={{ marginBottom: 12 }}>
-              Enter your registered email. We'll send you a reset token.
+              Enter your registered email. We'll email you a link to reset your password.
             </p>
             <div className="login-field">
               <label>Email</label>
@@ -242,46 +240,10 @@ const LoginPage = () => {
               />
             </div>
             <button className="login-btn" type="submit" disabled={loading}>
-              {loading ? 'Sending...' : 'Send Reset Token'}
+              {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
             <button type="button" className="login-forgot-link" onClick={() => switchTab('login')}>
               Back to login
-            </button>
-          </form>
-        ) : tab === 'reset' ? (
-          <form className="login-form" onSubmit={handleResetPassword}>
-            <p className="login-hint" style={{ marginBottom: 12 }}>
-              Enter the reset token and your new password.
-            </p>
-            <div className="login-field">
-              <label>Reset Token</label>
-              <input
-                type="text"
-                value={resetToken}
-                onChange={e => setResetToken(e.target.value)}
-                placeholder="Paste your reset token"
-                required
-                autoFocus
-              />
-            </div>
-            <div className="login-field">
-              <label>New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                placeholder="New password"
-                required
-              />
-              <p className="login-hint">
-                Min 8 characters · 1 uppercase · 1 number · 1 special character (@$!%*?&)
-              </p>
-            </div>
-            <button className="login-btn" type="submit" disabled={loading}>
-              {loading ? 'Resetting...' : 'Reset Password'}
-            </button>
-            <button type="button" className="login-forgot-link" onClick={() => switchTab('forgot')}>
-              Request a new token
             </button>
           </form>
         ) : null}

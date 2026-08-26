@@ -73,6 +73,10 @@ public class RefreshToken {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** Tracks when this token was last used. Null for tokens created before idle-timeout was introduced. */
+    @Column(name = "last_used_at")
+    private LocalDateTime lastUsedAt;
+
     @PrePersist
     void prePersist() {
         createdAt = LocalDateTime.now();
@@ -95,4 +99,7 @@ public class RefreshToken {
     public void setRevoked(boolean revoked) { this.revoked = revoked; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    public LocalDateTime getLastUsedAt() { return lastUsedAt; }
+    public void setLastUsedAt(LocalDateTime lastUsedAt) { this.lastUsedAt = lastUsedAt; }
 }

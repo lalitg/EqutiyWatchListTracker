@@ -4,6 +4,7 @@ import WatchlistTable from '../components/watchlist/WatchlistTable';
 import AddCompanyModal from '../components/watchlist/AddCompanyModal';
 import ImportCsvModal from '../components/watchlist/ImportCsvModal';
 import { useWatchlist } from '../context/WatchlistContext';
+import { WATCHLIST_DESCRIPTIONS as WD } from '../constants/marketDescriptions';
 import './WatchlistPage.css';
 
 const MAX_COMPANIES = 10;
@@ -59,13 +60,13 @@ const WatchlistPage = () => {
       <div className="page-header">
         <h1 className="page-title">My Watchlists</h1>
         <div className="page-actions">
-          <button className="btn btn-secondary" onClick={fetchEntries}>Refresh</button>
-          <button className="btn btn-secondary" onClick={() => setImportModalOpen(true)}>Import CSV</button>
+          <button className="btn btn-secondary" onClick={fetchEntries} data-tooltip={WD['btn.refresh']}>Refresh</button>
+          <button className="btn btn-secondary" onClick={() => setImportModalOpen(true)} data-tooltip={WD['btn.importCsv']}>Import CSV</button>
           <button
             className="btn btn-add"
             onClick={() => setAddModalOpen(true)}
             disabled={isFull}
-            title={isFull ? `Watchlist is full (${MAX_COMPANIES}/${MAX_COMPANIES})` : '+ Add Company'}
+            data-tooltip={isFull ? WD['btn.addFull'] : WD['btn.addCompany']}
           >
             + Add Company
           </button>
@@ -81,7 +82,10 @@ const WatchlistPage = () => {
             onClick={() => switchWatchlist(w.id)}
           >
             <span className="wl-tab-name">{w.name}</span>
-            <span className={`wl-tab-count ${w.companyCount >= MAX_COMPANIES ? 'wl-tab-count--full' : ''}`}>
+            <span
+              className={`wl-tab-count ${w.companyCount >= MAX_COMPANIES ? 'wl-tab-count--full' : ''}`}
+              data-tooltip={`${w.companyCount} of ${MAX_COMPANIES} company slots used`}
+            >
               {w.companyCount}/{MAX_COMPANIES}
             </span>
             {watchlists.length > 1 && (
@@ -118,7 +122,7 @@ const WatchlistPage = () => {
             </button>
           </form>
         ) : (
-          <button className="wl-new-tab-btn" onClick={() => setCreatingList(true)}>
+          <button className="wl-new-tab-btn" onClick={() => setCreatingList(true)} data-tooltip={WD['btn.newList']}>
             + New Watchlist
           </button>
         )}

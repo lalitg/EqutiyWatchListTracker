@@ -1,97 +1,112 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { fetchSectorCompanies } from '../services/indicesService';
-import { useWatchlist } from '../context/WatchlistContext';
-import CompanyInsightsModal from '../components/watchlist/CompanyInsightsModal';
-import '../pages/Nifty50Page.css';
+import SentimentBadge from '../components/shared/SentimentBadge';
+import { useSentiments } from '../hooks/useSentiments';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { fetchSectorCompanies } from '../services/sectorService';
+import { fetchMergedNews } from '../services/indicesService';
+import { getCachedSectorNews, setCachedSectorNews, invalidateSectorNews } from '../services/newsCache';
+import NewsList from '../components/market/NewsList';
 import './CompaniesPage.css';
 
-function fmt(val) {
-  if (val == null) return '—';
-  return Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function PriceCell({ value, pct }) {
-  const formatted = fmt(value);
-  if (pct == null) return <span>{formatted}</span>;
-  const n = Number(pct);
-  const cls = n > 0 ? 'nifty-gain' : n < 0 ? 'nifty-loss' : '';
-  const arrow = n > 0 ? '▲' : n < 0 ? '▼' : '';
-  const sign  = n > 0 ? '+' : '';
-  return <span className={cls}>{arrow} {formatted} ({sign}{n.toFixed(2)}%)</span>;
-}
+const NEWS_PAGE_SIZE = 20;
 
 const SECTOR_DESCRIPTIONS = {
-  'NIFTY BANK':                        'Tracks the 12 most liquid and large-cap Indian banking stocks listed on NSE.',
-  'NIFTY PRIVATE BANK':                'Top private-sector banks — faster-growing but more market-sensitive than their PSU peers.',
-  'NIFTY PSU BANK':                    'Government-owned banks — larger loan books, but credit cycles tied to policy and elections.',
-  'NIFTY IT':                          'Top IT & software services companies — India\'s globally-competitive tech exporters.',
-  'NIFTY AUTO':                        'Leading automobile manufacturers and auto-component makers listed on NSE.',
-  'NIFTY PHARMA':                      'Major pharmaceutical and drug companies — covers both domestic and export-focused firms.',
-  'NIFTY HEALTHCARE INDEX':            'Broader than Pharma — includes hospitals, diagnostics, and health-tech alongside drug makers.',
-  'NIFTY FMCG':                        'Fast-moving consumer goods companies selling everyday products like food, hygiene, and beverages.',
-  'NIFTY FINANCIAL SERVICES':          'Broad financial sector index covering banks, NBFCs, insurance, and housing finance companies.',
-  'NIFTY FINANCIAL SERVICES 25 50':    'A capped variant of the Financial Services index, limiting any single stock to 25% weight.',
-  'NIFTY FINANCIAL SERVICES EX-BANK':  'Financial services companies excluding banks — NBFCs, insurance, brokers, and housing finance.',
-  'NIFTY METAL':                       'Steel, aluminium, copper, and mining companies — tied closely to global commodity cycles.',
-  'NIFTY REALTY':                      'Real estate developers and construction companies listed on NSE.',
-  'NIFTY ENERGY':                      'Oil & gas, refining, and power companies that form the backbone of India\'s energy sector.',
-  'NIFTY OIL AND GAS':                 'Focused on oil exploration, refining, and gas distribution companies listed on NSE.',
-  'NIFTY CONSUMER DURABLES':           'Makers of long-lasting household products — electronics, appliances, and home goods.',
-  'NIFTY CHEMICALS':                   'Specialty and commodity chemical companies — a key beneficiary of China+1 supply-chain shifts.',
-  'NIFTY MEDIA':                       'Broadcasting, publishing, OTT, and entertainment companies listed on NSE.',
-  'NIFTY MIDSMALL HEALTHCARE':         'Mid and small-cap healthcare companies — higher growth potential with smaller scale.',
-  'NIFTY MIDSMALL IT & TELECOM':       'Emerging IT services and telecom players outside the large-cap tier.',
-  'NIFTY MIDSMALL FINANCIAL SERVICES': 'Mid and small-cap financial services firms — faster-growing but higher-risk than large-cap peers.',
+  'Auto':                 'Leading automobile manufacturers and auto-component makers listed on NSE.',
+  'Capital Goods':        'Engineering, defence, and industrial equipment companies that power India\'s manufacturing sector.',
+  'Chemicals':            'Specialty and commodity chemical companies — a key beneficiary of China+1 supply-chain shifts.',
+  'Consumer Durables':    'Makers of long-lasting household products — electronics, appliances, and home goods.',
+  'Consumer Services':    'Hotels, restaurants, education, and leisure companies serving Indian consumers.',
+  'Energy':               'Oil & gas, refining, and power companies that form the backbone of India\'s energy sector.',
+  'FMCG':                 'Fast-moving consumer goods companies selling everyday products like food, hygiene, and beverages.',
+  'Financial Services':   'Banks, NBFCs, insurance, and housing finance companies that drive India\'s credit economy.',
+  'IT':                   'Top IT & software services companies — India\'s globally-competitive tech exporters.',
+  'Infra':                'Infrastructure developers spanning roads, ports, airports, and urban construction.',
+  'Media':                'Broadcasting, publishing, OTT, and entertainment companies listed on NSE.',
+  'Metals':               'Steel, aluminium, copper, and mining companies — tied closely to global commodity cycles.',
+  'Pharma':               'Major pharmaceutical and drug companies — covers both domestic and export-focused firms.',
+  'Realty':               'Real estate developers and construction companies listed on NSE.',
+  'Services':             'Diversified services sector including logistics, staffing, and business process firms.',
+  'Telecom':              'Mobile network operators and telecom infrastructure companies shaping India\'s digital connectivity.',
 };
-
-const SORT_OPTIONS = [
-  { value: 'gainers', label: '▲ Top Gainers' },
-  { value: 'losers',  label: '▼ Top Losers'  },
-  { value: 'default', label: 'Default'        },
-];
-
-function sortCompanies(companies, order) {
-  if (order === 'default') return companies;
-  return [...companies].sort((a, b) => {
-    const pa = a.changePercent != null ? Number(a.changePercent) : -Infinity;
-    const pb = b.changePercent != null ? Number(b.changePercent) : -Infinity;
-    return order === 'gainers' ? pb - pa : pa - pb;
-  });
-}
 
 const SectorCompaniesPage = () => {
   const { sectorKey } = useParams();
   const navigate      = useNavigate();
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState(null);
-  const [sortOrder, setSortOrder] = useState('gainers');
-  const [selectedEntry, setSelectedEntry] = useState(null);
-  const { entries, addCompany, isActionLoading } = useWatchlist();
+  const location      = useLocation();
 
   const displayName = decodeURIComponent(sectorKey);
+  const newsKeyword = location.state?.newsKeyword || displayName;
   const description = SECTOR_DESCRIPTIONS[displayName];
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(null);
+  const [activeTab, setActiveTab] = useState('news');
+
+  const [newsItems, setNewsItems]           = useState([]);
+  const [newsPage, setNewsPage]             = useState(0);
+  const [newsTotalPages, setNewsTotalPages] = useState(1);
+  const [newsLoading, setNewsLoading]       = useState(false);
+  const [newsError, setNewsError]           = useState(null);
+  const [newsRefreshKey, setNewsRefreshKey] = useState(0);
+
+  const [companies, setCompanies]               = useState([]);
+
+  // One batched request for the whole table rather than one per row.
+  const { sentiments } = useSentiments(companies.map(c => c.symbol));
+  const [companiesLoading, setCompaniesLoading] = useState(false);
+  const [companiesError, setCompaniesError]     = useState(null);
+
+  // Fetch news — checks LRU cache first, falls back to API
+  useEffect(() => {
+    let cancelled = false;
+
+    const cached = getCachedSectorNews(newsKeyword, newsPage);
+    if (cached) {
+      setNewsItems(cached.content ?? []);
+      setNewsTotalPages(cached.totalPages ?? 1);
+      setNewsLoading(false);
+      setNewsError(null);
+      return;
+    }
+
+    setNewsLoading(true);
+    setNewsError(null);
+    fetchMergedNews([newsKeyword], newsPage, NEWS_PAGE_SIZE)
+      .then(data => {
+        if (!cancelled) {
+          setCachedSectorNews(newsKeyword, newsPage, data);
+          setNewsItems(data.content ?? []);
+          setNewsTotalPages(data.totalPages ?? 1);
+        }
+      })
+      .catch(e => { if (!cancelled) setNewsError(e.message); })
+      .finally(() => { if (!cancelled) setNewsLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [newsKeyword, newsPage, newsRefreshKey]);
+
+  const loadCompanies = useCallback(async () => {
+    setCompaniesLoading(true); setCompaniesError(null);
     try {
       setCompanies(await fetchSectorCompanies(sectorKey));
     } catch (e) {
-      setError(e.message);
+      setCompaniesError(e.message);
     } finally {
-      setLoading(false);
+      setCompaniesLoading(false);
     }
   }, [sectorKey]);
 
   useEffect(() => {
-    load();
-    const t = setInterval(load, 5 * 60 * 1000);
-    return () => clearInterval(t);
-  }, [load]);
+    loadCompanies();
+  }, [loadCompanies]);
 
-  const isInWatchlist = (code) => entries.some(e => e.companyCode === code);
-  const displayed = sortCompanies(companies, sortOrder);
+  const handleRefresh = () => {
+    if (activeTab === 'news') {
+      invalidateSectorNews(newsKeyword);
+      setNewsPage(0);
+      setNewsRefreshKey(k => k + 1);
+    } else {
+      loadCompanies();
+    }
+  };
 
   return (
     <div className="page-container">
@@ -100,86 +115,119 @@ const SectorCompaniesPage = () => {
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>← Back</button>
           <h1 className="page-title">{displayName}</h1>
         </div>
-        <button className="btn btn-secondary" onClick={load} disabled={loading}>
-          {loading ? 'Refreshing...' : 'Refresh'}
+        <button className="btn btn-secondary" onClick={handleRefresh}>Refresh</button>
+      </div>
+
+      {description && <p className="cp-description">{description}</p>}
+
+      {/* ── Tab bar ─────────────────────────────────────────────────────── */}
+      <div className="sec-tabs">
+        <button
+          className={`sec-tab ${activeTab === 'news' ? 'active' : ''}`}
+          onClick={() => setActiveTab('news')}
+        >
+          News
+        </button>
+        <button
+          className={`sec-tab ${activeTab === 'companies' ? 'active' : ''}`}
+          onClick={() => setActiveTab('companies')}
+        >
+          Companies{companies.length > 0 ? ` (${companies.length})` : ''}
         </button>
       </div>
 
-      {description && (
-        <p className="cp-description">{description}</p>
-      )}
+      {/* ── News tab ────────────────────────────────────────────────────── */}
+      {activeTab === 'news' && (
+        <div>
+          {newsLoading && <div className="page-loading"><p>Loading news…</p></div>}
 
-      <div className="cp-sort-bar">
-        <span className="cp-sort-label">Sort by</span>
-        {SORT_OPTIONS.map(opt => (
-          <button
-            key={opt.value}
-            className={`cp-sort-btn ${sortOrder === opt.value ? 'active' : ''}`}
-            onClick={() => setSortOrder(opt.value)}
-          >
-            {opt.label}
-          </button>
-        ))}
-        {companies.length > 0 && (
-          <span className="cp-count">{companies.length} companies</span>
-        )}
-      </div>
+          {newsError && !newsLoading && (
+            <div className="page-error">
+              <p>{newsError}</p>
+              <button
+                onClick={() => { invalidateSectorNews(newsKeyword); setNewsRefreshKey(k => k + 1); }}
+                className="btn btn-primary"
+                style={{ marginTop: 16 }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
-      {loading && <div className="page-loading"><p>Loading companies…</p></div>}
-      {error && (
-        <div className="page-error">
-          <p>{error}</p>
-          <button onClick={load} className="btn btn-primary" style={{ marginTop: 16 }}>Retry</button>
-        </div>
-      )}
-
-      {!loading && !error && (
-        <div className="nifty-table-wrap">
-          <table className="nifty-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Symbol</th>
-                <th>Price (₹)</th>
-                <th>52W High</th>
-                <th>52W Low</th>
-                <th>Prev Close</th>
-                <th>Volume</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayed.length === 0 ? (
-                <tr><td colSpan={7} className="nifty-empty">No data available</td></tr>
-              ) : (
-                displayed.map((c, i) => (
-                  <tr
-                    key={c.symbol}
-                    className="nifty-clickable-row"
-                    onClick={() => navigate(`/company/${encodeURIComponent(c.symbol)}`, { state: { sector: displayName } })}
+          {!newsLoading && !newsError && (
+            <>
+              <NewsList news={newsItems} />
+              {newsTotalPages > 1 && (
+                <div className="pagination">
+                  <button
+                    className="pagination-btn"
+                    disabled={newsPage === 0}
+                    onClick={() => setNewsPage(p => p - 1)}
                   >
-                    <td>{i + 1}</td>
-                    <td><strong className="nifty-symbol">{c.symbol}</strong></td>
-                    <td><PriceCell value={c.ltp} pct={c.changePercent} /></td>
-                    <td>{fmt(c.week52High)}</td>
-                    <td>{fmt(c.week52Low)}</td>
-                    <td>{fmt(c.previousClose)}</td>
-                    <td>{c.tradedVolume != null ? Number(c.tradedVolume).toLocaleString('en-IN') : '—'}</td>
-                  </tr>
-                ))
+                    Prev
+                  </button>
+                  <span className="page-indicator">Page {newsPage + 1} of {newsTotalPages}</span>
+                  <button
+                    className="pagination-btn"
+                    disabled={newsPage >= newsTotalPages - 1}
+                    onClick={() => setNewsPage(p => p + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
               )}
-            </tbody>
-          </table>
+            </>
+          )}
         </div>
       )}
 
-      <CompanyInsightsModal
-        isOpen={!!selectedEntry}
-        onClose={() => setSelectedEntry(null)}
-        entry={selectedEntry}
-        onAddToWatchlist={addCompany}
-        isInWatchlist={selectedEntry ? isInWatchlist(selectedEntry.companyCode) : false}
-        isAdding={isActionLoading}
-      />
+      {/* ── Companies tab ───────────────────────────────────────────────── */}
+      {activeTab === 'companies' && (
+        <div>
+          {companiesLoading && <div className="page-loading"><p>Loading companies…</p></div>}
+          {companiesError && (
+            <div className="page-error">
+              <p>{companiesError}</p>
+              <button onClick={loadCompanies} className="btn btn-primary" style={{ marginTop: 16 }}>Retry</button>
+            </div>
+          )}
+          {!companiesLoading && !companiesError && (
+            <div className="nifty-table-wrap">
+              <table className="nifty-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Symbol</th>
+                    <th>Company</th>
+                    <th>News Sentiment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {companies.length === 0 ? (
+                    <tr><td colSpan={4} className="nifty-empty">No data available</td></tr>
+                  ) : (
+                    companies.map((c, i) => (
+                      <tr
+                        key={c.symbol}
+                        className="nifty-clickable-row"
+                        onClick={() => navigate(
+                          `/company/${encodeURIComponent(c.symbol)}`,
+                          { state: { sector: displayName } }
+                        )}
+                      >
+                        <td>{i + 1}</td>
+                        <td><strong className="nifty-symbol">{c.symbol}</strong></td>
+                        <td>{c.companyName || '—'}</td>
+                        <td><SentimentBadge sentiment={sentiments[c.symbol]} compact /></td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

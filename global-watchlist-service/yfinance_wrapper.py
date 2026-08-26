@@ -43,6 +43,34 @@ INDICES = [
     ("^HSI",   "Hang Seng",      "\U0001f1ed\U0001f1f0", "ASIAN_MARKETS"),
     ("^STI",   "Straits Times",  "\U0001f1f8\U0001f1ec", "ASIAN_MARKETS"),
     ("^KS11",  "KOSPI",          "\U0001f1f0\U0001f1f7", "ASIAN_MARKETS"),
+    # Commodities
+    ("GC=F",  "Gold",              "\U0001f7e1", "COMMODITIES"),
+    ("SI=F",  "Silver",            "⚪",     "COMMODITIES"),
+    ("HG=F",  "Copper",            "\U0001f7e0", "COMMODITIES"),
+    ("CL=F",  "Crude Oil (WTI)",   "\U0001f6e2", "COMMODITIES"),
+    ("BZ=F",  "Crude Oil (Brent)", "\U0001f6e2", "COMMODITIES"),
+    ("NG=F",  "Natural Gas",       "\U0001f525", "COMMODITIES"),
+    # Indian — Broad Market
+    ("^BSESN",               "Sensex",             "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^NSEI",                "Nifty 50",            "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^NSEMDCP50",           "Nifty Midcap 50",     "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("NIFTYMIDCAP150.NS",    "Nifty Midcap 150",    "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("NIFTY_MID_SELECT.NS",  "Nifty Midcap Select", "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXSC",               "Nifty Smallcap",      "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("NIFTY_MICROCAP250.NS", "Nifty Microcap 250",  "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    # Indian — Sectoral
+    ("^NSEBANK",   "Nifty Bank",        "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXIT",     "Nifty IT",          "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXAUTO",   "Nifty Auto",        "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXFMCG",   "Nifty FMCG",        "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXPHARMA", "Nifty Pharma",      "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXMETAL",  "Nifty Metal",       "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXENERGY", "Nifty Energy",      "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXREALTY", "Nifty Realty",      "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXMEDIA",  "Nifty Media",       "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXINFRA",  "Nifty Infra",       "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXCMDT",   "Nifty Commodities", "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
+    ("^CNXPSE",    "Nifty PSE",         "\U0001f1ee\U0001f1f3", "INDIAN_MARKETS"),
 ]
 
 

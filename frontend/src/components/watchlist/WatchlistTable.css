@@ -294,21 +294,112 @@
 .wl-price-up   { color: #16a34a; font-weight: 600; }
 .wl-price-down { color: #dc2626; font-weight: 600; }
 
+/* ── Touch devices: always show delete button ───────────────────────────── */
+@media (hover: none) {
+  .wl-btn-row-delete { opacity: 1; }
+}
+
 @media (max-width: 768px) {
   .wl-toolbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 16px;
-    padding: 16px;
+    gap: 12px;
+    padding: 12px 16px;
   }
-  .wl-toolbar-left { flex-direction: column; align-items: stretch; }
-  .wl-search-input { width: 100%; }
+  .wl-toolbar-left { flex-direction: row; align-items: center; justify-content: space-between; }
   .wl-toolbar-right { justify-content: space-between; }
-  .wl-pagination { flex-direction: column; align-items: stretch; gap: 16px; }
+  .wl-pagination {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    gap: 8px;
+  }
+  .wl-pagination-info { font-size: 12px; }
   .wl-data-table thead th,
-  .wl-data-table tbody td { padding: 12px 16px; }
+  .wl-data-table tbody td { padding: 12px 10px; }
 }
 
 @media (max-width: 600px) {
-  .wl-data-table { min-width: 600px; }
+  /* Remove forced wide table — 2 columns fit naturally on phone */
+  .wl-data-table { min-width: 0; }
+
+  /* Tighten S.No column */
+  .wl-th-sno, .wl-sno { width: 36px; }
+
+  /* Compact action column */
+  .wl-th-actions, .wl-td-actions { width: 40px; }
+
+  /* Bigger tap targets on rows */
+  .wl-data-table tbody td { padding: 14px 8px; font-size: 13px; }
+  .wl-data-table thead th { padding: 10px 8px; font-size: 11px; }
+
+  /* Pagination buttons — 44px min for touch */
+  .wl-page-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    font-size: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .wl-page-indicator { padding: 0 6px; font-size: 13px; }
+
+  /* Delete button easier to tap */
+  .wl-btn-row-delete { padding: 10px; opacity: 1; }
+  .wl-btn-row-delete.selected { background: #ef4444; color: white; }
+}
+
+/* ── Tooltips ─────────────────────────────────────────────────────── */
+.wl-sortable[data-tooltip] {
+  position: relative;
+}
+
+.wl-sortable[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  width: 180px;
+  text-align: center;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.wl-sortable[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: #1e293b;
+  z-index: 200;
+  pointer-events: none;
+}
+
+/* ── News sentiment column ────────────────────────────────────────────────── */
+/* Left-aligned to match S.No. / Symbol / Company. Centring set this column apart
+   from every other one and left the badge visually detached from its header. */
+/* Selectors are qualified to match the specificity of `.wl-data-table thead th`,
+   which sets its own text-align. A bare `.wl-th-sentiment` loses to it. */
+.wl-data-table thead th.wl-th-sentiment {
+  white-space: nowrap;
+  text-align: left;
+}
+
+.wl-data-table tbody td.wl-td-sentiment {
+  text-align: left;
+  white-space: nowrap;
 }
