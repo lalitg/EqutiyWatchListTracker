@@ -4,6 +4,8 @@ import com.companynews.newsscheduler.model.CompanyNews;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -33,4 +35,20 @@ public interface CompanyNewsRepository extends JpaRepository<CompanyNews, Long> 
      *         or {@link Optional#empty()} if no row exists for that keyword
      */
     Optional<CompanyNews> findByKeyword(String keyword);
+
+    /**
+     * Looks up many keywords in a single query.
+     *
+     * <p>Spring generates: {@code SELECT * FROM company_news WHERE keyword IN (?, ?, ...)}
+     *
+     * <p>Exists specifically for the batch sentiment endpoint. The watchlist and the Nifty
+     * index / sector company tables each render dozens of companies at once; issuing one
+     * {@link #findByKeyword(String)} per row would mean fifty round trips to serve a single
+     * page. Keywords with no row are simply absent from the result — the caller treats those
+     * as "no data" rather than an error.
+     *
+     * @param keywords the keywords to look up
+     * @return matching records, in unspecified order and possibly fewer than requested
+     */
+    List<CompanyNews> findByKeywordIn(Collection<String> keywords);
 }

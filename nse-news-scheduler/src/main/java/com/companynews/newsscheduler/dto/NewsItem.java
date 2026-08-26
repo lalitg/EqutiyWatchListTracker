@@ -49,6 +49,39 @@ public class NewsItem {
     @JsonIgnore
     private String symbol;
 
+    /**
+     * Sentiment score for this headline on a symmetric scale of -5.0 (very negative)
+     * to +5.0 (very positive), with 0.0 meaning neutral.
+     *
+     * <p>Derived from the model's probability distribution rather than its argmax label:
+     * {@code (p_positive - p_negative) * 5.0}. Using the difference keeps the score
+     * continuous — a hedged headline yields a small magnitude, a decisive one a large
+     * magnitude — which matters because these values are later averaged.
+     *
+     * <p>Assigned once, at save time, by
+     * {@link com.companynews.newsscheduler.service.SentimentScorer} — the same hook where
+     * {@link com.companynews.newsscheduler.service.NewsImportanceClassifier} runs. Scoring
+     * applies to company keywords only; sectors and macro keywords are left {@code null}.
+     *
+     * <p>{@code null} for rows written before this field existed, and whenever scoring is
+     * disabled or the model is unavailable. Like {@code category}, this lives inside the
+     * {@code news} JSONB array, so adding it required no database migration — older rows
+     * simply deserialize with {@code null}.
+     */
+    private Double sentimentScore;
+
+    /**
+     * Human-readable band derived from {@link #sentimentScore} using the configured
+     * thresholds: {@code "POSITIVE"}, {@code "NEGATIVE"}, or {@code "NEUTRAL"}.
+     *
+     * <p>Stored alongside the raw score so the frontend does not have to duplicate the
+     * threshold logic, and so a threshold change is visible as a data change rather than
+     * silently altering how historical articles are displayed.
+     *
+     * <p>{@code null} whenever {@link #sentimentScore} is {@code null}.
+     */
+    private String sentimentLabel;
+
     /** Default no-arg constructor required by Jackson for deserialization. */
     public NewsItem() {}
 
@@ -135,4 +168,32 @@ public class NewsItem {
      * @param symbol company symbol (e.g., {@code INFY})
      */
     public void setSymbol(String symbol) { this.symbol = symbol; }
+
+    /**
+     * Returns this headline's sentiment score on the -5.0 to +5.0 scale.
+     *
+     * @return the score, or {@code null} if this item was never scored
+     */
+    public Double getSentimentScore() { return sentimentScore; }
+
+    /**
+     * Sets this headline's sentiment score.
+     *
+     * @param sentimentScore score on the -5.0 to +5.0 scale, or {@code null}
+     */
+    public void setSentimentScore(Double sentimentScore) { this.sentimentScore = sentimentScore; }
+
+    /**
+     * Returns the sentiment band for this headline.
+     *
+     * @return {@code "POSITIVE"}, {@code "NEGATIVE"}, {@code "NEUTRAL"}, or {@code null}
+     */
+    public String getSentimentLabel() { return sentimentLabel; }
+
+    /**
+     * Sets the sentiment band for this headline.
+     *
+     * @param sentimentLabel {@code "POSITIVE"}, {@code "NEGATIVE"}, {@code "NEUTRAL"}, or {@code null}
+     */
+    public void setSentimentLabel(String sentimentLabel) { this.sentimentLabel = sentimentLabel; }
 }

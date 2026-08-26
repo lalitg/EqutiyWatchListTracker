@@ -130,6 +130,24 @@
       </exclusions>
     </dependency>
 
+    <!-- ───── Sentiment analysis (ProsusAI FinBERT, INT8 ONNX, in-JVM CPU inference) ─────
+         onnxruntime : runs the quantized model inside this JVM — no Python process, no
+                       persistent sidecar. Allocates model weights in NATIVE memory, i.e.
+                       outside -Xmx, so size the instance on total RSS not heap.
+         tokenizers  : DJL's binding to the same Rust tokenizer library HuggingFace uses.
+                       Required for exact WordPiece parity with the Python export — a
+                       hand-rolled tokenizer silently produces wrong scores. -->
+    <dependency>
+      <groupId>com.microsoft.onnxruntime</groupId>
+      <artifactId>onnxruntime</artifactId>
+      <version>1.17.1</version>
+    </dependency>
+    <dependency>
+      <groupId>ai.djl.huggingface</groupId>
+      <artifactId>tokenizers</artifactId>
+      <version>0.27.0</version>
+    </dependency>
+
     <!-- Test dependency (auto-included) -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

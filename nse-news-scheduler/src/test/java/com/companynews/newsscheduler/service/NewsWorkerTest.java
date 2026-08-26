@@ -1,5 +1,6 @@
 package com.companynews.newsscheduler.service;
 
+import com.companynews.newsscheduler.client.SentimentModelClient;
 import com.companynews.newsscheduler.dto.NewsItem;
 import com.companynews.newsscheduler.model.CompanyNews;
 import com.companynews.newsscheduler.repository.CompanyNewsRepository;
@@ -38,7 +39,18 @@ class NewsWorkerTest {
     void setUp() {
         NewsImportanceClassifier classifier = new NewsImportanceClassifier();
         classifier.init();   // compile phrases from important-keywords.txt (on the test classpath)
-        newsWorker = new NewsWorker(repository, similarityChecker, newsStore, classifier, new SimpleMeterRegistry());
+
+        // Sentiment scoring is wired in but deliberately inert here: this suite is about
+        // deduplication and persistence, and loading a 219 MB model would make it slow and
+        // dependent on an artefact that is not committed. The scorer is constructed with a
+        // disabled model client, so score() is a no-op and items keep null sentiment fields —
+        // exactly the behaviour these tests already assert on.
+        SentimentModelClient disabledModel = new SentimentModelClient(
+                false, "models", 64, 1, 1, false, false);
+        SentimentScorer sentimentScorer = new SentimentScorer(disabledModel, 1.5, -1.5);
+
+        newsWorker = new NewsWorker(repository, similarityChecker, newsStore, classifier,
+                                    sentimentScorer, new SimpleMeterRegistry());
     }
 
     // ── Helper ─────────────────────────────────────────────────────────────

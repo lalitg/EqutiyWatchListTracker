@@ -1,6 +1,8 @@
 package com.companynews.newsscheduler.controller;
 
+import com.companynews.newsscheduler.dto.SentimentDto;
 import com.companynews.newsscheduler.service.CompanyNewsService;
+import com.companynews.newsscheduler.service.CurrentSentimentService;
 import com.companynews.newsscheduler.service.NewsAggregatorService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -11,6 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -35,13 +38,25 @@ public class NewsController {
 
     private static final Logger log = LogManager.getLogger(NewsController.class);
 
+    /**
+     * Upper bound on keywords accepted by {@code /sentiment} in one request.
+     *
+     * <p>Guards against an unbounded {@code IN (...)} clause. The largest legitimate caller is
+     * a Nifty 50 table, so 200 leaves generous headroom while still capping a malformed or
+     * hostile request.
+     */
+    private static final int MAX_SENTIMENT_KEYS = 200;
+
     private final CompanyNewsService companyNewsService;
     private final NewsAggregatorService aggregatorService;
+    private final CurrentSentimentService currentSentimentService;
 
     public NewsController(CompanyNewsService companyNewsService,
-                          NewsAggregatorService aggregatorService) {
-        this.companyNewsService = companyNewsService;
-        this.aggregatorService  = aggregatorService;
+                          NewsAggregatorService aggregatorService,
+                          CurrentSentimentService currentSentimentService) {
+        this.companyNewsService      = companyNewsService;
+        this.aggregatorService       = aggregatorService;
+        this.currentSentimentService = currentSentimentService;
     }
 
     /**
@@ -85,5 +100,37 @@ public class NewsController {
 
         Map<String, Object> result = aggregatorService.buildPage(sortedKeys, page, size);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Returns current sentiment for many keywords in one call.
+     *
+     * <p>Exists because the watchlist and the Nifty index / sector company tables render dozens
+     * of companies at once. Calling {@code GET /api/news?key=} per row would mean fifty HTTP
+     * requests and fifty full news payloads to populate a single column. This endpoint carries
+     * no article text — just a score, a label and a contributing-article count per keyword —
+     * and resolves them with a single database query.
+     *
+     * <p>Every requested keyword appears in the response. Ones with no scored news come back as
+     * {@code NO_DATA} rather than being omitted, so the frontend never has to distinguish a
+     * missing key from a genuine neutral reading.
+     *
+     * <p>Example: {@code GET /api/news/sentiment?keys=INFY,TCS,RELIANCE}
+     *
+     * @param keys comma-separated keyword list
+     */
+    @GetMapping("/sentiment")
+    public ResponseEntity<Map<String, SentimentDto>> getSentiments(
+            @RequestParam @NotEmpty(message = "keys must not be empty") String keys) {
+
+        List<String> keywords = Arrays.stream(keys.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .distinct()
+            .limit(MAX_SENTIMENT_KEYS)
+            .toList();
+
+        log.info("GET /api/news/sentiment keys={}", keywords.size());
+        return ResponseEntity.ok(currentSentimentService.getForKeywords(keywords));
     }
 }

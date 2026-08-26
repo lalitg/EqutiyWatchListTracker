@@ -53,6 +53,15 @@ public class NewsWorker {
     private final NewsImportanceClassifier importanceClassifier;
 
     /**
+     * Assigns each newly-accepted company headline a sentiment score.
+     *
+     * <p>Runs at save time rather than on read so each headline costs exactly one inference
+     * for its lifetime. The watchlist and index tables render dozens of companies per page
+     * view; scoring on read would repeat that work on every refresh.
+     */
+    private final SentimentScorer sentimentScorer;
+
+    /**
      * Per-keyword {@link ReentrantLock} map.
      *
      * <p>Thread 1 saving {@code INFY} does NOT block Thread 2 saving {@code RELIANCE}.
@@ -95,11 +104,13 @@ public class NewsWorker {
                       SimilarityChecker similarityChecker,
                       NewsStore newsStore,
                       NewsImportanceClassifier importanceClassifier,
+                      SentimentScorer sentimentScorer,
                       MeterRegistry meterRegistry) {
         this.repository           = repository;
         this.similarityChecker    = similarityChecker;
         this.newsStore            = newsStore;
         this.importanceClassifier = importanceClassifier;
+        this.sentimentScorer      = sentimentScorer;
         this.savedCounter        = Counter.builder("news.items.saved")
             .description("Total news items written to DB")
             .register(meterRegistry);
@@ -218,9 +229,15 @@ public class NewsWorker {
                 }
 
                 // Layer 5 (company keywords only): flag important corporate-action headlines
-                // for the "Important News" tab. Sectors/macro keywords are never classified.
+                // for the "Important News" tab, and assign a sentiment score. Both run only
+                // for company symbols — sectors and macro keywords are left untouched.
+                //
+                // Scoring sits here, after every dedup layer, so a headline is only ever
+                // scored if it is actually being stored. Running it earlier would waste
+                // inference on the majority of items, which are duplicates.
                 if (isCompany) {
                     item.setCategory(importanceClassifier.classify(summary));
+                    sentimentScorer.score(item);
                 }
 
                 currentNews.add(item);
@@ -313,6 +330,7 @@ public class NewsWorker {
         for (NewsItem item : newItems) {
             if (isCompany) {
                 item.setCategory(importanceClassifier.classify(item.getSummary()));
+                sentimentScorer.score(item);
             }
             currentNews.add(0, item);
         }

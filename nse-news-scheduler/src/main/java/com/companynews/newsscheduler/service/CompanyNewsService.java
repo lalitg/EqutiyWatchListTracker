@@ -2,6 +2,7 @@ package com.companynews.newsscheduler.service;
 
 import com.companynews.newsscheduler.dto.NewsItem;
 import com.companynews.newsscheduler.dto.NseAnnouncement;
+import com.companynews.newsscheduler.dto.SentimentDto;
 import com.companynews.newsscheduler.model.CompanyNews;
 import com.companynews.newsscheduler.repository.CompanyNewsRepository;
 import org.apache.logging.log4j.LogManager;
@@ -38,6 +39,7 @@ public class CompanyNewsService {
     private final SeqIdWindow seqIdWindow;
     private final UrlWindow urlWindow;
     private final KeywordLoader keywordLoader;
+    private final CurrentSentimentService currentSentimentService;
 
     /** Latest News window in days — items within this age appear on the Latest tab. */
     @Value("${news.retention.company.latest-window-days:7}")
@@ -57,7 +59,8 @@ public class CompanyNewsService {
                               NewsWorker newsWorker,
                               SeqIdWindow seqIdWindow,
                               UrlWindow urlWindow,
-                              KeywordLoader keywordLoader) {
+                              KeywordLoader keywordLoader,
+                              CurrentSentimentService currentSentimentService) {
         this.repository    = repository;
         this.nseFetcher    = nseFetcher;
         this.rssFetcher    = rssFetcher;
@@ -65,6 +68,7 @@ public class CompanyNewsService {
         this.seqIdWindow   = seqIdWindow;
         this.urlWindow     = urlWindow;
         this.keywordLoader = keywordLoader;
+        this.currentSentimentService = currentSentimentService;
     }
 
     /**
@@ -147,6 +151,11 @@ public class CompanyNewsService {
         response.put("sentiments",  companyNews.getSentiments() != null ? companyNews.getSentiments() : "");
         response.put("lastUpdated", companyNews.getLastUpdated());
 
+        // Computed from the scores already stored on this record's items — no extra query and
+        // no model inference, so the company detail page gets sentiment for free from the call
+        // it was already making.
+        response.put("currentSentiment", currentSentimentService.computeFrom(companyNews));
+
         List<NewsItem> all = companyNews.getNews() != null ? companyNews.getNews() : List.of();
 
         if (!isCompany) {
@@ -191,6 +200,7 @@ public class CompanyNewsService {
         Map<String, Object> response = new HashMap<>();
         response.put("keyword",     key);
         response.put("sentiments",  "");
+        response.put("currentSentiment", SentimentDto.noData());
         response.put("news",        List.of());
         if (isCompany) {
             response.put("importantNews", List.of());
