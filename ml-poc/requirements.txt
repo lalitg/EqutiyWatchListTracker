@@ -1,0 +1,18 @@
+# Model comparison PoC — isolated from the main application.
+# Nothing here is used by any Java service.
+
+transformers>=4.40.0
+torch>=2.2.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+psutil>=5.9.0
+
+# Optional — only needed for extract_candidates.py (pulling headlines from Postgres).
+# Comment out if you prefer to hand-pick headlines instead.
+psycopg2-binary>=2.9.0
+
+# Required by export_onnx.py to produce the INT8 ONNX artefact the Java service loads.
+onnxruntime>=1.17.0
+numpy>=1.24.0
+onnxconverter-common>=1.14.0
+onnx>=1.15.0
