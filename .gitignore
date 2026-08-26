@@ -1,0 +1,23 @@
+
+# Sentiment model artefacts â€” ~219 MB, produced by ml-poc/export_onnx.py and deployed
+# alongside the jar rather than committed. Regenerate with:
+#   python ml-poc/export_onnx.py --out nse-news-scheduler/models
+**/models/*.onnx
+**/models/tokenizer.json
+**/models/config.json
+**/models/vocab.txt
+**/models/tokenizer_config.json
+**/models/special_tokens_map.json
+
+# Build output and runtime logs
+**/target/
+**/logs/
+*.log
+*.log.gz
+
+# Build output and runtime logs — never commit these.
+# Most services here have no .gitignore of their own.
+**/target/
+**/logs/
+*.log
+*.log.gz
