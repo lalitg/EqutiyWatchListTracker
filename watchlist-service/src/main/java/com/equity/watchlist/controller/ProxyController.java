@@ -61,6 +61,10 @@ public class ProxyController {
     @Value("${fundamentals.service.url:http://localhost:8086}")
     private String fundamentalsServiceUrl;
 
+    /** Base URL of the SEBI data microservice (default: {@code http://localhost:8089}). */
+    @Value("${sebi.service.url:http://localhost:8089}")
+    private String sebiServiceUrl;
+
     /**
      * Proxies all {@code /api/auth/**} requests to auth-service.
      * Path remapping: /api/auth/signup → /api/v1/auth/signup
@@ -142,6 +146,17 @@ public class ProxyController {
     public ResponseEntity<String> proxyFundamentals(HttpServletRequest request) throws URISyntaxException, IOException {
         logger.info("Proxying fundamentals request: {} {}", request.getMethod(), request.getRequestURI());
         return proxy(request, fundamentalsServiceUrl);
+    }
+
+    /**
+     * Proxies all {@code /api/sebi/**} requests to the SEBI data microservice.
+     * Path remapping: /api/sebi/company/INFY → /api/v1/sebi/company/INFY
+     */
+    @RequestMapping(value = "/api/sebi/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.HEAD, RequestMethod.OPTIONS})
+    public ResponseEntity<String> proxySebi(HttpServletRequest request) throws URISyntaxException, IOException {
+        logger.info("Proxying sebi request: {} {}", request.getMethod(), request.getRequestURI());
+        String suffix = request.getRequestURI().substring("/api/sebi".length());
+        return proxyWithPath(request, sebiServiceUrl, "/api/v1/sebi" + suffix);
     }
 
     /**

@@ -9,6 +9,7 @@ import {
 } from '../services/indicesService';
 import { fetchNews } from '../services/newsService';
 import { fetchEvents } from '../services/eventsService';
+import { fetchSebiActivity } from '../services/sebiService';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import { useWatchlist } from '../context/WatchlistContext';
@@ -61,6 +62,7 @@ const CompanyDetailPage = () => {
 
   const [news,        setNews]        = useState([]);
   const [events,      setEvents]      = useState([]);
+  const [sebi,        setSebi]        = useState(null);
   const [insightsTab, setInsightsTab] = useState('news');
   const [insightsLoading, setInsightsLoading] = useState(true);
 
@@ -85,9 +87,11 @@ const CompanyDetailPage = () => {
     Promise.allSettled([
       fetchNews(symbol),
       fetchEvents(symbol),
-    ]).then(([nRes, eRes]) => {
+      fetchSebiActivity(symbol),
+    ]).then(([nRes, eRes, sRes]) => {
       if (nRes.status === 'fulfilled') setNews(nRes.value?.news ?? []);
       if (eRes.status === 'fulfilled') setEvents(eRes.value?.events ?? []);
+      if (sRes.status === 'fulfilled') setSebi(sRes.value);
     }).finally(() => setInsightsLoading(false));
 
     const t = setInterval(() => {
@@ -240,6 +244,12 @@ const CompanyDetailPage = () => {
           >
             Events
           </button>
+          <button
+            className={`cdp-fund-tab ${insightsTab === 'regulatory' ? 'active' : ''}`}
+            onClick={() => setInsightsTab('regulatory')}
+          >
+            Regulatory
+          </button>
         </div>
         {insightsLoading ? (
           <div className="cdp-fund-loading">Loading…</div>
@@ -247,10 +257,12 @@ const CompanyDetailPage = () => {
           news.length === 0
             ? <div className="cdp-fund-empty">No news found for {symbol}.</div>
             : <NewsList news={news} />
-        ) : (
+        ) : insightsTab === 'events' ? (
           events.length === 0
             ? <div className="cdp-fund-empty">No events found for {symbol}.</div>
             : <EventsList events={events} />
+        ) : (
+          <SebiActivityPanel sebi={sebi} symbol={symbol} />
         )}
       </div>
 
@@ -361,5 +373,84 @@ const CompanyDetailPage = () => {
     </div>
   );
 };
+
+function SebiActivityPanel({ sebi, symbol }) {
+  if (!sebi) {
+    return <div className="cdp-fund-empty">No SEBI activity data available for {symbol}.</div>;
+  }
+
+  const enforcement = sebi.enforcementActions || [];
+  const buybacks    = sebi.buybacks || [];
+
+  if (enforcement.length === 0 && buybacks.length === 0) {
+    return <div className="cdp-fund-empty">No SEBI regulatory activity found for {symbol}.</div>;
+  }
+
+  const eventTypeLabel = (t) => {
+    const map = {
+      ADJUDICATION_ORDER: 'Adjudication Order',
+      DIRECTION: 'Direction',
+      RECOVERY_NOTICE: 'Recovery Notice',
+      CIRCULAR: 'Circular',
+      FILING: 'Filing',
+      BUYBACK: 'Buyback Filing',
+      OTHER: 'Other',
+    };
+    return map[t] || t;
+  };
+
+  return (
+    <div className="cdp-sebi-panel">
+      {enforcement.length > 0 && (
+        <div className="cdp-sebi-section">
+          <div className="cdp-sebi-section-title">Enforcement Actions ({enforcement.length})</div>
+          <div className="cdp-sebi-list">
+            {enforcement.map((item, i) => (
+              <div key={i} className="cdp-sebi-item">
+                <div className="cdp-sebi-item-header">
+                  <span className="cdp-sebi-badge cdp-sebi-badge--enforcement">
+                    {eventTypeLabel(item.eventType)}
+                  </span>
+                  <span className="cdp-sebi-date">{item.pubDate}</span>
+                </div>
+                <div className="cdp-sebi-title">
+                  {item.sebiUrl ? (
+                    <a href={item.sebiUrl} target="_blank" rel="noopener noreferrer" className="cdp-sebi-link">
+                      {item.fullTitle}
+                    </a>
+                  ) : (
+                    item.fullTitle
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {buybacks.length > 0 && (
+        <div className="cdp-sebi-section">
+          <div className="cdp-sebi-section-title">Buyback Filings ({buybacks.length})</div>
+          <div className="cdp-sebi-list">
+            {buybacks.map((item, i) => (
+              <div key={i} className="cdp-sebi-item">
+                <div className="cdp-sebi-item-header">
+                  <span className="cdp-sebi-badge cdp-sebi-badge--buyback">Buyback</span>
+                  <span className="cdp-sebi-date">{item.buybackDate}</span>
+                </div>
+                <div className="cdp-sebi-title">
+                  {item.sebiCompanyName}
+                  {item.sebiUrl && (
+                    <a href={item.sebiUrl} target="_blank" rel="noopener noreferrer" className="cdp-sebi-link"> — View Filing</a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default CompanyDetailPage;
