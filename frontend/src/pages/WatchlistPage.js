@@ -151,7 +151,13 @@ const WatchlistPage = () => {
       {!isLoading && !error && (
         <WatchlistTable
           entries={entries}
-          onCompanyClick={(entry) => navigate(`/company/${entry.companyCode}`)}
+          /* `tab` lets the table send a click straight to a section of the company page — the
+             sentiment badges use it to open the Sentiments tab. The URL is built here rather than
+             inside the table so that route shape stays this page's concern and WatchlistTable
+             remains presentational, knowing nothing about routing. */
+          onCompanyClick={(entry, { tab } = {}) => navigate(
+            `/company/${encodeURIComponent(entry.companyCode)}${tab ? `?tab=${tab}` : ''}`
+          )}
           onBulkDelete={bulkDelete}
         />
       )}

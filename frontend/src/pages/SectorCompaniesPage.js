@@ -52,6 +52,25 @@ const SectorCompaniesPage = () => {
 
   // One batched request for the whole table rather than one per row.
   const { sentiments } = useSentiments(companies.map(c => c.symbol));
+
+  /**
+   * Opens a company's Sentiments tab from a sentiment badge.
+   *
+   * stopPropagation is what makes this work at all. The whole row already carries an onClick that
+   * navigates to the same company's default tab; without stopping the bubble both handlers run,
+   * the row's runs second and wins, and the badge appears to do nothing.
+   *
+   * The `sector` router state is preserved so the company page still knows which sector the reader
+   * came from, exactly as the row click does.
+   */
+  const openSentiments = (e, symbol) => {
+    e.stopPropagation();
+    navigate(
+      `/company/${encodeURIComponent(symbol)}?tab=sentiments`,
+      { state: { sector: displayName } }
+    );
+  };
+
   const [companiesLoading, setCompaniesLoading] = useState(false);
   const [companiesError, setCompaniesError]     = useState(null);
 
@@ -225,9 +244,16 @@ const SectorCompaniesPage = () => {
                             sentiment={sentiments[c.symbol]?.latest}
                             variant="latest"
                             compact
+                            onClick={(e) => openSentiments(e, c.symbol)}
                           />
                         </td>
-                        <td><SentimentBadge sentiment={sentiments[c.symbol]?.quarter} compact /></td>
+                        <td>
+                          <SentimentBadge
+                            sentiment={sentiments[c.symbol]?.quarter}
+                            compact
+                            onClick={(e) => openSentiments(e, c.symbol)}
+                          />
+                        </td>
                       </tr>
                     ))
                   )}

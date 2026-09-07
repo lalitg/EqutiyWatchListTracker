@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   fetchQuarterlyResults,
   fetchBalanceSheet,
@@ -39,6 +39,16 @@ function fmtPe(val) {
 }
 
 /**
+ * Tabs in the News & Events section, in render order.
+ *
+ * Doubles as the whitelist for the `?tab=` parameter. Validating against it matters because the
+ * value arrives from the URL, where anyone can type anything: an unrecognised tab would otherwise
+ * render a section with no content and no way to tell why.
+ */
+const INSIGHTS_TABS = ['news', 'important', 'events', 'regulatory', 'sentiments'];
+const DEFAULT_INSIGHTS_TAB = 'news';
+
+/**
  * Tooltip for the badge beside the company name.
  *
  * Covers the whole pill, not just the badge, so hovering the "Latest News" caption explains itself
@@ -71,7 +81,16 @@ const CompanyDetailPage = () => {
   const [importantNews, setImportantNews] = useState([]);
   const [events,        setEvents]        = useState([]);
   const [sebi,          setSebi]          = useState(null);
-  const [insightsTab,   setInsightsTab]   = useState('news');
+  // The tab lives in the URL rather than in component state alone, so that /company/X?tab=sentiments
+  // is a real address: it survives a refresh, can be bookmarked, and can be shared. Router state
+  // would have been less code but is held in memory only — landing on the Sentiments tab and then
+  // pressing F5 would silently drop you back on Latest News, which reads as a bug.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const initialTab = INSIGHTS_TABS.includes(requestedTab) ? requestedTab : DEFAULT_INSIGHTS_TAB;
+
+  const [insightsTab, setInsightsTab] = useState(initialTab);
+  const insightsRef = useRef(null);
   const [insightsLoading, setInsightsLoading] = useState(true);
   const [nse500Sectors, setNse500Sectors] = useState([]);
   const [companyIndices, setCompanyIndices] = useState([]);
@@ -114,6 +133,54 @@ const CompanyDetailPage = () => {
 
     setLoading(false);
   }, [symbol]);
+
+  // Arriving with an explicit tab means the user clicked something that promised to take them
+  // there. The tabs sit well below the header, badges and index chips, so selecting one without
+  // moving the viewport leaves the reader looking at the top of the page, wondering whether the
+  // click registered at all.
+  //
+  // The guard is load-bearing. This effect has to watch `requestedTab`, because selecting a tab
+  // writes it to the URL — so without the ref it would fire again on every tab click and scroll
+  // the page each time, which is precisely the yanking it exists to avoid. Tracking the symbol
+  // rather than a plain boolean is what keeps it working when the user moves from one company to
+  // another: React Router reuses this component across route params, so there is no remount to
+  // reset anything.
+  const arrivalHandledFor = useRef(null);
+  useEffect(() => {
+    const isArrival = arrivalHandledFor.current !== symbol;
+    arrivalHandledFor.current = symbol;
+
+    if (!isArrival) return;
+    if (!INSIGHTS_TABS.includes(requestedTab)) return;
+
+    // Needed in addition to the useState initialiser: that runs once for the component's whole
+    // lifetime, so it does not fire when only the symbol changes.
+    setInsightsTab(requestedTab);
+
+    // Deferred a frame so the section has been laid out; measuring during the same paint gives the
+    // wrong offset on a first load.
+    const id = window.requestAnimationFrame(() => {
+      insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [requestedTab, symbol]);
+
+  /**
+   * Selects a tab and records it in the URL.
+   *
+   * `replace` rather than push: a reader flicking between tabs should not have to press Back once
+   * per tab to get out of the page. Back stays a way out to the table they came from.
+   */
+  const selectInsightsTab = (tab) => {
+    setInsightsTab(tab);
+    const next = new URLSearchParams(searchParams);
+    if (tab === DEFAULT_INSIGHTS_TAB) {
+      next.delete('tab');          // keep the plain company URL clean
+    } else {
+      next.set('tab', tab);
+    }
+    setSearchParams(next, { replace: true });
+  };
 
   if (loading) return (
     <div className="cdp-container">
@@ -193,17 +260,17 @@ const CompanyDetailPage = () => {
       </div>
 
       {/* ── News & Events ─────────────────────────────────────────────────── */}
-      <div className="cdp-insights">
+      <div className="cdp-insights" ref={insightsRef}>
         <div className="cdp-fund-tabs">
           <button
             className={`cdp-fund-tab ${insightsTab === 'news' ? 'active' : ''}`}
-            onClick={() => setInsightsTab('news')}
+            onClick={() => selectInsightsTab('news')}
           >
             Latest News
           </button>
           <button
             className={`cdp-fund-tab ${insightsTab === 'important' ? 'active' : ''}`}
-            onClick={() => setInsightsTab('important')}
+            onClick={() => selectInsightsTab('important')}
           >
             Important News
             {importantNews.length > 0 && (
@@ -212,19 +279,19 @@ const CompanyDetailPage = () => {
           </button>
           <button
             className={`cdp-fund-tab ${insightsTab === 'events' ? 'active' : ''}`}
-            onClick={() => setInsightsTab('events')}
+            onClick={() => selectInsightsTab('events')}
           >
             Events
           </button>
           <button
             className={`cdp-fund-tab ${insightsTab === 'regulatory' ? 'active' : ''}`}
-            onClick={() => setInsightsTab('regulatory')}
+            onClick={() => selectInsightsTab('regulatory')}
           >
             Regulatory
           </button>
           <button
             className={`cdp-fund-tab ${insightsTab === 'sentiments' ? 'active' : ''}`}
-            onClick={() => setInsightsTab('sentiments')}
+            onClick={() => selectInsightsTab('sentiments')}
           >
             Sentiments
           </button>

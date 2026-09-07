@@ -1,0 +1,43 @@
+/* Affordance for a badge that navigates to the company's Sentiments tab.
+
+   The badges are inert pills everywhere else, so nothing about them suggests they can be clicked.
+   Without a visible cue almost nobody discovers the shortcut — and worse, the ones inside table
+   rows sit on top of a row that is ALSO clickable, so a reader has no way to tell that this small
+   area goes somewhere different from the rest of the row.
+
+   Colours are set inline by the component (they encode the sentiment band), so this file only
+   handles interaction state and must not touch background or colour. */
+
+.sentiment-badge--clickable {
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+.sentiment-badge--clickable:hover {
+  /* Lift rather than recolour: the fill is carrying meaning and must not shift on hover. */
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+  filter: brightness(0.97);
+}
+
+.sentiment-badge--clickable:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Keyboard users get a real focus ring. `:focus-visible` rather than `:focus` so it appears for
+   Tab but not after a mouse click, which would otherwise leave a ring sitting on the badge as the
+   page navigates away. */
+.sentiment-badge--clickable:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sentiment-badge--clickable,
+  .sentiment-badge--clickable:hover,
+  .sentiment-badge--clickable:active {
+    transition: none;
+    transform: none;
+  }
+}

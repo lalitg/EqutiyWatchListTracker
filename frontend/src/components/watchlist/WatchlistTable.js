@@ -53,6 +53,18 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
 
   const totalPages = Math.ceil(sortedEntries.length / ROWS_PER_PAGE);
 
+  /**
+   * Opens the company's Sentiments tab from a sentiment badge.
+   *
+   * stopPropagation is what makes this work at all. The whole row already carries an onClick that
+   * navigates to the same company's default tab; without stopping the bubble both handlers run,
+   * the row's runs second and wins, and the badge appears to do nothing.
+   */
+  const openSentiments = (e, entry) => {
+    e.stopPropagation();
+    onCompanyClick(entry, { tab: 'sentiments' });
+  };
+
   const handleSortToggle = (key) => {
     setSortConfig(prev => ({
       key,
@@ -153,6 +165,7 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                     variant="latest"
                     compact
                     showScore
+                    onClick={(e) => openSentiments(e, entry)}
                   />
                 </td>
                 <td className="wl-td-sentiment">
@@ -160,6 +173,7 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                     sentiment={sentiments[entry.companyCode]?.quarter}
                     compact
                     showScore
+                    onClick={(e) => openSentiments(e, entry)}
                   />
                 </td>
                 <td className="wl-td-actions">

@@ -1,4 +1,5 @@
 import React from 'react';
+import './SentimentBadge.css';
 
 const COLORS = {
   BULLISH:  { bg: '#dcfce7', color: '#16a34a', border: '#bbf7d0' },
@@ -62,8 +63,15 @@ export function formatSentimentAge(millis) {
  * decimal, never more: the underlying score is stored to two, but a second decimal would imply
  * precision that simply is not there.
  */
-const SentimentBadge = ({ sentiment, compact = false, showScore = false, variant = 'aggregate' }) => {
+const SentimentBadge = ({
+  sentiment,
+  compact = false,
+  showScore = false,
+  variant = 'aggregate',
+  onClick,
+}) => {
   const isObject = sentiment !== null && typeof sentiment === 'object';
+  const clickable = typeof onClick === 'function';
 
   const key = isObject
     ? (sentiment.label || 'NO_DATA').toUpperCase()
@@ -120,7 +128,34 @@ const SentimentBadge = ({ sentiment, compact = false, showScore = false, variant
         + `article${sentiment.articleCount === 1 ? '' : 's'}`;
   }
 
-  return <span style={style} title={title}>{text}</span>;
+  if (!clickable) {
+    return <span style={style} title={title}>{text}</span>;
+  }
+
+  // A span with onClick is invisible to the keyboard: it cannot be reached by Tab and does not
+  // fire on Enter. role + tabIndex + the key handler are what stop this being a mouse-only
+  // feature. Space is included because a control announced as a button is expected to accept it,
+  // and its default page-scroll has to be suppressed.
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick(e);
+    }
+  };
+
+  return (
+    <span
+      className="sentiment-badge--clickable"
+      style={style}
+      title={title ? `${title} — click to open the Sentiments tab` : undefined}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+    >
+      {text}
+    </span>
+  );
 };
 
 export default SentimentBadge;
