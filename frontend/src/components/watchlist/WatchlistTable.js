@@ -125,7 +125,12 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                   </span>
                 </th>
               ))}
-              <th className="wl-th-sentiment">News Sentiment</th>
+              <th className="wl-th-sentiment" data-tooltip={WD['col.sentimentLatest']}>
+                Latest News
+              </th>
+              <th className="wl-th-sentiment" data-tooltip={WD['col.sentimentQuarter']}>
+                Last 1 Quarter
+              </th>
               <th className="wl-th-actions"></th>
             </tr>
           </thead>
@@ -143,7 +148,19 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                   </td>
                 ))}
                 <td className="wl-td-sentiment">
-                  <SentimentBadge sentiment={sentiments[entry.companyCode]} compact showScore />
+                  <SentimentBadge
+                    sentiment={sentiments[entry.companyCode]?.latest}
+                    variant="latest"
+                    compact
+                    showScore
+                  />
+                </td>
+                <td className="wl-td-sentiment">
+                  <SentimentBadge
+                    sentiment={sentiments[entry.companyCode]?.quarter}
+                    compact
+                    showScore
+                  />
                 </td>
                 <td className="wl-td-actions">
                   <button

@@ -1,0 +1,147 @@
+.swl {
+  margin-bottom: 28px;
+}
+
+.swl-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Fixed column widths rather than auto: the scores and badges line up vertically, which is what
+   makes the six rows readable as a trend down the column instead of six separate facts. */
+.swl-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 52px 92px 76px;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 12px 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.swl-row--empty {
+  background: #fcfcfd;
+}
+
+/* Latest is one article, not a period, so it is set apart from the series below it.
+
+   Without this the seven rows scan as a single sequence and the reader assumes the first is just
+   the shortest window — which would make one volatile headline look like a measurement over time.
+   The rule and the extra gap do the separating; the label and date do the explaining. */
+.swl-row--latest {
+  border-color: #dbeafe;
+  background: #f8fbff;
+  margin-bottom: 6px;
+}
+
+.swl-row--latest .swl-label {
+  font-weight: 700;
+}
+
+.swl-row--latest + .swl-row {
+  position: relative;
+  margin-top: 10px;
+}
+
+.swl-row--latest + .swl-row::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 8px;
+  right: 8px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.swl-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+/* The -5..+5 axis. A bare number gives no sense of scale; the bar shows how far from neutral a
+   reading actually sits, which is the difference between "slightly positive" and "very positive"
+   being legible at a glance. */
+.swl-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    #fecaca 0%,
+    #f4f4f5 50%,
+    #bbf7d0 100%
+  );
+}
+
+.swl-bar-zero {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 1px;
+  height: 12px;
+  background: #cbd5e1;
+}
+
+.swl-bar-marker {
+  position: absolute;
+  top: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  transform: translateX(-50%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.swl-score {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.swl-badge span {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.swl-count {
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.swl-note {
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.swl-note strong {
+  color: #475569;
+}
+
+@media (max-width: 720px) {
+  /* The bar is the first thing to go: it is an aid to reading the number, not the number
+     itself, and the score plus badge still carry the full meaning without it. */
+  .swl-row {
+    grid-template-columns: 1fr 48px 88px;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+
+  .swl-bar,
+  .swl-count {
+    display: none;
+  }
+}

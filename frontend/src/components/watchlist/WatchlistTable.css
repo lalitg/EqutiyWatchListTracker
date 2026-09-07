@@ -352,11 +352,14 @@
 }
 
 /* ── Tooltips ─────────────────────────────────────────────────────── */
-.wl-sortable[data-tooltip] {
+/* Scoped to any header cell carrying data-tooltip, not just `.wl-sortable`. The two sentiment
+   columns need the same tooltip but are deliberately NOT sortable, and borrowing that class to
+   get the styling would have made them look clickable when they are not. */
+.wl-data-table th[data-tooltip] {
   position: relative;
 }
 
-.wl-sortable[data-tooltip]:hover::after {
+.wl-data-table th[data-tooltip]:hover::after {
   content: attr(data-tooltip);
   position: absolute;
   top: calc(100% + 8px);
@@ -377,7 +380,7 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
-.wl-sortable[data-tooltip]:hover::before {
+.wl-data-table th[data-tooltip]:hover::before {
   content: '';
   position: absolute;
   top: calc(100% + 2px);

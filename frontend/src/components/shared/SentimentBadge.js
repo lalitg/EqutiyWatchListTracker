@@ -16,26 +16,53 @@ const DISPLAY_TEXT = {
   NO_DATA:  'No news',
 };
 
+/** Absolute date, e.g. "3 Sep 2026", in Indian market time. */
+export function formatSentimentDate(millis) {
+  return new Date(millis).toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric',
+  });
+}
+
+/**
+ * "today" / "yesterday" / "12 days ago".
+ *
+ * Paired with the absolute date rather than replacing it. "12 days ago" is what makes staleness
+ * register at a glance; the calendar date is what lets the reader match the reading against the
+ * article list further down the page.
+ */
+export function formatSentimentAge(millis) {
+  const days = Math.floor((Date.now() - millis) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 30) return `${days} days ago`;
+  const months = Math.round(days / 30);
+  return months === 1 ? 'about a month ago' : `about ${months} months ago`;
+}
+
 /**
  * Renders a sentiment indicator.
  *
- * Two call styles, both supported:
+ * Three call styles:
  *
- *   <SentimentBadge sentiment="BULLISH" />                  market trend (existing usage)
- *   <SentimentBadge sentiment={{ score, label, articleCount }} />   news sentiment
+ *   <SentimentBadge sentiment="BULLISH" />                              market trend (existing)
+ *   <SentimentBadge sentiment={{ score, label, articleCount }} />       a period average
+ *   <SentimentBadge sentiment={{ score, label, publishedAt }} variant="latest" />   one article
  *
- * The object form accepts the SentimentDto returned by /api/news/sentiment and by the
- * currentSentiment field of /api/news.
+ * `variant` changes only the tooltip, never the colours — the bands mean the same thing either
+ * way. It matters because the two readings are not the same kind of claim and must not be read as
+ * interchangeable: "latest" is one article, the default is an average over a period. A reader who
+ * mistakes one for the other draws the wrong conclusion from a row where they disagree — which is
+ * exactly the case the two table columns exist to surface.
  *
- * SHOWING THE NUMERIC SCORE (`showScore`): off by default, and deliberately so. Measured
- * accuracy on our own headlines is roughly 0.75 macro-F1, so about one prediction in four
- * is wrong. In a dense table, printing "+3.7" invites comparing companies on differences
- * that are within the model's noise. On the company detail page the number is genuinely
- * useful — the reader has the contributing articles right there to judge it against — so
- * that page opts in. Rendered to one decimal, never more: the underlying score is stored
- * to two, but a second decimal would imply precision that simply is not there.
+ * SHOWING THE NUMERIC SCORE (`showScore`): off by default, and deliberately so. Measured accuracy
+ * on our own headlines is roughly 0.75 macro-F1, so about one prediction in four is wrong. In a
+ * dense table, printing "+3.7" invites comparing companies on differences that are within the
+ * model's noise. On the company detail page the number is genuinely useful — the reader has the
+ * contributing articles right there to judge it against — so that page opts in. Rendered to one
+ * decimal, never more: the underlying score is stored to two, but a second decimal would imply
+ * precision that simply is not there.
  */
-const SentimentBadge = ({ sentiment, compact = false, showScore = false }) => {
+const SentimentBadge = ({ sentiment, compact = false, showScore = false, variant = 'aggregate' }) => {
   const isObject = sentiment !== null && typeof sentiment === 'object';
 
   const key = isObject
@@ -71,11 +98,25 @@ const SentimentBadge = ({ sentiment, compact = false, showScore = false }) => {
   };
 
   let title;
-  if (isObject) {
+  if (isObject && variant === 'latest') {
+    if (!hasScore) {
+      title = 'No scored news yet for this company';
+    } else {
+      // The date is not decoration. This reading is deliberately never suppressed for being old,
+      // so disclosing when it happened is the only thing standing between a months-old headline
+      // and a reader who assumes it describes today.
+      const when = sentiment.publishedAt
+        ? ` Published ${formatSentimentDate(sentiment.publishedAt)}`
+          + ` (${formatSentimentAge(sentiment.publishedAt)}).`
+        : '';
+      title = `Sentiment of the single most recent news article — not an average.${when}`
+            + ` Score ${scoreText} on a -5 (very negative) to +5 (very positive) scale.`;
+    }
+  } else if (isObject) {
     title = !hasScore
-      ? 'No scored news yet for this company'
+      ? 'No scored news in this period'
       : `Score ${scoreText} on a -5 (very negative) to +5 (very positive) scale, `
-        + `averaged over the latest ${sentiment.articleCount} `
+        + `averaged over ${sentiment.articleCount} `
         + `article${sentiment.articleCount === 1 ? '' : 's'}`;
   }
 

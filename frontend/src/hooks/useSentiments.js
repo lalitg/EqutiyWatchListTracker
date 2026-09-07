@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { fetchSentiments } from '../services/newsService';
 
 /**
- * Loads current news sentiment for a list of company symbols.
+ * Loads news sentiment for a list of company symbols.
+ *
+ * Each entry is `{ latest, quarter }`:
+ *   latest  — `{ score, label, publishedAt }` for the single most recent article
+ *   quarter — `{ score, label, articleCount }` averaged over the last 90 days
+ *
+ * Two readings rather than one because they answer different questions and routinely disagree:
+ * the newest headline against the backdrop it landed against. Both arrive in the same request, so
+ * the second column costs nothing extra.
  *
  * Used by every table that shows many companies at once — the watchlist, the Nifty
  * index company table and the sector company table. All three need identical

@@ -12,6 +12,7 @@ import { fetchEvents } from '../services/eventsService';
 import { fetchSebiActivity } from '../services/sebiService';
 import { fetchCompanySectors } from '../services/sectorService';
 import NewsList from '../components/market/NewsList';
+import SentimentWindowList from '../components/market/SentimentWindowList';
 import EventsList from '../components/market/EventsList';
 import { useWatchlist } from '../context/WatchlistContext';
 import { SECTOR_DESCRIPTIONS, INDEX_DESCRIPTIONS, FINANCIALS_DESCRIPTIONS, COMPANY_DESCRIPTIONS } from '../constants/marketDescriptions';
@@ -37,6 +38,18 @@ function fmtPe(val) {
   return n.toFixed(2) + 'x';
 }
 
+/**
+ * Tooltip for the badge beside the company name.
+ *
+ * Covers the whole pill, not just the badge, so hovering the "Latest News" caption explains itself
+ * too. The badge carries a second, more specific tooltip with the article's actual date — the
+ * caption says what kind of number this is, the badge says which article produced it.
+ */
+const LATEST_NEWS_TOOLTIP =
+  'Sentiment of the single most recent news article for this company — not an average. '
+  + 'It may be from today or from weeks ago; hover the badge itself to see its date. '
+  + 'For averages over a period, see the Sentiments tab below.';
+
 const CompanyDetailPage = () => {
   const { symbol } = useParams();
   const navigate   = useNavigate();
@@ -54,6 +67,7 @@ const CompanyDetailPage = () => {
 
   const [news,          setNews]          = useState([]);
   const [sentiment,     setSentiment]     = useState(null);
+  const [sentimentWindows, setSentimentWindows] = useState([]);
   const [importantNews, setImportantNews] = useState([]);
   const [events,        setEvents]        = useState([]);
   const [sebi,          setSebi]          = useState(null);
@@ -84,9 +98,15 @@ const CompanyDetailPage = () => {
       if (nRes.status === 'fulfilled') {
         setNews(nRes.value?.news ?? []);
         setImportantNews(nRes.value?.importantNews ?? []);
-        // currentSentiment rides along on the existing /api/news response, so the
-        // badge costs no extra request.
-        setSentiment(nRes.value?.currentSentiment ?? null);
+        // latestSentiment rides along on the existing /api/news response, so the badge costs no
+        // extra request. It is the single most recent article rather than an average: an average
+        // needs an expiry rule to avoid reading as current forever on a quiet company, whereas
+        // this claims only to be the last thing that happened — and carries its date so the
+        // tooltip can say when that was.
+        setSentiment(nRes.value?.latestSentiment ?? null);
+        // Same for the Sentiments tab breakdown: the backend already has the row loaded, so the
+        // six windows cost no extra request and no second database read when the tab is opened.
+        setSentimentWindows(nRes.value?.sentimentWindows ?? []);
       }
       if (eRes.status === 'fulfilled') setEvents(eRes.value?.events ?? []);
       if (sRes.status === 'fulfilled') setSebi(sRes.value);
@@ -133,9 +153,9 @@ const CompanyDetailPage = () => {
           </div>
           {peLabel && <div className="cdp-pe-pill" data-tooltip={COMPANY_DESCRIPTIONS['pe']}>P/E {peLabel}</div>}
           {sentiment && (
-            <div className="cdp-sentiment-pill">
-              <span className="cdp-sentiment-label">News</span>
-              <SentimentBadge sentiment={sentiment} compact showScore />
+            <div className="cdp-sentiment-pill" title={LATEST_NEWS_TOOLTIP}>
+              <span className="cdp-sentiment-label">Latest News</span>
+              <SentimentBadge sentiment={sentiment} variant="latest" compact showScore />
             </div>
           )}
         </div>
@@ -202,6 +222,12 @@ const CompanyDetailPage = () => {
           >
             Regulatory
           </button>
+          <button
+            className={`cdp-fund-tab ${insightsTab === 'sentiments' ? 'active' : ''}`}
+            onClick={() => setInsightsTab('sentiments')}
+          >
+            Sentiments
+          </button>
         </div>
         {insightsLoading ? (
           <div className="cdp-fund-loading">Loading…</div>
@@ -217,6 +243,8 @@ const CompanyDetailPage = () => {
           events.length === 0
             ? <div className="cdp-fund-empty">No events found for {symbol}.</div>
             : <EventsList events={events} />
+        ) : insightsTab === 'sentiments' ? (
+          <SentimentWindowList windows={sentimentWindows} symbol={symbol} />
         ) : (
           <SebiActivityPanel sebi={sebi} symbol={symbol} />
         )}

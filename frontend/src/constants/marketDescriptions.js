@@ -86,6 +86,14 @@ export const WATCHLIST_DESCRIPTIONS = {
   'btn.newList':    'Create a new watchlist to organise companies by theme or strategy',
   'col.symbol':     'NSE ticker symbol — click to sort',
   'col.company':    'Full registered company name — click to sort',
+  // The two sentiment columns describe different things and will often disagree. Saying so here is
+  // what stops a reader treating the pair as a contradiction rather than as the contrast it is:
+  // the newest headline against the backdrop it landed against.
+  'col.sentimentLatest':  'Sentiment of the single most recent news article for this company — '
+                        + 'not an average. It may be from today or from months ago; hover the '
+                        + 'badge to see its date.',
+  'col.sentimentQuarter': 'Average sentiment across every news article from the last 90 days. '
+                        + 'Hover the badge to see how many articles it covers.',
 };
 
 export const COMPANY_DESCRIPTIONS = {

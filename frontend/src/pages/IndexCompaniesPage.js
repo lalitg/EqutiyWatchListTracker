@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import SentimentBadge from '../components/shared/SentimentBadge';
 import { useSentiments } from '../hooks/useSentiments';
+import { WATCHLIST_DESCRIPTIONS as WD } from '../constants/marketDescriptions';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { fetchIndexCompanies, fetchIndices } from '../services/indicesService';
 import './CompaniesPage.css';
@@ -99,12 +100,13 @@ const IndexCompaniesPage = () => {
                 <th>Symbol</th>
                 <th>Company</th>
                 <th>Industry</th>
-                <th>News Sentiment</th>
+                <th title={WD['col.sentimentLatest']}>Latest News</th>
+                <th title={WD['col.sentimentQuarter']}>Last 1 Quarter</th>
               </tr>
             </thead>
             <tbody>
               {companies.length === 0 ? (
-                <tr><td colSpan={5} className="nifty-empty">No data available</td></tr>
+                <tr><td colSpan={6} className="nifty-empty">No data available</td></tr>
               ) : (
                 companies.map((c, i) => (
                   <tr
@@ -116,7 +118,14 @@ const IndexCompaniesPage = () => {
                     <td><strong className="nifty-symbol">{c.symbol}</strong></td>
                     <td>{c.companyName || '—'}</td>
                     <td>{c.industry || '—'}</td>
-                    <td><SentimentBadge sentiment={sentiments[c.symbol]} compact /></td>
+                    <td>
+                      <SentimentBadge
+                        sentiment={sentiments[c.symbol]?.latest}
+                        variant="latest"
+                        compact
+                      />
+                    </td>
+                    <td><SentimentBadge sentiment={sentiments[c.symbol]?.quarter} compact /></td>
                   </tr>
                 ))
               )}
