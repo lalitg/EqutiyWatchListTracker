@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -62,6 +61,16 @@ public class NewsWorker {
     private final SentimentScorer sentimentScorer;
 
     /**
+     * Keeps the row's denormalised sentiment columns in step with the article list.
+     *
+     * <p>Refreshing here, inside the same transaction that writes the articles, is what lets the
+     * batch endpoint read those columns without opening the JSONB. Doing it on a schedule instead
+     * would leave a window in which the column and the array disagree, and the tables would serve
+     * a sentiment computed from articles that are no longer the newest ones.
+     */
+    private final CurrentSentimentService currentSentimentService;
+
+    /**
      * Per-keyword {@link ReentrantLock} map.
      *
      * <p>Thread 1 saving {@code INFY} does NOT block Thread 2 saving {@code RELIANCE}.
@@ -98,6 +107,8 @@ public class NewsWorker {
      * @param similarityChecker    Jaccard similarity checker for near-duplicate headline detection
      * @param newsStore            in-memory mirror of {@code company_news}
      * @param importanceClassifier flags company headlines as important corporate-action news
+     * @param sentimentScorer      scores each newly-accepted company headline
+     * @param currentSentimentService refreshes the denormalised sentiment columns on every save
      * @param meterRegistry        Micrometer registry for registering production counters
      */
     public NewsWorker(CompanyNewsRepository repository,
@@ -105,12 +116,14 @@ public class NewsWorker {
                       NewsStore newsStore,
                       NewsImportanceClassifier importanceClassifier,
                       SentimentScorer sentimentScorer,
+                      CurrentSentimentService currentSentimentService,
                       MeterRegistry meterRegistry) {
         this.repository           = repository;
         this.similarityChecker    = similarityChecker;
         this.newsStore            = newsStore;
         this.importanceClassifier = importanceClassifier;
         this.sentimentScorer      = sentimentScorer;
+        this.currentSentimentService = currentSentimentService;
         this.savedCounter        = Counter.builder("news.items.saved")
             .description("Total news items written to DB")
             .register(meterRegistry);
@@ -240,6 +253,11 @@ public class NewsWorker {
                     sentimentScorer.score(item);
                 }
 
+                // Normalise the date string to an instant once, here, for every keyword type.
+                // Retention, sorting and the sentiment windows all need it as a number, and
+                // deriving it on demand meant re-parsing the whole stored array on every pass.
+                item.setPublishedAt(NewsDateParser.toEpochMillis(item.getDate()));
+
                 currentNews.add(item);
                 savedUrls.add(link);
                 seenInBatch.add(link);
@@ -259,9 +277,14 @@ public class NewsWorker {
             }
 
             // Sort latest first — the hourly cleanup job handles removing articles outside the retention window
-            currentNews.sort((a, b) -> compareDates(b.getDate(), a.getDate()));
+            currentNews.sort((a, b) -> compareItems(b, a));
 
             record.setNews(currentNews);
+            // Refresh before saving so the denormalised columns and the JSONB go out in the same
+            // statement. The article list has just changed, so the stored reading is stale by
+            // definition, and CurrentSentimentService reads newest-first order — which the sort
+            // above has only now established.
+            currentSentimentService.refresh(record);
             record.setLastUpdated(LocalDateTime.now());
             repository.save(record);
             newsStore.put(keyword, currentNews);
@@ -332,35 +355,51 @@ public class NewsWorker {
                 item.setCategory(importanceClassifier.classify(item.getSummary()));
                 sentimentScorer.score(item);
             }
+            item.setPublishedAt(NewsDateParser.toEpochMillis(item.getDate()));
             currentNews.add(0, item);
         }
 
         record.setNews(currentNews);
+        currentSentimentService.refresh(record);
         record.setLastUpdated(LocalDateTime.now());
         repository.save(record);
         log.info("Upsert succeeded for keyword: {}", keyword);
     }
 
     /**
-     * Compares two date strings for chronological ordering, with null-safe handling.
+     * Compares two items chronologically, null-safe, with items of unknown date sorted oldest.
      *
-     * <p>Null dates are sorted to the end (treated as the oldest). If both are non-null,
-     * they are parsed to {@link ZonedDateTime} for accurate chronological comparison.
-     * Falls back to lexicographic string comparison if parsing fails for either date.
+     * <p>Prefers the stored {@code publishedAt} instant and falls back to parsing the date string
+     * for items written before that field existed. The list being sorted mixes both kinds in the
+     * period after deployment and before the backfill finishes, so the fallback is on the live
+     * path rather than a defensive nicety.
      *
-     * @param dateA the first date string
-     * @param dateB the second date string
-     * @return negative if dateA is before dateB, positive if after, 0 if equal
+     * <p>Two items whose dates are both unparseable are ordered lexicographically by date string,
+     * preserving the previous behaviour and keeping the sort deterministic.
+     *
+     * @param a the first item
+     * @param b the second item
+     * @return negative if {@code a} is older than {@code b}, positive if newer, 0 if equal
      */
-    private int compareDates(String dateA, String dateB) {
+    private int compareItems(NewsItem a, NewsItem b) {
+        Long instantA = instantOf(a);
+        Long instantB = instantOf(b);
+        if (instantA != null && instantB != null) return Long.compare(instantA, instantB);
+        if (instantA != null) return 1;      // b has no usable date — treat it as the older one
+        if (instantB != null) return -1;
+
+        String dateA = a == null ? null : a.getDate();
+        String dateB = b == null ? null : b.getDate();
         if (dateA == null && dateB == null) return 0;
         if (dateA == null) return -1;
         if (dateB == null) return 1;
-        ZonedDateTime da = NewsDateParser.parse(dateA);
-        ZonedDateTime db = NewsDateParser.parse(dateB);
-        if (da == null && db == null) return dateA.compareTo(dateB);
-        if (da == null) return -1;
-        if (db == null) return 1;
-        return da.compareTo(db);
+        return dateA.compareTo(dateB);
+    }
+
+    /** Publication instant for an item, parsing its date string only if the field is absent. */
+    private static Long instantOf(NewsItem item) {
+        if (item == null) return null;
+        if (item.getPublishedAt() != null) return item.getPublishedAt();
+        return NewsDateParser.toEpochMillis(item.getDate());
     }
 }

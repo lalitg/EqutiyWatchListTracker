@@ -1,9 +1,11 @@
 package com.companynews.newsscheduler.controller;
 
-import com.companynews.newsscheduler.dto.SentimentDto;
+import com.companynews.newsscheduler.dto.CompanySentimentDto;
+import com.companynews.newsscheduler.dto.SentimentWindowDto;
 import com.companynews.newsscheduler.service.CompanyNewsService;
 import com.companynews.newsscheduler.service.CurrentSentimentService;
 import com.companynews.newsscheduler.service.NewsAggregatorService;
+import com.companynews.newsscheduler.service.SentimentWindowService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import org.apache.logging.log4j.LogManager;
@@ -50,13 +52,16 @@ public class NewsController {
     private final CompanyNewsService companyNewsService;
     private final NewsAggregatorService aggregatorService;
     private final CurrentSentimentService currentSentimentService;
+    private final SentimentWindowService sentimentWindowService;
 
     public NewsController(CompanyNewsService companyNewsService,
                           NewsAggregatorService aggregatorService,
-                          CurrentSentimentService currentSentimentService) {
+                          CurrentSentimentService currentSentimentService,
+                          SentimentWindowService sentimentWindowService) {
         this.companyNewsService      = companyNewsService;
         this.aggregatorService       = aggregatorService;
         this.currentSentimentService = currentSentimentService;
+        this.sentimentWindowService  = sentimentWindowService;
     }
 
     /**
@@ -103,24 +108,28 @@ public class NewsController {
     }
 
     /**
-     * Returns current sentiment for many keywords in one call.
+     * Returns both sentiment readings for many keywords in one call.
      *
-     * <p>Exists because the watchlist and the Nifty index / sector company tables render dozens
-     * of companies at once. Calling {@code GET /api/news?key=} per row would mean fifty HTTP
-     * requests and fifty full news payloads to populate a single column. This endpoint carries
-     * no article text — just a score, a label and a contributing-article count per keyword —
-     * and resolves them with a single database query.
+     * <p>Exists because the watchlist and the Nifty index / sector company tables render dozens of
+     * companies at once. Calling {@code GET /api/news?key=} per row would mean fifty HTTP requests
+     * and fifty full news payloads to populate two columns. This endpoint carries no article text —
+     * just the latest reading with its date, and the 90-day average with its article count — and
+     * resolves them with a single database query against denormalised columns.
+     *
+     * <p>Two readings rather than one because they answer different questions and routinely
+     * disagree: the latest article versus the backdrop it landed against. Averaging them together
+     * would destroy exactly the contrast the two columns exist to show.
      *
      * <p>Every requested keyword appears in the response. Ones with no scored news come back as
-     * {@code NO_DATA} rather than being omitted, so the frontend never has to distinguish a
-     * missing key from a genuine neutral reading.
+     * {@code NO_DATA} rather than being omitted, so the frontend never has to distinguish a missing
+     * key from a genuine neutral reading.
      *
      * <p>Example: {@code GET /api/news/sentiment?keys=INFY,TCS,RELIANCE}
      *
      * @param keys comma-separated keyword list
      */
     @GetMapping("/sentiment")
-    public ResponseEntity<Map<String, SentimentDto>> getSentiments(
+    public ResponseEntity<Map<String, CompanySentimentDto>> getSentiments(
             @RequestParam @NotEmpty(message = "keys must not be empty") String keys) {
 
         List<String> keywords = Arrays.stream(keys.split(","))
@@ -132,5 +141,35 @@ public class NewsController {
 
         log.info("GET /api/news/sentiment keys={}", keywords.size());
         return ResponseEntity.ok(currentSentimentService.getForKeywords(keywords));
+    }
+
+    /**
+     * Returns one company's sentiment broken down by time window — the Sentiments tab.
+     *
+     * <p>Single-keyword by design, and there is deliberately no batch equivalent. The windows are
+     * derived from individual article scores, so serving them means reading that company's stored
+     * articles; doing that for a table of fifty companies is exactly the read the denormalised
+     * columns behind {@code /sentiment} exist to avoid. One company at a time, on a tab the user
+     * opened, is the only shape in which this query is cheap.
+     *
+     * <p>The company detail page does not normally need this endpoint — {@code GET /api/news?key=}
+     * already carries the same list as {@code sentimentWindows}, because the row is loaded there
+     * anyway. This exists for callers that want the breakdown on its own, and for verifying the
+     * computation directly.
+     *
+     * <p>Every window is always present in the response; ones with no scored article inside them
+     * come back as {@code NO_DATA} with a zero count rather than being omitted or reported as a
+     * neutral {@code 0.0}.
+     *
+     * <p>Example: {@code GET /api/news/sentiment/windows?key=INFY}
+     *
+     * @param key company symbol
+     */
+    @GetMapping("/sentiment/windows")
+    public ResponseEntity<List<SentimentWindowDto>> getSentimentWindows(
+            @RequestParam @NotBlank(message = "key must not be blank") String key) {
+
+        log.info("GET /api/news/sentiment/windows key={}", key);
+        return ResponseEntity.ok(sentimentWindowService.getForKeyword(key.trim()));
     }
 }

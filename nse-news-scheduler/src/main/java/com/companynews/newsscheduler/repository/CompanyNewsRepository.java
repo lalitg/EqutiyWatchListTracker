@@ -2,6 +2,8 @@ package com.companynews.newsscheduler.repository;
 
 import com.companynews.newsscheduler.model.CompanyNews;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -51,4 +53,33 @@ public interface CompanyNewsRepository extends JpaRepository<CompanyNews, Long> 
      * @return matching records, in unspecified order and possibly fewer than requested
      */
     List<CompanyNews> findByKeywordIn(Collection<String> keywords);
+
+    /**
+     * Reads the denormalised sentiment columns for many keywords without touching the JSONB.
+     *
+     * <p>This is the query behind {@code GET /api/news/sentiment}. {@link #findByKeywordIn} would
+     * answer the same question, but it selects {@code news} too — so serving one watchlist means
+     * transferring and deserialising every stored article of every company on it, to produce a
+     * handful of numbers that are already sitting in columns. Naming the scalar columns explicitly
+     * keeps that page load proportional to the number of companies rather than to the volume of
+     * news behind them, which is what makes quarter-long retention affordable.
+     *
+     * <p>Keywords with no row are simply absent from the result; the caller seeds those as
+     * {@code NO_DATA}.
+     *
+     * @param keywords the keywords to look up
+     * @return one projection per matching row, in unspecified order
+     */
+    @Query("""
+           select c.keyword         as keyword,
+                  c.latestScore     as latestScore,
+                  c.latestLabel     as latestLabel,
+                  c.newestArticleAt as newestArticleAt,
+                  c.quarterScore    as quarterScore,
+                  c.quarterLabel    as quarterLabel,
+                  c.quarterCount    as quarterCount
+           from CompanyNews c
+           where c.keyword in :keywords
+           """)
+    List<SentimentProjection> findSentimentsByKeywordIn(@Param("keywords") Collection<String> keywords);
 }

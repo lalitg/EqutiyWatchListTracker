@@ -24,14 +24,38 @@ import java.util.Set;
  *   <li><b>Sector / macro keywords</b> — unchanged: keep all articles within the last
  *       {@code news.retention.window-hours} hours, with a {@code news.retention.min-count}
  *       floor of newest older items so the frontend always has content.</li>
- *   <li><b>Company symbols</b> — dual retention for the two-tab UI: keep an article if it is
- *       within the {@code news.retention.company.latest-window-days} window (Latest tab) OR it
- *       is flagged {@code category="important"} and within the
- *       {@code news.retention.company.important-window-days} window (Important tab). The same
- *       min-count floor is applied to the Latest portion for quiet companies.</li>
+ *   <li><b>Company symbols</b> — keep an article if it is within the
+ *       {@code news.retention.company.latest-window-days} window OR it is flagged
+ *       {@code category="important"} and within the
+ *       {@code news.retention.company.important-window-days} window. The same min-count floor is
+ *       applied for quiet companies.</li>
  * </ul>
  *
  * <p>Articles with unparseable or missing dates are treated as fresh and never removed.
+ *
+ * <h2>Retention is not the same thing as display</h2>
+ * Company retention now runs to a quarter, because the Sentiments tab averages over windows up to
+ * ninety days and a window can only be as long as the history behind it. That is a <em>storage</em>
+ * decision and it deliberately says nothing about what any tab shows. The Latest News tab is
+ * bounded separately by {@code news.display.company.latest-window-days} inside
+ * {@link CompanyNewsService}; without that split, widening retention would have silently turned
+ * the Latest tab into a three-month archive.
+ *
+ * <h2>Why cleanup refreshes sentiment on every row</h2>
+ * Dropping articles changes what the denormalised readings summarise, so a row whose list shrank
+ * must be recomputed — otherwise the tables keep serving a reading derived from articles this job
+ * has just deleted.
+ *
+ * <p>The subtler case is the row that <em>does not</em> change. The quarter average moves with the
+ * passage of time rather than with new data: articles fall out of the ninety-day window while a
+ * company sits silent. Usually that coincides with deletion, because retention is also ninety days
+ * — but the min-count floor force-keeps the newest fifteen articles regardless of age, so a quiet
+ * company's row is never rewritten and its stored average would drift indefinitely.
+ *
+ * <p>So every company row is recomputed here, and saved only when a value actually moved. The
+ * recompute is nearly free — this job has already loaded every row — while the write is the
+ * expensive part, since it rewrites the whole JSONB blob. That bounds the error at one hour without
+ * adding a single unnecessary write.
  */
 @Service
 public class NewsCleanupService {
@@ -41,6 +65,7 @@ public class NewsCleanupService {
     private final CompanyNewsRepository repository;
     private final NewsStore newsStore;
     private final KeywordLoader keywordLoader;
+    private final CurrentSentimentService currentSentimentService;
 
     @Value("${news.retention.window-hours:24}")
     private int retentionWindowHours;
@@ -48,7 +73,7 @@ public class NewsCleanupService {
     @Value("${news.retention.min-count:15}")
     private int minCount;
 
-    @Value("${news.retention.company.latest-window-days:7}")
+    @Value("${news.retention.company.latest-window-days:90}")
     private int companyLatestWindowDays;
 
     @Value("${news.retention.company.important-window-days:90}")
@@ -56,10 +81,12 @@ public class NewsCleanupService {
 
     public NewsCleanupService(CompanyNewsRepository repository,
                               NewsStore newsStore,
-                              KeywordLoader keywordLoader) {
+                              KeywordLoader keywordLoader,
+                              CurrentSentimentService currentSentimentService) {
         this.repository    = repository;
         this.newsStore     = newsStore;
         this.keywordLoader = keywordLoader;
+        this.currentSentimentService = currentSentimentService;
     }
 
     /**
@@ -98,16 +125,28 @@ public class NewsCleanupService {
                 : retainForSector(news, sectorCutoff);
 
             // retained is always a subset in original order — equal size means nothing was removed.
-            if (retained.size() == news.size()) continue;
+            boolean articlesChanged = retained.size() != news.size();
+            if (articlesChanged) {
+                record.setNews(retained);
+            }
 
-            record.setNews(retained);
+            // Recompute unconditionally, save only if something moved. See the class javadoc: a
+            // quiet company's quarter average goes stale purely through the passage of time, and
+            // its row is otherwise never touched.
+            boolean sentimentChanged = currentSentimentService.refreshIfChanged(record);
+
+            if (!articlesChanged && !sentimentChanged) continue;
+
             record.setLastUpdated(LocalDateTime.now());
             repository.save(record);
-            newsStore.put(record.getKeyword(), retained);
+            if (articlesChanged) {
+                newsStore.put(record.getKeyword(), retained);
+            }
             rowsUpdated++;
 
-            log.debug("Cleanup: keyword={} isCompany={} kept={}/{}",
-                record.getKeyword(), isCompany, retained.size(), news.size());
+            log.debug("Cleanup: keyword={} isCompany={} kept={}/{} articlesChanged={} sentimentChanged={}",
+                record.getKeyword(), isCompany, retained.size(), news.size(),
+                articlesChanged, sentimentChanged);
         }
 
         log.info("Cleanup completed — {}/{} keyword rows updated", rowsUpdated, allRecords.size());

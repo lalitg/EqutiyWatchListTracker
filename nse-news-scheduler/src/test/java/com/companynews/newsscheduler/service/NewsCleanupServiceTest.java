@@ -1,5 +1,6 @@
 package com.companynews.newsscheduler.service;
 
+import com.companynews.newsscheduler.client.SentimentModelClient;
 import com.companynews.newsscheduler.dto.NewsItem;
 import com.companynews.newsscheduler.model.CompanyNews;
 import com.companynews.newsscheduler.repository.CompanyNewsRepository;
@@ -41,7 +42,19 @@ class NewsCleanupServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new NewsCleanupService(repository, newsStore, keywordLoader);
+        // A real CurrentSentimentService rather than a mock: cleanup calls refresh() on every row
+        // it rewrites, and these tests assert on the saved record. A mock would silently accept
+        // that call and leave the denormalised columns untouched, hiding a regression where
+        // cleanup drops articles without updating the sentiment derived from them. Its own
+        // repository is never used — refresh() reads the in-memory record only.
+        CurrentSentimentService sentimentService = new CurrentSentimentService(
+                mock(CompanyNewsRepository.class),
+                new SentimentScorer(mock(SentimentModelClient.class), 1.5, -1.5));
+
+        // These window values are the ones the retention tests below were written against; they
+        // are set explicitly rather than inherited from application.properties so that changing
+        // the production policy cannot silently change what these tests assert.
+        service = new NewsCleanupService(repository, newsStore, keywordLoader, sentimentService);
         ReflectionTestUtils.setField(service, "retentionWindowHours", 24);
         ReflectionTestUtils.setField(service, "minCount", 15);
         ReflectionTestUtils.setField(service, "companyLatestWindowDays", 7);
@@ -110,8 +123,57 @@ class NewsCleanupServiceTest {
 
         service.cleanup();
 
-        // All 3 fit under the floor of 15, so nothing is removed → no write at all.
+        // All 3 fit under the floor of 15, so no article is removed.
+        ArgumentCaptor<CompanyNews> captor = ArgumentCaptor.forClass(CompanyNews.class);
+        verify(repository, atMost(1)).save(captor.capture());
+        if (!captor.getAllValues().isEmpty()) {
+            assertThat(captor.getValue().getNews()).hasSize(3);
+        }
+    }
+
+    @Test
+    void quiet_company_with_up_to_date_columns_is_not_rewritten() {
+        // The cost-critical property. Cleanup now recomputes sentiment on EVERY company row, not
+        // just ones whose article list shrank, because a quarter average ages out on its own while
+        // a company sits silent. That is only affordable if a row where nothing moved is left
+        // alone — otherwise every JSONB blob in the table would be rewritten hourly for nothing.
+        List<NewsItem> news = List.of(
+            itemDaysAgo("https://a.com/1", "old 1", 30, null),
+            itemDaysAgo("https://a.com/2", "old 2", 40, null)
+        );
+
+        CompanyNews record = row("INFY", news);
+        // Pre-set the columns to exactly what a refresh would produce for unscored articles, i.e.
+        // this row has already been through cleanup once.
+        record.setLatestLabel("NO_DATA");
+        record.setQuarterLabel("NO_DATA");
+        record.setQuarterCount(0);
+
+        when(keywordLoader.loadCompanySymbols()).thenReturn(Set.of("INFY"));
+        when(repository.findAll()).thenReturn(List.of(record));
+
+        service.cleanup();
+
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void quiet_company_with_uninitialised_columns_is_written_once() {
+        // The other half of the same rule: a row that predates the denormalised columns must be
+        // written once to populate them. Without this the batch endpoint behind the watchlist and
+        // the index tables would report NO_DATA for that company indefinitely, since nothing else
+        // touches a silent row.
+        List<NewsItem> news = List.of(itemDaysAgo("https://a.com/1", "old 1", 30, null));
+
+        when(keywordLoader.loadCompanySymbols()).thenReturn(Set.of("INFY"));
+        when(repository.findAll()).thenReturn(List.of(row("INFY", news)));
+
+        service.cleanup();
+
+        ArgumentCaptor<CompanyNews> captor = ArgumentCaptor.forClass(CompanyNews.class);
+        verify(repository, times(1)).save(captor.capture());
+        assertThat(captor.getValue().getLatestLabel()).isEqualTo("NO_DATA");
+        assertThat(captor.getValue().getNews()).hasSize(1);   // no article was dropped
     }
 
     @Test

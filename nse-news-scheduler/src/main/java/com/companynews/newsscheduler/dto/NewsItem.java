@@ -82,6 +82,28 @@ public class NewsItem {
      */
     private String sentimentLabel;
 
+    /**
+     * Publication instant in epoch milliseconds, normalised from {@link #date} at save time.
+     *
+     * <p>{@link #date} is a display string in one of two formats (NSE or RFC-822 RSS). Every
+     * time-based operation — retention, sorting, and the sentiment time windows — needs it as an
+     * instant, and re-deriving it means running {@link com.companynews.newsscheduler.service.NewsDateParser}
+     * over the whole stored array on each pass. Storing the parsed value turns those filters into
+     * integer comparisons.
+     *
+     * <p>Set once by {@link com.companynews.newsscheduler.service.NewsWorker} when an item is
+     * accepted, alongside category and sentiment. {@code null} for articles stored before this
+     * field existed and for the small number whose date string matches neither format; callers
+     * must fall back to parsing {@link #date} rather than assuming a value is present.
+     * {@link com.companynews.newsscheduler.service.SentimentBackfillService} fills it in for
+     * existing rows.
+     *
+     * <p>Lives inside the {@code news} JSONB array, so adding it required no database migration —
+     * older rows simply deserialize with {@code null}, exactly as {@code category} and
+     * {@code sentimentScore} did before it.
+     */
+    private Long publishedAt;
+
     /** Default no-arg constructor required by Jackson for deserialization. */
     public NewsItem() {}
 
@@ -196,4 +218,19 @@ public class NewsItem {
      * @param sentimentLabel {@code "POSITIVE"}, {@code "NEGATIVE"}, {@code "NEUTRAL"}, or {@code null}
      */
     public void setSentimentLabel(String sentimentLabel) { this.sentimentLabel = sentimentLabel; }
+
+    /**
+     * Returns the publication instant in epoch milliseconds.
+     *
+     * @return epoch millis, or {@code null} if this item predates the field or its date string
+     *         could not be parsed
+     */
+    public Long getPublishedAt() { return publishedAt; }
+
+    /**
+     * Sets the publication instant in epoch milliseconds.
+     *
+     * @param publishedAt epoch millis, or {@code null} if the date string was unparseable
+     */
+    public void setPublishedAt(Long publishedAt) { this.publishedAt = publishedAt; }
 }

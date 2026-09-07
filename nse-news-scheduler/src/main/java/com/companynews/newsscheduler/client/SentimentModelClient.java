@@ -212,26 +212,52 @@ public class SentimentModelClient {
     }
 
     /** Loads the model, tokenizer and label mapping exactly once. */
+    /**
+     * Loads the model, tokenizer and label mapping. Runs at most once.
+     *
+     * <h2>Why {@code initialised} is set last</h2>
+     * It used to be set on entry, and that published a half-built object. The method is
+     * {@code synchronized}, but {@link #isAvailable()} reads the flag <em>without</em> holding
+     * the lock, so the sequence was:
+     * <ol>
+     *   <li>an RSS worker enters here and sets {@code initialised = true};</li>
+     *   <li>it then spends several seconds building the tokenizer and the ONNX session;</li>
+     *   <li>meanwhile a second worker calls {@link #isAvailable()}, sees the flag already set,
+     *       skips initialisation entirely and returns {@code true};</li>
+     *   <li>that worker calls {@link #predict} and dereferences a {@code tokenizer} that is
+     *       still {@code null}.</li>
+     * </ol>
+     *
+     * <p>The symptom is a burst of {@code NullPointerException}s at startup and a set of
+     * headlines permanently stored with no score — permanently because scoring happens once, at
+     * save time, and nothing revisits an article afterwards. It is intermittent, it only affects
+     * the first few seconds of a run, and it leaves no trace in the data beyond some missing
+     * scores, which is precisely why it survived earlier testing.
+     *
+     * <p>Setting the flag in a {@code finally} block instead means a second thread entering this
+     * method blocks on the monitor until the first has finished, then returns to a fully-built
+     * object. Threads that arrive after loading has completed still take the cheap path, because
+     * they see the flag and never call this method at all.
+     */
     private synchronized void initialise() {
         if (initialised) return;
-        initialised = true;
-
-        Path dir       = Paths.get(modelDir);
-        Path modelPath = dir.resolve(MODEL_FILE);
-        Path tokPath   = dir.resolve(TOKENIZER_FILE);
-        Path cfgPath   = dir.resolve(CONFIG_FILE);
-
-        for (Path required : new Path[]{ modelPath, tokPath, cfgPath }) {
-            if (!Files.isReadable(required)) {
-                log.warn("Sentiment model artefact missing or unreadable: {} — sentiment scoring "
-                       + "is DISABLED. News fetching and serving are unaffected.",
-                         required.toAbsolutePath());
-                unavailable = true;
-                return;
-            }
-        }
 
         try {
+            Path dir       = Paths.get(modelDir);
+            Path modelPath = dir.resolve(MODEL_FILE);
+            Path tokPath   = dir.resolve(TOKENIZER_FILE);
+            Path cfgPath   = dir.resolve(CONFIG_FILE);
+
+            for (Path required : new Path[]{ modelPath, tokPath, cfgPath }) {
+                if (!Files.isReadable(required)) {
+                    log.warn("Sentiment model artefact missing or unreadable: {} — sentiment "
+                           + "scoring is DISABLED. News fetching and serving are unaffected.",
+                             required.toAbsolutePath());
+                    unavailable = true;
+                    return;
+                }
+            }
+
             canonicalIndexByModelIndex = readLabelMapping(cfgPath);
 
             tokenizer = HuggingFaceTokenizer.builder()
@@ -262,6 +288,10 @@ public class SentimentModelClient {
                     + "News fetching and serving are unaffected.", e);
             unavailable = true;
             closeQuietly();
+        } finally {
+            // Last, and unconditionally: only now is the object safe for another thread to use,
+            // and a failed load must still stop every subsequent caller from retrying the load.
+            initialised = true;
         }
     }
 

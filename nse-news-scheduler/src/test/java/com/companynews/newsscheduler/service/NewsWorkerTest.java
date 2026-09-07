@@ -49,8 +49,15 @@ class NewsWorkerTest {
                 false, "models", 64, 1, 1, false, false);
         SentimentScorer sentimentScorer = new SentimentScorer(disabledModel, 1.5, -1.5);
 
+        // Real, not mocked: saveNews calls refresh() to write the denormalised sentiment columns
+        // onto the record it is about to persist, and the tests below capture that record. With
+        // the model disabled every item stays unscored, so refresh() writes NO_DATA — which is
+        // the correct reading here and keeps these dedup-and-persistence tests unaffected by it.
+        CurrentSentimentService sentimentService = new CurrentSentimentService(
+                mock(CompanyNewsRepository.class), sentimentScorer);
+
         newsWorker = new NewsWorker(repository, similarityChecker, newsStore, classifier,
-                                    sentimentScorer, new SimpleMeterRegistry());
+                                    sentimentScorer, sentimentService, new SimpleMeterRegistry());
     }
 
     // ── Helper ─────────────────────────────────────────────────────────────

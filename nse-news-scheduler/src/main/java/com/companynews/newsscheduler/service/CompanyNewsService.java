@@ -1,8 +1,8 @@
 package com.companynews.newsscheduler.service;
 
+import com.companynews.newsscheduler.dto.LatestSentimentDto;
 import com.companynews.newsscheduler.dto.NewsItem;
 import com.companynews.newsscheduler.dto.NseAnnouncement;
-import com.companynews.newsscheduler.dto.SentimentDto;
 import com.companynews.newsscheduler.model.CompanyNews;
 import com.companynews.newsscheduler.repository.CompanyNewsRepository;
 import org.apache.logging.log4j.LogManager;
@@ -40,13 +40,23 @@ public class CompanyNewsService {
     private final UrlWindow urlWindow;
     private final KeywordLoader keywordLoader;
     private final CurrentSentimentService currentSentimentService;
+    private final SentimentWindowService sentimentWindowService;
 
-    /** Latest News window in days — items within this age appear on the Latest tab. */
-    @Value("${news.retention.company.latest-window-days:7}")
+    /**
+     * Latest News window in days — items within this age appear on the Latest tab.
+     *
+     * <p>Deliberately a <b>display</b> setting, separate from
+     * {@code news.retention.company.latest-window-days}, which controls how long articles are
+     * kept. The two used to be the same property, which was safe only while both meant seven
+     * days. Company news is now retained for a quarter so the Sentiments tab has history to
+     * average over, and had this tab kept reading the retention setting it would have quietly
+     * turned into a three-month archive the moment retention widened.
+     */
+    @Value("${news.display.company.latest-window-days:7}")
     private int latestWindowDays;
 
     /** Important News window in days — flagged items within this age appear on the Important tab. */
-    @Value("${news.retention.company.important-window-days:90}")
+    @Value("${news.display.company.important-window-days:90}")
     private int importantWindowDays;
 
     /** Floor count so a quiet company's Latest tab is never empty (mirrors cleanup's floor). */
@@ -60,7 +70,8 @@ public class CompanyNewsService {
                               SeqIdWindow seqIdWindow,
                               UrlWindow urlWindow,
                               KeywordLoader keywordLoader,
-                              CurrentSentimentService currentSentimentService) {
+                              CurrentSentimentService currentSentimentService,
+                              SentimentWindowService sentimentWindowService) {
         this.repository    = repository;
         this.nseFetcher    = nseFetcher;
         this.rssFetcher    = rssFetcher;
@@ -69,6 +80,7 @@ public class CompanyNewsService {
         this.urlWindow     = urlWindow;
         this.keywordLoader = keywordLoader;
         this.currentSentimentService = currentSentimentService;
+        this.sentimentWindowService  = sentimentWindowService;
     }
 
     /**
@@ -151,10 +163,15 @@ public class CompanyNewsService {
         response.put("sentiments",  companyNews.getSentiments() != null ? companyNews.getSentiments() : "");
         response.put("lastUpdated", companyNews.getLastUpdated());
 
-        // Computed from the scores already stored on this record's items — no extra query and
-        // no model inference, so the company detail page gets sentiment for free from the call
-        // it was already making.
-        response.put("currentSentiment", currentSentimentService.computeFrom(companyNews));
+        // Computed from the scores already stored on this record's items — no extra query and no
+        // model inference, so the company detail page gets sentiment for free from the call it was
+        // already making.
+        //
+        // The badge beside the company name shows the LATEST article rather than an average. An
+        // average needs an expiry rule to avoid reading as current forever on a quiet company; the
+        // latest reading needs none, because it claims only to be the last thing that happened —
+        // and it carries its date so the reader can see how long ago that was.
+        response.put("latestSentiment", currentSentimentService.computeLatest(companyNews));
 
         List<NewsItem> all = companyNews.getNews() != null ? companyNews.getNews() : List.of();
 
@@ -163,6 +180,12 @@ public class CompanyNewsService {
             response.put("news", companyNews.getNews());
             return response;
         }
+
+        // The Sentiments tab breakdown rides along on the request the company page already makes.
+        // The row is loaded and the arithmetic is a few hundred additions, so computing it here
+        // costs nothing measurable and saves the tab a second round trip and a second row read
+        // when the user opens it.
+        response.put("sentimentWindows", sentimentWindowService.computeFrom(companyNews));
 
         ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
         ZonedDateTime latestCutoff    = now.minusDays(latestWindowDays);
@@ -200,10 +223,13 @@ public class CompanyNewsService {
         Map<String, Object> response = new HashMap<>();
         response.put("keyword",     key);
         response.put("sentiments",  "");
-        response.put("currentSentiment", SentimentDto.noData());
+        response.put("latestSentiment", LatestSentimentDto.noData());
         response.put("news",        List.of());
         if (isCompany) {
             response.put("importantNews", List.of());
+            // Present but all NO_DATA, so the tab renders its usual rows rather than breaking on
+            // a missing field for a company that has no news yet.
+            response.put("sentimentWindows", sentimentWindowService.computeFrom(null));
         }
         response.put("lastUpdated", null);
         return response;
