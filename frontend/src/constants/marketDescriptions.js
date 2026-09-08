@@ -92,8 +92,11 @@ export const WATCHLIST_DESCRIPTIONS = {
   'col.sentimentLatest':  'Sentiment of the single most recent news article for this company — '
                         + 'not an average. It may be from today or from months ago; hover the '
                         + 'badge to see its date.',
-  'col.sentimentQuarter': 'Average sentiment across every news article from the last 90 days. '
-                        + 'Hover the badge to see how many articles it covers.',
+  // "Overall" is the column header, so the tooltip has to carry the boundary the header no longer
+  // states — without it the column reads as all-time rather than as a rolling quarter.
+  'col.sentimentQuarter': 'Average sentiment across every news article from the last 90 days — '
+                        + 'a rolling quarter, not all time. Hover the badge to see how many '
+                        + 'articles it covers.',
 };
 
 export const COMPANY_DESCRIPTIONS = {

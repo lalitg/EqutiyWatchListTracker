@@ -138,10 +138,10 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                 </th>
               ))}
               <th className="wl-th-sentiment" data-tooltip={WD['col.sentimentLatest']}>
-                Latest News
+                Latest News Sentiments
               </th>
               <th className="wl-th-sentiment" data-tooltip={WD['col.sentimentQuarter']}>
-                Last 1 Quarter
+                Overall News Sentiments
               </th>
               <th className="wl-th-actions"></th>
             </tr>

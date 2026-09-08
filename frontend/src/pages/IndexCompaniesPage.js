@@ -112,8 +112,8 @@ const IndexCompaniesPage = () => {
                 <th>Symbol</th>
                 <th>Company</th>
                 <th>Industry</th>
-                <th title={WD['col.sentimentLatest']}>Latest News</th>
-                <th title={WD['col.sentimentQuarter']}>Last 1 Quarter</th>
+                <th title={WD['col.sentimentLatest']}>Latest News Sentiments</th>
+                <th title={WD['col.sentimentQuarter']}>Overall News Sentiments</th>
               </tr>
             </thead>
             <tbody>
