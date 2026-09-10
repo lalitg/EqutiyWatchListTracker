@@ -30,6 +30,6 @@ public interface SectorRepository extends JpaRepository<Sector, Long> {
      * @return a list of sector name strings (e.g., {@code ["Banking", "Pharmaceuticals"]});
      *         returns an empty list if the table is empty
      */
-    @Query("SELECT s.sectorName FROM Sector s")
+    @Query("SELECT DISTINCT s.sectorName FROM Sector s WHERE s.sectorName IS NOT NULL")
     List<String> findAllSectorNames();
 }

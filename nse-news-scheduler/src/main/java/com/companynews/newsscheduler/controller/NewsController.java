@@ -1,39 +1,37 @@
 package com.companynews.newsscheduler.controller;
 
-import com.companynews.newsscheduler.dto.NseAnnouncement;
-import com.companynews.newsscheduler.dto.NewsItem;
-import com.companynews.newsscheduler.model.CompanyNews;
-import com.companynews.newsscheduler.repository.CompanyNewsRepository;
-import com.companynews.newsscheduler.service.NseFetcher;
-import com.companynews.newsscheduler.service.RssFetcher;
-import com.companynews.newsscheduler.service.SeqIdWindow;
-import com.companynews.newsscheduler.service.UrlWindow;
-import com.companynews.newsscheduler.service.NewsWorker;
+import com.companynews.newsscheduler.dto.CompanySentimentDto;
+import com.companynews.newsscheduler.dto.SentimentWindowDto;
+import com.companynews.newsscheduler.service.CompanyNewsService;
+import com.companynews.newsscheduler.service.CurrentSentimentService;
+import com.companynews.newsscheduler.service.NewsAggregatorService;
+import com.companynews.newsscheduler.service.SentimentWindowService;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * REST controller exposing the news query API.
  *
- * <p>Provides a single endpoint {@code GET /api/news?key=} that:
- * <ol>
- *   <li>Returns cached data from the database if available (fastest path).</li>
- *   <li>Falls back to on-demand NSE and Google RSS fetches if no cache entry exists.</li>
- *   <li>Returns an empty response if no data is found from any source.</li>
- * </ol>
- *
- * <p>{@code @Validated} at the class level activates Spring's method-level constraint validation
- * so that {@code @NotBlank} on {@code @RequestParam} is enforced before the method body runs.
- * Violations are handled by {@link GlobalExceptionHandler}.
+ * <p>Two endpoints:
+ * <ul>
+ *   <li>{@code GET /api/news?key=} — single-keyword lookup for the company detail page
+ *       (company symbols and sector names). Reads straight from the database via
+ *       {@link CompanyNewsService} — no caching layer.</li>
+ *   <li>{@code GET /api/news/merged?keys=&page=&size=} — multi-keyword paginated merge
+ *       for tab-level views (Domestic sectors, Global market tabs). Served entirely from
+ *       {@link com.companynews.newsscheduler.service.KeywordNewsBucketCache}, the in-memory
+ *       server-side 96-slot rolling-24-hour cache, via {@link NewsAggregatorService}.</li>
+ * </ul>
  */
 @Validated
 @RestController
@@ -42,139 +40,136 @@ public class NewsController {
 
     private static final Logger log = LogManager.getLogger(NewsController.class);
 
-    private final CompanyNewsRepository repository;
-    private final NseFetcher nseFetcher;
-    private final RssFetcher rssFetcher;
-    private final NewsWorker newsWorker;
-    private final SeqIdWindow seqIdWindow;
-    private final UrlWindow urlWindow;
-
     /**
-     * Constructs a {@code NewsController} with all required dependencies injected by Spring.
+     * Upper bound on keywords accepted by {@code /sentiment} in one request.
      *
-     * @param repository   repository for reading/writing {@link CompanyNews} records
-     * @param nseFetcher   fetches corporate announcements from the NSE API
-     * @param rssFetcher   fetches news articles from Google RSS feeds
-     * @param newsWorker   handles deduplication and persistence of news items
-     * @param seqIdWindow  in-memory sliding window for NSE sequence ID deduplication
-     * @param urlWindow    in-memory sliding window for URL-based deduplication
+     * <p>Guards against an unbounded {@code IN (...)} clause. The largest legitimate caller is
+     * a Nifty 50 table, so 200 leaves generous headroom while still capping a malformed or
+     * hostile request.
      */
-    public NewsController(CompanyNewsRepository repository,
-                          NseFetcher nseFetcher,
-                          RssFetcher rssFetcher,
-                          NewsWorker newsWorker,
-                          SeqIdWindow seqIdWindow,
-                          UrlWindow urlWindow) {
-        this.repository  = repository;
-        this.nseFetcher  = nseFetcher;
-        this.rssFetcher  = rssFetcher;
-        this.newsWorker  = newsWorker;
-        this.seqIdWindow = seqIdWindow;
-        this.urlWindow   = urlWindow;
+    private static final int MAX_SENTIMENT_KEYS = 200;
+
+    private final CompanyNewsService companyNewsService;
+    private final NewsAggregatorService aggregatorService;
+    private final CurrentSentimentService currentSentimentService;
+    private final SentimentWindowService sentimentWindowService;
+
+    public NewsController(CompanyNewsService companyNewsService,
+                          NewsAggregatorService aggregatorService,
+                          CurrentSentimentService currentSentimentService,
+                          SentimentWindowService sentimentWindowService) {
+        this.companyNewsService      = companyNewsService;
+        this.aggregatorService       = aggregatorService;
+        this.currentSentimentService = currentSentimentService;
+        this.sentimentWindowService  = sentimentWindowService;
     }
 
     /**
-     * Returns news for the given keyword, fetching on-demand if not already cached in the DB.
+     * Returns news for a single keyword (company symbol, sector, or macro term).
+     * Results are cached in the {@code companyNews} LRU cache (max 100 symbols).
      *
-     * <p>Accepted keyword types:
-     * <ul>
-     *   <li>Company symbol: {@code GET /api/news?key=INFY}</li>
-     *   <li>Sector name: {@code GET /api/news?key=Banking}</li>
-     *   <li>Macro keyword: {@code GET /api/news?key=Nifty 50}</li>
-     * </ul>
-     *
-     * <p>Fetch logic (applied only on cache miss):
-     * <ol>
-     *   <li>NSE on-demand fetch → filter by symbol → dedup by seqId → save.</li>
-     *   <li>Google RSS on-demand fetch → dedup by URL window → save.</li>
-     *   <li>Read back from DB and return. If still empty, return an empty response.</li>
-     * </ol>
-     *
-     * <p>{@code @NotBlank} rejects null, empty, or whitespace-only keys before any service
-     * logic runs. {@link GlobalExceptionHandler} converts the resulting
-     * {@link jakarta.validation.ConstraintViolationException} into a 400 Bad Request.
-     *
-     * @param key the keyword to look up (must not be blank)
-     * @return 200 OK with a JSON body containing {@code keyword}, {@code sentiments},
-     *         {@code news} (list), and {@code lastUpdated}; {@code news} is empty if not found
+     * <p>Example: {@code GET /api/news?key=INFY}
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getNews(
             @RequestParam @NotBlank(message = "key must not be blank") String key) {
-
-        log.info("GET /api/news requested for key={}", key);
-
-        Optional<CompanyNews> existing = repository.findByKeyword(key);
-        if (existing.isPresent()) {
-            log.info("Cache hit — returning DB data for key={}", key);
-            return ResponseEntity.ok(buildResponse(existing.get()));
-        }
-
-        log.info("Cache miss — fetching on-demand for key={}", key);
-
-        List<NseAnnouncement> nseAnnouncements = nseFetcher.fetch();
-        List<NewsItem> nseMatching = nseAnnouncements.stream()
-            .filter(a -> key.equalsIgnoreCase(a.getNewsItem().getSymbol()))
-            .filter(a -> {
-                if (seqIdWindow.contains(a.getSeqId())) return false;
-                seqIdWindow.add(a.getSeqId());
-                return true;
-            })
-            .map(NseAnnouncement::getNewsItem)
-            .toList();
-
-        if (!nseMatching.isEmpty()) {
-            log.info("NSE on-demand: {} matching items found for key={}", nseMatching.size(), key);
-            newsWorker.saveNews(key, nseMatching);
-        }
-
-        List<NewsItem> googleItems = rssFetcher.fetch(key);
-        List<NewsItem> googleNew = googleItems.stream()
-            .filter(item -> urlWindow.addIfAbsent(item.getLink()))
-            .toList();
-
-        if (!googleNew.isEmpty()) {
-            log.info("Google RSS on-demand: {} new items found for key={}", googleNew.size(), key);
-            newsWorker.saveNews(key, googleNew);
-        }
-
-        Optional<CompanyNews> saved = repository.findByKeyword(key);
-        if (saved.isPresent()) {
-            return ResponseEntity.ok(buildResponse(saved.get()));
-        }
-
-        log.warn("No news found for key={} from any source", key);
-        return ResponseEntity.ok(buildEmptyResponse(key));
+        log.info("GET /api/news?key={}", key);
+        return ResponseEntity.ok(companyNewsService.getNews(key));
     }
 
     /**
-     * Builds a populated response map from a {@link CompanyNews} record.
+     * Returns a paginated merged-news response for multiple keywords.
+     * Used by tab-level views (Domestic sector tabs, Global market tabs).
+     * Served entirely from the in-memory 96-slot rolling-24-hour bucket cache — see
+     * {@link NewsAggregatorService}.
      *
-     * @param companyNews the persisted news record to serialize
-     * @return a map with {@code keyword}, {@code sentiments}, {@code news}, and {@code lastUpdated}
+     * <p>Example: {@code GET /api/news/merged?keys=IT,Banking&page=0&size=20}
+     *
+     * @param keys  comma-separated keyword list
+     * @param page  0-based page index (default 0)
+     * @param size  items per page (default 20)
      */
-    private Map<String, Object> buildResponse(CompanyNews companyNews) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("keyword",     companyNews.getKeyword());
-        response.put("sentiments",  companyNews.getSentiments() != null ? companyNews.getSentiments() : "");
-        response.put("news",        companyNews.getNews());
-        response.put("lastUpdated", companyNews.getLastUpdated());
-        return response;
+    @GetMapping("/merged")
+    public ResponseEntity<Map<String, Object>> getMergedNews(
+            @RequestParam @NotEmpty(message = "keys must not be empty") String keys,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        String sortedKeys = Arrays.stream(keys.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .sorted()
+            .collect(Collectors.joining(","));
+
+        log.info("GET /api/news/merged keys={} page={} size={}", sortedKeys, page, size);
+
+        Map<String, Object> result = aggregatorService.buildPage(sortedKeys, page, size);
+        return ResponseEntity.ok(result);
     }
 
     /**
-     * Builds an empty response map for keywords that have no news from any source.
+     * Returns both sentiment readings for many keywords in one call.
      *
-     * @param key the keyword that returned no results
-     * @return a map with {@code keyword}, empty {@code sentiments}, empty {@code news} list,
-     *         and {@code null} for {@code lastUpdated}
+     * <p>Exists because the watchlist and the Nifty index / sector company tables render dozens of
+     * companies at once. Calling {@code GET /api/news?key=} per row would mean fifty HTTP requests
+     * and fifty full news payloads to populate two columns. This endpoint carries no article text —
+     * just the latest reading with its date, and the 90-day average with its article count — and
+     * resolves them with a single database query against denormalised columns.
+     *
+     * <p>Two readings rather than one because they answer different questions and routinely
+     * disagree: the latest article versus the backdrop it landed against. Averaging them together
+     * would destroy exactly the contrast the two columns exist to show.
+     *
+     * <p>Every requested keyword appears in the response. Ones with no scored news come back as
+     * {@code NO_DATA} rather than being omitted, so the frontend never has to distinguish a missing
+     * key from a genuine neutral reading.
+     *
+     * <p>Example: {@code GET /api/news/sentiment?keys=INFY,TCS,RELIANCE}
+     *
+     * @param keys comma-separated keyword list
      */
-    private Map<String, Object> buildEmptyResponse(String key) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("keyword",     key);
-        response.put("sentiments",  "");
-        response.put("news",        List.of());
-        response.put("lastUpdated", null);
-        return response;
+    @GetMapping("/sentiment")
+    public ResponseEntity<Map<String, CompanySentimentDto>> getSentiments(
+            @RequestParam @NotEmpty(message = "keys must not be empty") String keys) {
+
+        List<String> keywords = Arrays.stream(keys.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .distinct()
+            .limit(MAX_SENTIMENT_KEYS)
+            .toList();
+
+        log.info("GET /api/news/sentiment keys={}", keywords.size());
+        return ResponseEntity.ok(currentSentimentService.getForKeywords(keywords));
+    }
+
+    /**
+     * Returns one company's sentiment broken down by time window — the Sentiments tab.
+     *
+     * <p>Single-keyword by design, and there is deliberately no batch equivalent. The windows are
+     * derived from individual article scores, so serving them means reading that company's stored
+     * articles; doing that for a table of fifty companies is exactly the read the denormalised
+     * columns behind {@code /sentiment} exist to avoid. One company at a time, on a tab the user
+     * opened, is the only shape in which this query is cheap.
+     *
+     * <p>The company detail page does not normally need this endpoint — {@code GET /api/news?key=}
+     * already carries the same list as {@code sentimentWindows}, because the row is loaded there
+     * anyway. This exists for callers that want the breakdown on its own, and for verifying the
+     * computation directly.
+     *
+     * <p>Every window is always present in the response; ones with no scored article inside them
+     * come back as {@code NO_DATA} with a zero count rather than being omitted or reported as a
+     * neutral {@code 0.0}.
+     *
+     * <p>Example: {@code GET /api/news/sentiment/windows?key=INFY}
+     *
+     * @param key company symbol
+     */
+    @GetMapping("/sentiment/windows")
+    public ResponseEntity<List<SentimentWindowDto>> getSentimentWindows(
+            @RequestParam @NotBlank(message = "key must not be blank") String key) {
+
+        log.info("GET /api/news/sentiment/windows key={}", key);
+        return ResponseEntity.ok(sentimentWindowService.getForKeyword(key.trim()));
     }
 }

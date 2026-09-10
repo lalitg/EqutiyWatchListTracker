@@ -8,19 +8,14 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,20 +46,38 @@ public class NewsWorker {
 
     private static final Logger log = LogManager.getLogger(NewsWorker.class);
 
-    /** Pre-compiled formatter for NSE date strings: {@code "12-Mar-2026 17:11:14"}. Thread-safe. */
-    private static final DateTimeFormatter NSE_FORMAT =
-        DateTimeFormatter.ofPattern("dd-MMM-yyyy HH:mm:ss", Locale.ENGLISH);
-
-    /** Pre-compiled formatter for Google RSS date strings: {@code "Thu, 12 Mar 2026 10:00:00 GMT"}. Thread-safe. */
-    private static final DateTimeFormatter RSS_FORMAT =
-        DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH);
-
     private final CompanyNewsRepository repository;
     private final SimilarityChecker similarityChecker;
+    private final NewsStore newsStore;
+    private final NewsImportanceClassifier importanceClassifier;
 
-    /** Maximum number of news items to retain per keyword. Configurable via {@code news.limit}. */
-    @Value("${news.limit:5}")
-    private int newsLimit;
+    /**
+     * Assigns each newly-accepted company headline a sentiment score.
+     *
+     * <p>Runs at save time rather than on read so each headline costs exactly one inference
+     * for its lifetime. The watchlist and index tables render dozens of companies per page
+     * view; scoring on read would repeat that work on every refresh.
+     */
+    private final SentimentScorer sentimentScorer;
+
+    /**
+     * Keeps the row's denormalised sentiment columns in step with the article list.
+     *
+     * <p>Refreshing here, inside the same transaction that writes the articles, is what lets the
+     * batch endpoint read those columns without opening the JSONB. Doing it on a schedule instead
+     * would leave a window in which the column and the array disagree, and the tables would serve
+     * a sentiment computed from articles that are no longer the newest ones.
+     */
+    private final CurrentSentimentService currentSentimentService;
+
+    /**
+     * Rewrites the company daily sentiment buckets that the Extremes page ranks over.
+     *
+     * <p>Called here rather than from a scheduled job: this is the moment a company article list
+     * actually changes, so the Today board moves on the fifteen minute fetch cycle with nothing
+     * else driving it.
+     */
+    private final DailySentimentService dailySentimentService;
 
     /**
      * Per-keyword {@link ReentrantLock} map.
@@ -99,15 +112,30 @@ public class NewsWorker {
     /**
      * Constructs a {@code NewsWorker} with all required dependencies injected by Spring.
      *
-     * @param repository        repository for reading and writing {@link CompanyNews} records
-     * @param similarityChecker Jaccard similarity checker for near-duplicate headline detection
-     * @param meterRegistry     Micrometer registry for registering production counters
+     * @param repository           repository for reading and writing {@link CompanyNews} records
+     * @param similarityChecker    Jaccard similarity checker for near-duplicate headline detection
+     * @param newsStore            in-memory mirror of {@code company_news}
+     * @param importanceClassifier flags company headlines as important corporate-action news
+     * @param sentimentScorer      scores each newly-accepted company headline
+     * @param currentSentimentService refreshes the denormalised sentiment columns on every save
+     * @param dailySentimentService   rebuilds the per-day rollup behind the Extremes page
+     * @param meterRegistry        Micrometer registry for registering production counters
      */
     public NewsWorker(CompanyNewsRepository repository,
                       SimilarityChecker similarityChecker,
+                      NewsStore newsStore,
+                      NewsImportanceClassifier importanceClassifier,
+                      SentimentScorer sentimentScorer,
+                      CurrentSentimentService currentSentimentService,
+                      DailySentimentService dailySentimentService,
                       MeterRegistry meterRegistry) {
-        this.repository          = repository;
-        this.similarityChecker   = similarityChecker;
+        this.repository           = repository;
+        this.similarityChecker    = similarityChecker;
+        this.newsStore            = newsStore;
+        this.importanceClassifier = importanceClassifier;
+        this.sentimentScorer      = sentimentScorer;
+        this.currentSentimentService = currentSentimentService;
+        this.dailySentimentService   = dailySentimentService;
         this.savedCounter        = Counter.builder("news.items.saved")
             .description("Total news items written to DB")
             .register(meterRegistry);
@@ -142,7 +170,8 @@ public class NewsWorker {
      * is applied inside the per-keyword lock so concurrent calls for the same keyword do not
      * produce race conditions or duplicate DB inserts.
      *
-     * <p>After dedup, items are sorted newest-first and trimmed to {@code news.limit}.
+     * <p>After dedup, items are sorted newest-first. The hourly cleanup job handles removing
+     * articles outside the 24-hour retention window.
      *
      * <p>Log4j2's {@link ThreadContext} is populated with the keyword so all log lines inside
      * this method carry the {@code keyword} field, making parallel log output traceable in
@@ -151,11 +180,18 @@ public class NewsWorker {
      * <p>If a {@link DataIntegrityViolationException} is thrown (concurrent insert race),
      * {@link #upsert(String, List)} is called as a fallback to re-read and merge.
      *
-     * @param keyword  the keyword to save news under (company symbol, sector, or macro term)
-     * @param newItems the list of candidate news items to deduplicate and save
+     * <p>When {@code isCompany} is {@code true}, each newly-accepted item's headline is run
+     * through {@link NewsImportanceClassifier} and tagged {@code category="important"} if it
+     * matches a corporate-action phrase. Classification is skipped entirely for sectors and
+     * macro keywords so their behavior is unchanged.
+     *
+     * @param keyword   the keyword to save news under (company symbol, sector, or macro term)
+     * @param newItems  the list of candidate news items to deduplicate and save
+     * @param isCompany whether {@code keyword} is a company symbol — only then are items
+     *                  classified for the "Important News" tab
      */
     @Transactional
-    public void saveNews(String keyword, List<NewsItem> newItems) {
+    public void saveNews(String keyword, List<NewsItem> newItems, boolean isCompany) {
         if (newItems == null || newItems.isEmpty()) return;
 
         ReentrantLock lock = getLock(keyword);
@@ -217,6 +253,23 @@ public class NewsWorker {
                     continue;
                 }
 
+                // Layer 5 (company keywords only): flag important corporate-action headlines
+                // for the "Important News" tab, and assign a sentiment score. Both run only
+                // for company symbols — sectors and macro keywords are left untouched.
+                //
+                // Scoring sits here, after every dedup layer, so a headline is only ever
+                // scored if it is actually being stored. Running it earlier would waste
+                // inference on the majority of items, which are duplicates.
+                if (isCompany) {
+                    item.setCategory(importanceClassifier.classify(summary));
+                    sentimentScorer.score(item);
+                }
+
+                // Normalise the date string to an instant once, here, for every keyword type.
+                // Retention, sorting and the sentiment windows all need it as a number, and
+                // deriving it on demand meant re-parsing the whole stored array on every pass.
+                item.setPublishedAt(NewsDateParser.toEpochMillis(item.getDate()));
+
                 currentNews.add(item);
                 savedUrls.add(link);
                 seenInBatch.add(link);
@@ -235,23 +288,27 @@ public class NewsWorker {
                 return;
             }
 
-            // Sort latest first, then trim to configured limit
-            currentNews.sort((a, b) -> compareDates(b.getDate(), a.getDate()));
-            if (currentNews.size() > newsLimit) {
-                currentNews = currentNews.subList(0, newsLimit);
-            }
+            // Sort latest first — the hourly cleanup job handles removing articles outside the retention window
+            currentNews.sort((a, b) -> compareItems(b, a));
 
             record.setNews(currentNews);
+            // Refresh before saving so the denormalised columns and the JSONB go out in the same
+            // statement. The article list has just changed, so the stored reading is stale by
+            // definition, and CurrentSentimentService reads newest-first order — which the sort
+            // above has only now established.
+            currentSentimentService.refresh(record);
             record.setLastUpdated(LocalDateTime.now());
             repository.save(record);
+            if (isCompany) dailySentimentService.rebuildFor(record);
+            newsStore.put(keyword, currentNews);
 
-            savedCounter.increment(currentNews.size());
-            log.info("Saved {} item(s) for keyword: {} ({} new passed dedup, trimmed to {})",
-                    currentNews.size(), keyword, added, newsLimit);
+            savedCounter.increment(added);
+            log.info("Saved {} total item(s) for keyword: {} ({} new this run)",
+                    currentNews.size(), keyword, added);
 
         } catch (DataIntegrityViolationException e) {
             log.warn("Constraint violation on save — falling back to upsert for keyword: {}", keyword);
-            upsert(keyword, newItems);
+            upsert(keyword, newItems, isCompany);
         } finally {
             ThreadContext.remove("keyword");
             lock.unlock();
@@ -290,10 +347,11 @@ public class NewsWorker {
      * so adding {@code @Transactional} here would have no effect. The method already
      * participates in the caller's transaction via Spring's default REQUIRED propagation.
      *
-     * @param keyword  the keyword whose row encountered a concurrent insert
-     * @param newItems the items to merge into the existing row
+     * @param keyword   the keyword whose row encountered a concurrent insert
+     * @param newItems  the items to merge into the existing row
+     * @param isCompany whether {@code keyword} is a company symbol — only then are items classified
      */
-    private void upsert(String keyword, List<NewsItem> newItems) {
+    private void upsert(String keyword, List<NewsItem> newItems, boolean isCompany) {
         Optional<CompanyNews> existing = repository.findByKeyword(keyword);
         if (existing.isEmpty()) {
             log.warn("Upsert: row still not found for keyword: {} — giving up", keyword);
@@ -306,67 +364,56 @@ public class NewsWorker {
             : new ArrayList<>();
 
         for (NewsItem item : newItems) {
+            if (isCompany) {
+                item.setCategory(importanceClassifier.classify(item.getSummary()));
+                sentimentScorer.score(item);
+            }
+            item.setPublishedAt(NewsDateParser.toEpochMillis(item.getDate()));
             currentNews.add(0, item);
         }
 
-        if (currentNews.size() > newsLimit) {
-            currentNews = currentNews.subList(0, newsLimit);
-        }
-
         record.setNews(currentNews);
+        currentSentimentService.refresh(record);
         record.setLastUpdated(LocalDateTime.now());
         repository.save(record);
+        if (isCompany) dailySentimentService.rebuildFor(record);
         log.info("Upsert succeeded for keyword: {}", keyword);
     }
 
     /**
-     * Compares two date strings for chronological ordering, with null-safe handling.
+     * Compares two items chronologically, null-safe, with items of unknown date sorted oldest.
      *
-     * <p>Null dates are sorted to the end (treated as the oldest). If both are non-null,
-     * they are parsed to {@link ZonedDateTime} for accurate chronological comparison.
-     * Falls back to lexicographic string comparison if parsing fails for either date.
+     * <p>Prefers the stored {@code publishedAt} instant and falls back to parsing the date string
+     * for items written before that field existed. The list being sorted mixes both kinds in the
+     * period after deployment and before the backfill finishes, so the fallback is on the live
+     * path rather than a defensive nicety.
      *
-     * @param dateA the first date string
-     * @param dateB the second date string
-     * @return negative if dateA is before dateB, positive if after, 0 if equal
+     * <p>Two items whose dates are both unparseable are ordered lexicographically by date string,
+     * preserving the previous behaviour and keeping the sort deterministic.
+     *
+     * @param a the first item
+     * @param b the second item
+     * @return negative if {@code a} is older than {@code b}, positive if newer, 0 if equal
      */
-    private int compareDates(String dateA, String dateB) {
+    private int compareItems(NewsItem a, NewsItem b) {
+        Long instantA = instantOf(a);
+        Long instantB = instantOf(b);
+        if (instantA != null && instantB != null) return Long.compare(instantA, instantB);
+        if (instantA != null) return 1;      // b has no usable date — treat it as the older one
+        if (instantB != null) return -1;
+
+        String dateA = a == null ? null : a.getDate();
+        String dateB = b == null ? null : b.getDate();
         if (dateA == null && dateB == null) return 0;
         if (dateA == null) return -1;
         if (dateB == null) return 1;
-
-        try {
-            return parseDate(dateA).compareTo(parseDate(dateB));
-        } catch (Exception e) {
-            log.warn("Date comparison fallback to string comparison: [{}] vs [{}]", dateA, dateB);
-            return dateA.compareTo(dateB);
-        }
+        return dateA.compareTo(dateB);
     }
 
-    /**
-     * Parses a date string into a {@link ZonedDateTime} using the NSE format first,
-     * then the Google RSS format.
-     *
-     * <p>NSE format: {@code "dd-MMM-yyyy HH:mm:ss"} (e.g., {@code "12-Mar-2026 17:11:14"}).
-     * Google RSS format: {@code "EEE, dd MMM yyyy HH:mm:ss z"} (e.g., {@code "Thu, 12 Mar 2026 10:00:00 GMT"}).
-     *
-     * @param dateStr the date string to parse; must not be {@code null}
-     * @return the parsed {@link ZonedDateTime}
-     * @throws IllegalArgumentException if the date string matches neither known format
-     */
-    private ZonedDateTime parseDate(String dateStr) {
-        // Try NSE format first: "12-Mar-2026 17:11:14"
-        try {
-            return LocalDateTime.parse(dateStr, NSE_FORMAT)
-                .atZone(ZoneId.of("Asia/Kolkata"));
-        } catch (Exception ignored) {}
-
-        // Try Google RSS format: "Thu, 12 Mar 2026 10:00:00 GMT"
-        try {
-            return ZonedDateTime.parse(dateStr, RSS_FORMAT);
-        } catch (Exception e) {
-            throw new IllegalArgumentException(
-                "Cannot parse date string — no matching format found for value: [" + dateStr + "]", e);
-        }
+    /** Publication instant for an item, parsing its date string only if the field is absent. */
+    private static Long instantOf(NewsItem item) {
+        if (item == null) return null;
+        if (item.getPublishedAt() != null) return item.getPublishedAt();
+        return NewsDateParser.toEpochMillis(item.getDate());
     }
 }
