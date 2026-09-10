@@ -58,6 +58,8 @@ export const NAV_DESCRIPTIONS = {
   'Watchlist':       'Your personal list of tracked stocks with live prices',
   'Global':          'Global market indices, commodities and currencies across US, Asia and Europe',
   'Domestic':        'NSE indices, sector performance and Indian market news',
+  'Extremes':        'Companies with the most positive and most negative news sentiment — '
+                   + 'by single day, or cumulatively over a week to a quarter',
   'Mutual Funds':    'Browse and compare mutual fund schemes across categories',
   'Upcoming Events': 'Scheduled macro events — RBI policy, earnings seasons, key economic data',
   'Calendar':        'NSE corporate event calendar — board meetings, results and dividends',

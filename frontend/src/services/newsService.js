@@ -46,3 +46,53 @@ export async function fetchSentiments(symbols) {
     return {};
   }
 }
+
+/**
+ * Days the Extremes Single Day tab can show, newest first.
+ *
+ * Served by the backend rather than generated in the browser so both sides agree on which day is
+ * "today": the boards are bucketed in Indian market time, and a viewer in another timezone would
+ * otherwise ask for a day the server does not consider current.
+ *
+ * @returns {Promise<Array<{day: string, label: string, weekday: string}>>}
+ */
+export async function fetchExtremesDays() {
+  try {
+    const response = await fetch('/api/news/extremes/days');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Top positives and top negatives for one calendar day.
+ *
+ * @param {string} day ISO date; omit for today
+ */
+export async function fetchDailyExtremes(day) {
+  try {
+    const qs = day ? `?day=${encodeURIComponent(day)}` : '';
+    const response = await fetch(`/api/news/extremes/daily${qs}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Top positives and top negatives for one cumulative range.
+ *
+ * @param {string} range WEEK_1 | WEEK_2 | MONTH_1 | QUARTER_1
+ */
+export async function fetchCumulativeExtremes(range) {
+  try {
+    const response = await fetch(`/api/news/extremes/cumulative?range=${encodeURIComponent(range)}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
