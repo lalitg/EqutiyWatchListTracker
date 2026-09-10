@@ -66,6 +66,7 @@ public class NewsCleanupService {
     private final NewsStore newsStore;
     private final KeywordLoader keywordLoader;
     private final CurrentSentimentService currentSentimentService;
+    private final DailySentimentService dailySentimentService;
 
     @Value("${news.retention.window-hours:24}")
     private int retentionWindowHours;
@@ -82,11 +83,13 @@ public class NewsCleanupService {
     public NewsCleanupService(CompanyNewsRepository repository,
                               NewsStore newsStore,
                               KeywordLoader keywordLoader,
-                              CurrentSentimentService currentSentimentService) {
+                              CurrentSentimentService currentSentimentService,
+                              DailySentimentService dailySentimentService) {
         this.repository    = repository;
         this.newsStore     = newsStore;
         this.keywordLoader = keywordLoader;
         this.currentSentimentService = currentSentimentService;
+        this.dailySentimentService   = dailySentimentService;
     }
 
     /**
@@ -141,6 +144,10 @@ public class NewsCleanupService {
             repository.save(record);
             if (articlesChanged) {
                 newsStore.put(record.getKeyword(), retained);
+                // Deleting articles can empty or shrink a day's bucket. Rebuilding here is what
+                // stops a day the Extremes page still offers from ranking companies on articles
+                // this job has just removed.
+                if (isCompany) dailySentimentService.rebuildFor(record);
             }
             rowsUpdated++;
 
@@ -149,7 +156,15 @@ public class NewsCleanupService {
                 articlesChanged, sentimentChanged);
         }
 
-        log.info("Cleanup completed — {}/{} keyword rows updated", rowsUpdated, allRecords.size());
+        // The per-day rollup is derived data, so it is retained for exactly as long as the articles
+        // behind it. Keeping it longer would leave daily history that nothing could rebuild or
+        // check against; keeping it shorter would blank days the Extremes page still offers.
+        int prunedDays = dailySentimentService.pruneOlderThan(
+            java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"))
+                .minusDays(companyImportantWindowDays));
+
+        log.info("Cleanup completed — {}/{} keyword rows updated, {} daily rollup row(s) pruned",
+                 rowsUpdated, allRecords.size(), prunedDays);
     }
 
     /**

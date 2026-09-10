@@ -54,7 +54,10 @@ class NewsCleanupServiceTest {
         // These window values are the ones the retention tests below were written against; they
         // are set explicitly rather than inherited from application.properties so that changing
         // the production policy cannot silently change what these tests assert.
-        service = new NewsCleanupService(repository, newsStore, keywordLoader, sentimentService);
+        // A mock for the daily rollup: these tests assert on retention and on the denormalised
+        // columns, and the rollup writes to a different table through its own repository.
+        service = new NewsCleanupService(repository, newsStore, keywordLoader, sentimentService,
+                                         mock(DailySentimentService.class));
         ReflectionTestUtils.setField(service, "retentionWindowHours", 24);
         ReflectionTestUtils.setField(service, "minCount", 15);
         ReflectionTestUtils.setField(service, "companyLatestWindowDays", 7);
@@ -145,9 +148,17 @@ class NewsCleanupServiceTest {
         CompanyNews record = row("INFY", news);
         // Pre-set the columns to exactly what a refresh would produce for unscored articles, i.e.
         // this row has already been through cleanup once.
+        //
+        // Every denormalised group has to be listed. Leaving one out makes refreshIfChanged see a
+        // null becoming a value, report a change, and save — which is correct behaviour for a row
+        // that genuinely predates that column, and would quietly turn this test green for the wrong
+        // reason if it were asserting the opposite.
         record.setLatestLabel("NO_DATA");
         record.setQuarterLabel("NO_DATA");
         record.setQuarterCount(0);
+        record.setWeekCount(0);
+        record.setWeek2Count(0);
+        record.setMonthCount(0);
 
         when(keywordLoader.loadCompanySymbols()).thenReturn(Set.of("INFY"));
         when(repository.findAll()).thenReturn(List.of(record));

@@ -71,6 +71,15 @@ public class NewsWorker {
     private final CurrentSentimentService currentSentimentService;
 
     /**
+     * Rewrites the company daily sentiment buckets that the Extremes page ranks over.
+     *
+     * <p>Called here rather than from a scheduled job: this is the moment a company article list
+     * actually changes, so the Today board moves on the fifteen minute fetch cycle with nothing
+     * else driving it.
+     */
+    private final DailySentimentService dailySentimentService;
+
+    /**
      * Per-keyword {@link ReentrantLock} map.
      *
      * <p>Thread 1 saving {@code INFY} does NOT block Thread 2 saving {@code RELIANCE}.
@@ -109,6 +118,7 @@ public class NewsWorker {
      * @param importanceClassifier flags company headlines as important corporate-action news
      * @param sentimentScorer      scores each newly-accepted company headline
      * @param currentSentimentService refreshes the denormalised sentiment columns on every save
+     * @param dailySentimentService   rebuilds the per-day rollup behind the Extremes page
      * @param meterRegistry        Micrometer registry for registering production counters
      */
     public NewsWorker(CompanyNewsRepository repository,
@@ -117,6 +127,7 @@ public class NewsWorker {
                       NewsImportanceClassifier importanceClassifier,
                       SentimentScorer sentimentScorer,
                       CurrentSentimentService currentSentimentService,
+                      DailySentimentService dailySentimentService,
                       MeterRegistry meterRegistry) {
         this.repository           = repository;
         this.similarityChecker    = similarityChecker;
@@ -124,6 +135,7 @@ public class NewsWorker {
         this.importanceClassifier = importanceClassifier;
         this.sentimentScorer      = sentimentScorer;
         this.currentSentimentService = currentSentimentService;
+        this.dailySentimentService   = dailySentimentService;
         this.savedCounter        = Counter.builder("news.items.saved")
             .description("Total news items written to DB")
             .register(meterRegistry);
@@ -287,6 +299,7 @@ public class NewsWorker {
             currentSentimentService.refresh(record);
             record.setLastUpdated(LocalDateTime.now());
             repository.save(record);
+            if (isCompany) dailySentimentService.rebuildFor(record);
             newsStore.put(keyword, currentNews);
 
             savedCounter.increment(added);
@@ -363,6 +376,7 @@ public class NewsWorker {
         currentSentimentService.refresh(record);
         record.setLastUpdated(LocalDateTime.now());
         repository.save(record);
+        if (isCompany) dailySentimentService.rebuildFor(record);
         log.info("Upsert succeeded for keyword: {}", keyword);
     }
 

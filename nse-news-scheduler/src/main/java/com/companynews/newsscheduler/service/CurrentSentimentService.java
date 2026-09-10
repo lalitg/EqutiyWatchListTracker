@@ -66,15 +66,6 @@ public class CurrentSentimentService {
 
     private static final Logger log = LogManager.getLogger(CurrentSentimentService.class);
 
-    /**
-     * Length of the aggregate window, taken from the enum the Sentiments tab uses.
-     *
-     * <p>Read from {@link SentimentWindow#QUARTER_1} rather than declared here so the column and the
-     * tab row can never drift apart: they are the same number by construction, not by agreement.
-     */
-    private static final long QUARTER_MILLIS =
-        Duration.ofDays(SentimentWindow.QUARTER_1.days()).toMillis();
-
     private final CompanyNewsRepository repository;
     private final SentimentScorer scorer;
 
@@ -148,6 +139,20 @@ public class CurrentSentimentService {
         record.setQuarterLabel(quarter.label());
         record.setQuarterCount(quarter.articleCount());
 
+        // The three shorter windows exist only to be ranked across companies on the Extremes page.
+        // They are computed here, in the one pass that already walks this record's articles, so
+        // that ranking never has to open the JSONB of every company in the table.
+        SentimentDto week   = computeWindow(record, SentimentWindow.WEEK_1.days());
+        SentimentDto week2  = computeWindow(record, SentimentWindow.WEEK_2.days());
+        SentimentDto month  = computeWindow(record, SentimentWindow.MONTH_1.days());
+
+        record.setWeekScore(week.score());
+        record.setWeekCount(week.articleCount());
+        record.setWeek2Score(week2.score());
+        record.setWeek2Count(week2.articleCount());
+        record.setMonthScore(month.score());
+        record.setMonthCount(month.articleCount());
+
         return new CompanySentimentDto(latest, quarter);
     }
 
@@ -175,6 +180,12 @@ public class CurrentSentimentService {
         Double  previousQuarterScore  = record.getQuarterScore();
         String  previousQuarterLabel  = record.getQuarterLabel();
         Integer previousQuarterCount  = record.getQuarterCount();
+        Double  previousWeekScore     = record.getWeekScore();
+        Integer previousWeekCount     = record.getWeekCount();
+        Double  previousWeek2Score    = record.getWeek2Score();
+        Integer previousWeek2Count    = record.getWeek2Count();
+        Double  previousMonthScore    = record.getMonthScore();
+        Integer previousMonthCount    = record.getMonthCount();
 
         refresh(record);
 
@@ -183,7 +194,13 @@ public class CurrentSentimentService {
             || !Objects.equals(previousNewestAt,     record.getNewestArticleAt())
             || !Objects.equals(previousQuarterScore, record.getQuarterScore())
             || !Objects.equals(previousQuarterLabel, record.getQuarterLabel())
-            || !Objects.equals(previousQuarterCount, record.getQuarterCount());
+            || !Objects.equals(previousQuarterCount, record.getQuarterCount())
+            || !Objects.equals(previousWeekScore,    record.getWeekScore())
+            || !Objects.equals(previousWeekCount,    record.getWeekCount())
+            || !Objects.equals(previousWeek2Score,   record.getWeek2Score())
+            || !Objects.equals(previousWeek2Count,   record.getWeek2Count())
+            || !Objects.equals(previousMonthScore,   record.getMonthScore())
+            || !Objects.equals(previousMonthCount,   record.getMonthCount());
     }
 
     /**
@@ -253,11 +270,27 @@ public class CurrentSentimentService {
      * @return the average, or {@link SentimentDto#noData()} when the quarter holds no scored article
      */
     public SentimentDto computeQuarter(CompanyNews record) {
+        return computeWindow(record, SentimentWindow.QUARTER_1.days());
+    }
+
+    /**
+     * Plain average across every scored headline published in the last {@code days} days.
+     *
+     * <p>Generalised from what used to be quarter-only arithmetic because the Extremes page ranks
+     * companies over four spans, and each has to mean exactly what the same-named row on a company's
+     * Sentiments tab means. One implementation, one definition of a rolling window — two would
+     * eventually disagree, and the page links straight through to that tab.
+     *
+     * @param record the news record; may be {@code null}
+     * @param days   lookback length
+     * @return the average, or {@link SentimentDto#noData()} when the window holds no scored article
+     */
+    public SentimentDto computeWindow(CompanyNews record, int days) {
         if (record == null || record.getNews() == null || record.getNews().isEmpty()) {
             return SentimentDto.noData();
         }
 
-        long cutoff = System.currentTimeMillis() - QUARTER_MILLIS;
+        long cutoff = System.currentTimeMillis() - Duration.ofDays(days).toMillis();
 
         double sum = 0.0;
         int count = 0;

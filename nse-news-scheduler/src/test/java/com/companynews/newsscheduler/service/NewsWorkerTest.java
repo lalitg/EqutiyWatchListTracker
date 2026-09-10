@@ -57,7 +57,10 @@ class NewsWorkerTest {
                 mock(CompanyNewsRepository.class), sentimentScorer);
 
         newsWorker = new NewsWorker(repository, similarityChecker, newsStore, classifier,
-                                    sentimentScorer, sentimentService, new SimpleMeterRegistry());
+                                    sentimentScorer, sentimentService,
+                                    // Mocked: the rollup writes to company_daily_sentiment via its
+                                    // own repository, which is not what these dedup tests exercise.
+                                    mock(DailySentimentService.class), new SimpleMeterRegistry());
     }
 
     // ── Helper ─────────────────────────────────────────────────────────────

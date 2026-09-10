@@ -66,6 +66,7 @@ public class SentimentBackfillService {
     private final SentimentScorer scorer;
     private final KeywordLoader keywordLoader;
     private final CurrentSentimentService currentSentimentService;
+    private final DailySentimentService dailySentimentService;
 
     /** Per-company cap on headlines scored in one pass; {@code 0} means no cap. */
     private final int maxPerKeyword;
@@ -77,11 +78,13 @@ public class SentimentBackfillService {
                                     SentimentScorer scorer,
                                     KeywordLoader keywordLoader,
                                     CurrentSentimentService currentSentimentService,
+                                    DailySentimentService dailySentimentService,
                                     @Value("${sentiment.backfill.max-per-keyword:0}") int maxPerKeyword) {
         this.repository    = repository;
         this.scorer        = scorer;
         this.keywordLoader = keywordLoader;
         this.currentSentimentService = currentSentimentService;
+        this.dailySentimentService   = dailySentimentService;
         this.maxPerKeyword = maxPerKeyword;
     }
 
@@ -212,9 +215,29 @@ public class SentimentBackfillService {
             }
         }
 
-        // A row whose items are all up to date may still be missing its denormalised columns,
-        // in which case the batch endpoint would report NO_DATA for it forever.
-        boolean columnsUnset = record.getLatestLabel() == null;
+        // Rebuild the per-day rollup unconditionally, before any early return.
+        //
+        // This is what populates the Extremes page for every day that predates the feature. It has
+        // to run even when nothing else about the row changed, because on the first pass after
+        // deployment the articles are already scored, already carry instants, and already have
+        // their older columns set — so every other check below reports "nothing to do" and would
+        // skip straight past. The method is idempotent and writes only rows whose values moved.
+        dailySentimentService.rebuildFor(record);
+
+        // A row whose items are all up to date may still be missing denormalised columns, in which
+        // case the read paths that depend on them stay empty forever. Each newly added group has to
+        // be named here for the same reason: a row written before a column existed carries null in
+        // it, and nothing else would ever fill it in.
+        //
+        // Probed on the COUNTS, not the scores. A score is legitimately null for a company with no
+        // news in that window, so testing it would report "unset" forever for every quiet company
+        // and re-save them on every run. A refresh always writes a count — zero when there is no
+        // news — so null there means only one thing: this row has not been through a refresh since
+        // the column existed.
+        boolean columnsUnset = record.getLatestLabel() == null
+                            || record.getWeekCount()   == null
+                            || record.getWeek2Count()  == null
+                            || record.getMonthCount()  == null;
         if (!itemsChanged && !columnsUnset) return 0;
 
         record.setNews(updated);

@@ -125,6 +125,42 @@ public class CompanyNews {
     private String quarterLabel;
 
     /**
+     * Rolling 7-day average, and its article count.
+     *
+     * <h2>Why these live here rather than being derived from the daily rollup</h2>
+     * {@code company_daily_sentiment} could produce them by summing days, but a day is a calendar
+     * bucket while these are rolling windows measured back from now — summing seven daily rows
+     * answers "the last seven calendar days", not "the last 168 hours". The Extremes page links
+     * straight through to each company's Sentiments tab, where the same span is a rolling window,
+     * so the two would show different numbers for the same label one click apart.
+     *
+     * <p>Computed by the same {@link com.companynews.newsscheduler.service.CurrentSentimentService#computeWindow}
+     * the tab uses, so the ranking and the tab agree by construction rather than by coincidence.
+     */
+    @Column(name = "week_score")
+    private Double weekScore;
+
+    /** How many scored headlines contributed to {@link #weekScore}. */
+    @Column(name = "week_count")
+    private Integer weekCount;
+
+    /** Rolling 14-day average. See {@link #weekScore} for why these are stored rather than derived. */
+    @Column(name = "week2_score")
+    private Double week2Score;
+
+    /** How many scored headlines contributed to {@link #week2Score}. */
+    @Column(name = "week2_count")
+    private Integer week2Count;
+
+    /** Rolling 30-day average. See {@link #weekScore} for why these are stored rather than derived. */
+    @Column(name = "month_score")
+    private Double monthScore;
+
+    /** How many scored headlines contributed to {@link #monthScore}. */
+    @Column(name = "month_count")
+    private Integer monthCount;
+
+    /**
      * How many scored headlines contributed to {@link #quarterScore}.
      *
      * <p>Served to the UI so a reading resting on one article is distinguishable from one resting on
@@ -295,4 +331,40 @@ public class CompanyNews {
      * @param quarterCount contributing article count
      */
     public void setQuarterCount(Integer quarterCount) { this.quarterCount = quarterCount; }
+
+    /** @return rolling 7-day average score, or {@code null} if the window holds no scored article */
+    public Double getWeekScore() { return weekScore; }
+
+    /** @param weekScore rolling 7-day average, or {@code null} */
+    public void setWeekScore(Double weekScore) { this.weekScore = weekScore; }
+
+    /** @return contributing article count for the 7-day window */
+    public Integer getWeekCount() { return weekCount; }
+
+    /** @param weekCount contributing article count for the 7-day window */
+    public void setWeekCount(Integer weekCount) { this.weekCount = weekCount; }
+
+    /** @return rolling 14-day average score, or {@code null} */
+    public Double getWeek2Score() { return week2Score; }
+
+    /** @param week2Score rolling 14-day average, or {@code null} */
+    public void setWeek2Score(Double week2Score) { this.week2Score = week2Score; }
+
+    /** @return contributing article count for the 14-day window */
+    public Integer getWeek2Count() { return week2Count; }
+
+    /** @param week2Count contributing article count for the 14-day window */
+    public void setWeek2Count(Integer week2Count) { this.week2Count = week2Count; }
+
+    /** @return rolling 30-day average score, or {@code null} */
+    public Double getMonthScore() { return monthScore; }
+
+    /** @param monthScore rolling 30-day average, or {@code null} */
+    public void setMonthScore(Double monthScore) { this.monthScore = monthScore; }
+
+    /** @return contributing article count for the 30-day window */
+    public Integer getMonthCount() { return monthCount; }
+
+    /** @param monthCount contributing article count for the 30-day window */
+    public void setMonthCount(Integer monthCount) { this.monthCount = monthCount; }
 }
