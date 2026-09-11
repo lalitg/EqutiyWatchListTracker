@@ -47,6 +47,9 @@ const Navbar = () => {
             <NavLink to="/market/domestic" data-tooltip={NAV_DESCRIPTIONS['Domestic']} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               Domestic
             </NavLink>
+            <NavLink to="/extremes" data-tooltip={NAV_DESCRIPTIONS['Extremes']} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              Extremes
+            </NavLink>
             <NavLink to="/mutual-funds" data-tooltip={NAV_DESCRIPTIONS['Mutual Funds']} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               Mutual Funds
             </NavLink>

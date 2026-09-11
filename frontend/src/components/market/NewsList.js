@@ -16,6 +16,42 @@ function formatIST(dateStr) {
   }) + ' IST';
 }
 
+const SENTIMENT_TEXT = {
+  POSITIVE: 'Positive',
+  NEGATIVE: 'Negative',
+  NEUTRAL:  'Neutral',
+};
+
+/**
+ * Per-article sentiment chip.
+ *
+ * Shows the score alongside the label, unlike the company-level badge used in tables. Here the
+ * reader has the headline the score came from sitting right next to it, so the number is
+ * checkable rather than an invitation to compare companies on differences within the model's
+ * noise. One decimal: the score is stored to two, but a second would imply precision the model
+ * does not have.
+ *
+ * Renders nothing when an article has no score. Articles fetched before scoring existed, and any
+ * whose scoring failed, carry null — and an absent score is not a neutral one.
+ */
+const ArticleSentiment = ({ item }) => {
+  const score = item.sentimentScore;
+  const label = item.sentimentLabel;
+  if (score === null || score === undefined || !label) return null;
+
+  const key = label.toUpperCase();
+  const scoreText = `${score > 0 ? '+' : ''}${score.toFixed(1)}`;
+
+  return (
+    <span
+      className={`news-sentiment news-sentiment--${key.toLowerCase()}`}
+      title={`This headline scored ${scoreText} on a -5 (very negative) to +5 (very positive) scale`}
+    >
+      {SENTIMENT_TEXT[key] || key} {scoreText}
+    </span>
+  );
+};
+
 const NewsList = ({ news }) => {
   if (!news || news.length === 0) {
     return <p className="news-empty">No news available.</p>;
@@ -29,6 +65,7 @@ const NewsList = ({ news }) => {
             <div className="news-item-meta">
               <span className="news-date">{formatIST(item.date)}</span>
               {item.source && <span className="news-source">{item.source}</span>}
+              <ArticleSentiment item={item} />
             </div>
             <div className="news-item-title">
               {item.link ? (

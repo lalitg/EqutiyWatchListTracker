@@ -352,11 +352,14 @@
 }
 
 /* ── Tooltips ─────────────────────────────────────────────────────── */
-.wl-sortable[data-tooltip] {
+/* Scoped to any header cell carrying data-tooltip, not just `.wl-sortable`. The two sentiment
+   columns need the same tooltip but are deliberately NOT sortable, and borrowing that class to
+   get the styling would have made them look clickable when they are not. */
+.wl-data-table th[data-tooltip] {
   position: relative;
 }
 
-.wl-sortable[data-tooltip]:hover::after {
+.wl-data-table th[data-tooltip]:hover::after {
   content: attr(data-tooltip);
   position: absolute;
   top: calc(100% + 8px);
@@ -377,7 +380,7 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
-.wl-sortable[data-tooltip]:hover::before {
+.wl-data-table th[data-tooltip]:hover::before {
   content: '';
   position: absolute;
   top: calc(100% + 2px);
@@ -387,4 +390,19 @@
   border-bottom-color: #1e293b;
   z-index: 200;
   pointer-events: none;
+}
+
+/* ── News sentiment column ────────────────────────────────────────────────── */
+/* Left-aligned to match S.No. / Symbol / Company. Centring set this column apart
+   from every other one and left the badge visually detached from its header. */
+/* Selectors are qualified to match the specificity of `.wl-data-table thead th`,
+   which sets its own text-align. A bare `.wl-th-sentiment` loses to it. */
+.wl-data-table thead th.wl-th-sentiment {
+  white-space: nowrap;
+  text-align: left;
+}
+
+.wl-data-table tbody td.wl-td-sentiment {
+  text-align: left;
+  white-space: nowrap;
 }

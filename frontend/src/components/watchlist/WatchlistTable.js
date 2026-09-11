@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { WATCHLIST_DESCRIPTIONS as WD } from '../../constants/marketDescriptions';
 import './WatchlistTable.css';
+import SentimentBadge from '../shared/SentimentBadge';
+import { useSentiments } from '../../hooks/useSentiments';
 
 const TABLE_COLUMNS = [
   { key: 'companyCode', label: 'Symbol',  sortable: true, tooltip: WD['col.symbol'] },
@@ -45,7 +47,23 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
     return sortedEntries.slice(start, start + ROWS_PER_PAGE);
   }, [sortedEntries, currentPage]);
 
+  // Scoped to the current page rather than the whole watchlist: only one page of
+  // rows is rendered at a time, so fetching sentiment for every entry is wasted work.
+  const { sentiments } = useSentiments(paginatedEntries.map(e => e.companyCode));
+
   const totalPages = Math.ceil(sortedEntries.length / ROWS_PER_PAGE);
+
+  /**
+   * Opens the company's Sentiments tab from a sentiment badge.
+   *
+   * stopPropagation is what makes this work at all. The whole row already carries an onClick that
+   * navigates to the same company's default tab; without stopping the bubble both handlers run,
+   * the row's runs second and wins, and the badge appears to do nothing.
+   */
+  const openSentiments = (e, entry) => {
+    e.stopPropagation();
+    onCompanyClick(entry, { tab: 'sentiments' });
+  };
 
   const handleSortToggle = (key) => {
     setSortConfig(prev => ({
@@ -119,6 +137,12 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                   </span>
                 </th>
               ))}
+              <th className="wl-th-sentiment" data-tooltip={WD['col.sentimentLatest']}>
+                Latest News Sentiments
+              </th>
+              <th className="wl-th-sentiment" data-tooltip={WD['col.sentimentQuarter']}>
+                Overall News Sentiments
+              </th>
               <th className="wl-th-actions"></th>
             </tr>
           </thead>
@@ -135,6 +159,23 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                     {formatCellValue(entry[col.key])}
                   </td>
                 ))}
+                <td className="wl-td-sentiment">
+                  <SentimentBadge
+                    sentiment={sentiments[entry.companyCode]?.latest}
+                    variant="latest"
+                    compact
+                    showScore
+                    onClick={(e) => openSentiments(e, entry)}
+                  />
+                </td>
+                <td className="wl-td-sentiment">
+                  <SentimentBadge
+                    sentiment={sentiments[entry.companyCode]?.quarter}
+                    compact
+                    showScore
+                    onClick={(e) => openSentiments(e, entry)}
+                  />
+                </td>
                 <td className="wl-td-actions">
                   <button
                     className={`wl-btn-row-delete ${isRowSelected(entry.companyCode) ? 'selected' : ''}`}

@@ -6,6 +6,7 @@ import GlobalMarketPage from './pages/GlobalMarketPage';
 import DomesticMarketPage from './pages/DomesticMarketPage';
 import IndexCompaniesPage from './pages/IndexCompaniesPage';
 import SectorCompaniesPage from './pages/SectorCompaniesPage';
+import ExtremesPage from './pages/ExtremesPage';
 import CompanyDetailPage from './pages/CompanyDetailPage';
 import LoginPage from './pages/LoginPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -55,6 +56,7 @@ function AppContent() {
           <Route path="/market/domestic/index/:indexKey" element={<IndexCompaniesPage />} />
           <Route path="/market/domestic/sector/:sectorKey" element={<SectorCompaniesPage />} />
           <Route path="/company/:symbol" element={<CompanyDetailPage />} />
+          <Route path="/extremes" element={<ExtremesPage />} />
           <Route path="/mutual-funds" element={<MutualFundsPage />} />
           <Route path="/upcoming-events" element={<UpcomingEventsPage />} />
           <Route path="/market/calendar" element={<NseCalendarPage />} />

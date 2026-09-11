@@ -58,6 +58,8 @@ export const NAV_DESCRIPTIONS = {
   'Watchlist':       'Your personal list of tracked stocks with live prices',
   'Global':          'Global market indices, commodities and currencies across US, Asia and Europe',
   'Domestic':        'NSE indices, sector performance and Indian market news',
+  'Extremes':        'Companies with the most positive and most negative news sentiment — '
+                   + 'by single day, or cumulatively over a week to a quarter',
   'Mutual Funds':    'Browse and compare mutual fund schemes across categories',
   'Upcoming Events': 'Scheduled macro events — RBI policy, earnings seasons, key economic data',
   'Calendar':        'NSE corporate event calendar — board meetings, results and dividends',
@@ -86,6 +88,17 @@ export const WATCHLIST_DESCRIPTIONS = {
   'btn.newList':    'Create a new watchlist to organise companies by theme or strategy',
   'col.symbol':     'NSE ticker symbol — click to sort',
   'col.company':    'Full registered company name — click to sort',
+  // The two sentiment columns describe different things and will often disagree. Saying so here is
+  // what stops a reader treating the pair as a contradiction rather than as the contrast it is:
+  // the newest headline against the backdrop it landed against.
+  'col.sentimentLatest':  'Sentiment of the single most recent news article for this company — '
+                        + 'not an average. It may be from today or from months ago; hover the '
+                        + 'badge to see its date.',
+  // "Overall" is the column header, so the tooltip has to carry the boundary the header no longer
+  // states — without it the column reads as all-time rather than as a rolling quarter.
+  'col.sentimentQuarter': 'Average sentiment across every news article from the last 90 days — '
+                        + 'a rolling quarter, not all time. Hover the badge to see how many '
+                        + 'articles it covers.',
 };
 
 export const COMPANY_DESCRIPTIONS = {

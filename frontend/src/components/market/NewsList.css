@@ -44,6 +44,7 @@
 
 .news-item-meta {
   display: flex;
+  align-items: center;
   gap: 16px;
   font-size: 12px;
   color: #94a3b8;
@@ -58,4 +59,38 @@
 .news-source {
   font-weight: 500;
   color: #94a3b8;
+}
+
+/* Per-article sentiment chip.
+
+   Pushed to the far right of the meta row rather than sitting next to the date. Date and source
+   describe where the article came from; the sentiment is our own derived judgement about it, and
+   the gap keeps that distinction visible. */
+.news-sentiment {
+  margin-left: auto;
+  padding: 1px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.news-sentiment--positive {
+  background: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.news-sentiment--negative {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.news-sentiment--neutral {
+  background: #fefce8;
+  color: #ca8a04;
+  border: 1px solid #fef08a;
 }

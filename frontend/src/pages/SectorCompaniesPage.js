@@ -1,4 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import SentimentBadge from '../components/shared/SentimentBadge';
+import { useSentiments } from '../hooks/useSentiments';
+import { WATCHLIST_DESCRIPTIONS as WD } from '../constants/marketDescriptions';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { fetchSectorCompanies } from '../services/sectorService';
 import { fetchMergedNews } from '../services/indicesService';
@@ -46,6 +49,28 @@ const SectorCompaniesPage = () => {
   const [newsRefreshKey, setNewsRefreshKey] = useState(0);
 
   const [companies, setCompanies]               = useState([]);
+
+  // One batched request for the whole table rather than one per row.
+  const { sentiments } = useSentiments(companies.map(c => c.symbol));
+
+  /**
+   * Opens a company's Sentiments tab from a sentiment badge.
+   *
+   * stopPropagation is what makes this work at all. The whole row already carries an onClick that
+   * navigates to the same company's default tab; without stopping the bubble both handlers run,
+   * the row's runs second and wins, and the badge appears to do nothing.
+   *
+   * The `sector` router state is preserved so the company page still knows which sector the reader
+   * came from, exactly as the row click does.
+   */
+  const openSentiments = (e, symbol) => {
+    e.stopPropagation();
+    navigate(
+      `/company/${encodeURIComponent(symbol)}?tab=sentiments`,
+      { state: { sector: displayName } }
+    );
+  };
+
   const [companiesLoading, setCompaniesLoading] = useState(false);
   const [companiesError, setCompaniesError]     = useState(null);
 
@@ -194,11 +219,13 @@ const SectorCompaniesPage = () => {
                     <th>#</th>
                     <th>Symbol</th>
                     <th>Company</th>
+                    <th title={WD['col.sentimentLatest']}>Latest News Sentiments</th>
+                    <th title={WD['col.sentimentQuarter']}>Overall News Sentiments</th>
                   </tr>
                 </thead>
                 <tbody>
                   {companies.length === 0 ? (
-                    <tr><td colSpan={3} className="nifty-empty">No data available</td></tr>
+                    <tr><td colSpan={5} className="nifty-empty">No data available</td></tr>
                   ) : (
                     companies.map((c, i) => (
                       <tr
@@ -212,6 +239,21 @@ const SectorCompaniesPage = () => {
                         <td>{i + 1}</td>
                         <td><strong className="nifty-symbol">{c.symbol}</strong></td>
                         <td>{c.companyName || '—'}</td>
+                        <td>
+                          <SentimentBadge
+                            sentiment={sentiments[c.symbol]?.latest}
+                            variant="latest"
+                            compact
+                            onClick={(e) => openSentiments(e, c.symbol)}
+                          />
+                        </td>
+                        <td>
+                          <SentimentBadge
+                            sentiment={sentiments[c.symbol]?.quarter}
+                            compact
+                            onClick={(e) => openSentiments(e, c.symbol)}
+                          />
+                        </td>
                       </tr>
                     ))
                   )}
