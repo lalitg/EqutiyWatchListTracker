@@ -12,7 +12,6 @@ import org.springframework.test.context.TestPropertySource;
     "spring.datasource.password=",
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
-    "fundamentals.yfinance.base-url=http://localhost:5001",
     "logging.config="
 })
 class FundamentalsApplicationTests {

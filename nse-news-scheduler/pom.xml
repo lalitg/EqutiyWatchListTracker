@@ -130,6 +130,24 @@
       </exclusions>
     </dependency>
 
+    <!-- ───── Sentiment analysis (ProsusAI FinBERT, INT8 ONNX, in-JVM CPU inference) ─────
+         onnxruntime : runs the quantized model inside this JVM — no Python process, no
+                       persistent sidecar. Allocates model weights in NATIVE memory, i.e.
+                       outside -Xmx, so size the instance on total RSS not heap.
+         tokenizers  : DJL's binding to the same Rust tokenizer library HuggingFace uses.
+                       Required for exact WordPiece parity with the Python export — a
+                       hand-rolled tokenizer silently produces wrong scores. -->
+    <dependency>
+      <groupId>com.microsoft.onnxruntime</groupId>
+      <artifactId>onnxruntime</artifactId>
+      <version>1.17.1</version>
+    </dependency>
+    <dependency>
+      <groupId>ai.djl.huggingface</groupId>
+      <artifactId>tokenizers</artifactId>
+      <version>0.27.0</version>
+    </dependency>
+
     <!-- Test dependency (auto-included) -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -143,24 +161,6 @@
       </exclusions>
     </dependency>
 
-    <!-- Spring Cache abstraction: enables @Cacheable, @CacheEvict annotations -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-cache</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.springframework.boot</groupId>
-          <artifactId>spring-boot-starter-logging</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-
-    <!-- Caffeine: high-performance in-process cache for mergedNews (L2) and companyNews (LRU) -->
-    <dependency>
-      <groupId>com.github.ben-manes.caffeine</groupId>
-      <artifactId>caffeine</artifactId>
-    </dependency>
-
   </dependencies>
 
   <build>
@@ -168,8 +168,11 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
-        <!-- classifier=exec: main jar stays a plain (consumable) library jar for
-             unified-scheduler; the -exec jar is the standalone runnable fat jar. -->
+        <!-- classifier=exec: the main jar stays a plain, consumable library jar so
+             unified-scheduler can depend on it; the -exec jar is the standalone
+             runnable fat jar. Without this the only artifact produced is a fat jar,
+             which Maven cannot use as a dependency - the unified build fails to
+             resolve com.companynews:nse-news-scheduler. -->
         <configuration>
           <classifier>exec</classifier>
         </configuration>

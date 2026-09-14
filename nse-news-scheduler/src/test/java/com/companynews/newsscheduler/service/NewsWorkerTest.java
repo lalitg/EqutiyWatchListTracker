@@ -1,5 +1,6 @@
 package com.companynews.newsscheduler.service;
 
+import com.companynews.newsscheduler.client.SentimentModelClient;
 import com.companynews.newsscheduler.dto.NewsItem;
 import com.companynews.newsscheduler.model.CompanyNews;
 import com.companynews.newsscheduler.repository.CompanyNewsRepository;
@@ -38,7 +39,28 @@ class NewsWorkerTest {
     void setUp() {
         NewsImportanceClassifier classifier = new NewsImportanceClassifier();
         classifier.init();   // compile phrases from important-keywords.txt (on the test classpath)
-        newsWorker = new NewsWorker(repository, similarityChecker, newsStore, classifier, new SimpleMeterRegistry());
+
+        // Sentiment scoring is wired in but deliberately inert here: this suite is about
+        // deduplication and persistence, and loading a 219 MB model would make it slow and
+        // dependent on an artefact that is not committed. The scorer is constructed with a
+        // disabled model client, so score() is a no-op and items keep null sentiment fields —
+        // exactly the behaviour these tests already assert on.
+        SentimentModelClient disabledModel = new SentimentModelClient(
+                false, "models", 64, 1, 1, false, false);
+        SentimentScorer sentimentScorer = new SentimentScorer(disabledModel, 1.5, -1.5);
+
+        // Real, not mocked: saveNews calls refresh() to write the denormalised sentiment columns
+        // onto the record it is about to persist, and the tests below capture that record. With
+        // the model disabled every item stays unscored, so refresh() writes NO_DATA — which is
+        // the correct reading here and keeps these dedup-and-persistence tests unaffected by it.
+        CurrentSentimentService sentimentService = new CurrentSentimentService(
+                mock(CompanyNewsRepository.class), sentimentScorer);
+
+        newsWorker = new NewsWorker(repository, similarityChecker, newsStore, classifier,
+                                    sentimentScorer, sentimentService,
+                                    // Mocked: the rollup writes to company_daily_sentiment via its
+                                    // own repository, which is not what these dedup tests exercise.
+                                    mock(DailySentimentService.class), new SimpleMeterRegistry());
     }
 
     // ── Helper ─────────────────────────────────────────────────────────────

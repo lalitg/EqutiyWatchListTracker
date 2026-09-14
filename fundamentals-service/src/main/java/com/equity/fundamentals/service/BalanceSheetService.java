@@ -5,6 +5,7 @@ import com.equity.fundamentals.dto.BalanceSheetDto;
 import com.equity.fundamentals.entity.BalanceSheet;
 import com.equity.fundamentals.repository.BalanceSheetRepository;
 import com.equity.fundamentals.repository.GlobalWatchlistRepository;
+import com.equity.fundamentals.util.BatchUtil;
 import com.equity.fundamentals.util.FiscalYearUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -16,16 +17,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Fetches annual balance sheets for all companies in global_watchlist and persists them.
  *
- * Flow for each company:
- *   1. Call YFinanceWrapperClient.getBalanceSheets(symbol) → list of BalanceSheetDto
- *   2. For each DTO, derive the fiscal year label (e.g. FY2024) using FiscalYearUtil
- *   3. Find-or-create the BalanceSheet row for (symbol, fiscalYear)
- *   4. Map DTO fields onto the entity and save
- *   5. Sleep rateLimitDelayMs between companies
+ * Flow for the bulk job (fetchForAllCompanies):
+ *   1. Split all symbols into chunks (fundamentals.python.chunk-size)
+ *   2. Batch-fetch each chunk via YFinanceWrapperClient (one Python process per chunk;
+ *      the process itself paces requests to Yahoo — see YFinanceWrapperClient)
+ *   3. For each symbol's DTOs: derive the fiscal year label (e.g. FY2024) via
+ *      FiscalYearUtil, find-or-create the BalanceSheet row for (symbol, fiscalYear), save
  *
  * Data never deleted:
  *   Old fiscal years accumulate in the DB. The API query in main-api-service
@@ -45,8 +47,13 @@ public class BalanceSheetService {
     private final YFinanceWrapperClient apiClient;
     private final ObjectMapper objectMapper;
 
-    @Value("${fundamentals.rate-limit.delay-ms:1500}")
-    private long rateLimitDelayMs;
+    /**
+     * Max symbols per yfinance_wrapper.py invocation. See BatchUtil for why this
+     * is chunked rather than one process for the whole global_watchlist or one
+     * process per symbol.
+     */
+    @Value("${fundamentals.python.chunk-size:200}")
+    private int chunkSize;
 
     public BalanceSheetService(GlobalWatchlistRepository globalWatchlistRepo,
                                BalanceSheetRepository balanceSheetRepo,
@@ -61,6 +68,9 @@ public class BalanceSheetService {
     /**
      * Fetches balance sheets for every company currently in global_watchlist.
      * Called by the scheduler on the 1st of every month at 3 AM.
+     *
+     * <p>Symbols are split into chunks and fetched with one yfinance_wrapper.py
+     * process per chunk — see the class-level doc for why.
      */
     public void fetchForAllCompanies() {
         List<String> symbols = globalWatchlistRepo.findAllCompanyCodes();
@@ -75,16 +85,18 @@ public class BalanceSheetService {
         int success = 0, failed = 0;
         long startMs = System.currentTimeMillis();
 
-        for (String symbol : symbols) {
-            try {
-                processCompany(symbol);
-                success++;
-            } catch (Exception e) {
-                log.error("Balance sheet failed for {}: {}", symbol, e.getMessage());
-                failed++;
-            }
+        for (List<String> chunk : BatchUtil.partition(symbols, chunkSize)) {
+            Map<String, List<BalanceSheetDto>> batchResults = apiClient.getBalanceSheetsBatch(chunk);
 
-            sleep(rateLimitDelayMs);
+            for (String symbol : chunk) {
+                try {
+                    List<BalanceSheetDto> dtos = batchResults.getOrDefault(symbol, Collections.emptyList());
+                    if (persistBalanceSheets(symbol, dtos)) success++;
+                } catch (Exception e) {
+                    log.error("Balance sheet failed for {}: {}", symbol, e.getMessage());
+                    failed++;
+                }
+            }
         }
 
         long durationSec = (System.currentTimeMillis() - startMs) / 1000;
@@ -94,19 +106,27 @@ public class BalanceSheetService {
 
     /**
      * Fetches and saves balance sheets for a single company.
-     * Marked @Transactional so all DB writes for one company commit atomically.
-     * Called both by the scheduled fetch (fetchForAllCompanies) and by the
-     * on-demand new-company detection job in FundamentalsScheduler.
+     * Called by the on-demand new-company detection job in FundamentalsScheduler
+     * (the bulk path above uses {@link #persistBalanceSheets} directly on
+     * already-batch-fetched data instead of calling this).
      *
      * @param symbol NSE symbol e.g. "RELIANCE"
      */
-    @Transactional
     public void processCompany(String symbol) {
-        List<BalanceSheetDto> dtos = apiClient.getBalanceSheets(symbol);
+        persistBalanceSheets(symbol, apiClient.getBalanceSheets(symbol));
+    }
 
+    /**
+     * Persists already-fetched balance-sheet DTOs for one company.
+     * Marked @Transactional so all DB writes for one company commit atomically.
+     *
+     * @return true if at least one year was saved
+     */
+    @Transactional
+    public boolean persistBalanceSheets(String symbol, List<BalanceSheetDto> dtos) {
         if (dtos.isEmpty()) {
             log.warn("No balance sheet data returned for {} — skipping", symbol);
-            return;
+            return false;
         }
 
         for (BalanceSheetDto dto : dtos) {
@@ -142,6 +162,7 @@ public class BalanceSheetService {
         }
 
         log.info("Balance sheets saved for {} ({} years)", symbol, dtos.size());
+        return true;
     }
 
     private String toJson(Object obj) {
@@ -149,14 +170,6 @@ public class BalanceSheetService {
             return objectMapper.writeValueAsString(obj);
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    private void sleep(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
         }
     }
 }
