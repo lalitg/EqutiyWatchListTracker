@@ -124,6 +124,12 @@
   gap: 12px;
 }
 
+@media (max-width: 420px) {
+  .csv-result-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .csv-result-item {
   display: flex;
   flex-direction: column;

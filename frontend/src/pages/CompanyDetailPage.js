@@ -1,30 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  fetchCompanyDetail,
   fetchQuarterlyResults,
   fetchBalanceSheet,
   fetchPeSnapshot,
-  fetchCompanyMemberships,
+  fetchCompanyIndices,
 } from '../services/indicesService';
 import { fetchNews } from '../services/newsService';
+import SentimentBadge from '../components/shared/SentimentBadge';
 import { fetchEvents } from '../services/eventsService';
+import { fetchSebiActivity } from '../services/sebiService';
+import { fetchCompanySectors } from '../services/sectorService';
 import NewsList from '../components/market/NewsList';
+import SentimentWindowList from '../components/market/SentimentWindowList';
 import EventsList from '../components/market/EventsList';
 import { useWatchlist } from '../context/WatchlistContext';
+import { SECTOR_DESCRIPTIONS, INDEX_DESCRIPTIONS, FINANCIALS_DESCRIPTIONS, COMPANY_DESCRIPTIONS } from '../constants/marketDescriptions';
 import './CompanyDetailPage.css';
 
 function fmt(val) {
   if (val == null) return '—';
   return Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function fmtVolume(val) {
-  if (val == null) return '—';
-  const n = Number(val);
-  if (n >= 1e7) return (n / 1e7).toFixed(2) + ' Cr';
-  if (n >= 1e5) return (n / 1e5).toFixed(2) + ' L';
-  return n.toLocaleString('en-IN');
 }
 
 function fmtCr(val) {
@@ -42,59 +38,149 @@ function fmtPe(val) {
   return n.toFixed(2) + 'x';
 }
 
+/**
+ * Tabs in the News & Events section, in render order.
+ *
+ * Doubles as the whitelist for the `?tab=` parameter. Validating against it matters because the
+ * value arrives from the URL, where anyone can type anything: an unrecognised tab would otherwise
+ * render a section with no content and no way to tell why.
+ */
+const INSIGHTS_TABS = ['news', 'important', 'events', 'regulatory', 'sentiments'];
+const DEFAULT_INSIGHTS_TAB = 'news';
+
+/**
+ * Tooltip for the badge beside the company name.
+ *
+ * Covers the whole pill, not just the badge, so hovering the "Latest News" caption explains itself
+ * too. The badge carries a second, more specific tooltip with the article's actual date — the
+ * caption says what kind of number this is, the badge says which article produced it.
+ */
+const LATEST_NEWS_TOOLTIP =
+  'Sentiment of the single most recent news article for this company — not an average. '
+  + 'It may be from today or from weeks ago; hover the badge itself to see its date. '
+  + 'For averages over a period, see the Sentiments tab below.';
+
 const CompanyDetailPage = () => {
   const { symbol } = useParams();
   const navigate   = useNavigate();
   const { entries, activeId, addCompany, isActionLoading } = useWatchlist();
   const isInWatchlist = entries.some(e => e.companyCode === symbol?.toUpperCase());
 
-  const [data,        setData]        = useState(null);
   const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState(null);
+  const [error]                       = useState(null);
 
-  const [quarterly,   setQuarterly]   = useState([]);
-  const [balSheet,    setBalSheet]    = useState([]);
-  const [pe,          setPe]          = useState(null);
-  const [memberships, setMemberships] = useState(null);
-  const [fundLoading, setFundLoading] = useState(true);
-  const [activeTab,   setActiveTab]   = useState('quarterly');
+  const [quarterly,     setQuarterly]     = useState([]);
+  const [balSheet,      setBalSheet]      = useState([]);
+  const [pe,            setPe]            = useState(null);
+  const [fundLoading,   setFundLoading]   = useState(true);
+  const [activeTab,     setActiveTab]     = useState('quarterly');
 
-  const [news,        setNews]        = useState([]);
-  const [events,      setEvents]      = useState([]);
-  const [insightsTab, setInsightsTab] = useState('news');
+  const [news,          setNews]          = useState([]);
+  const [sentiment,     setSentiment]     = useState(null);
+  const [sentimentWindows, setSentimentWindows] = useState([]);
+  const [importantNews, setImportantNews] = useState([]);
+  const [events,        setEvents]        = useState([]);
+  const [sebi,          setSebi]          = useState(null);
+  // The tab lives in the URL rather than in component state alone, so that /company/X?tab=sentiments
+  // is a real address: it survives a refresh, can be bookmarked, and can be shared. Router state
+  // would have been less code but is held in memory only — landing on the Sentiments tab and then
+  // pressing F5 would silently drop you back on Latest News, which reads as a bug.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const initialTab = INSIGHTS_TABS.includes(requestedTab) ? requestedTab : DEFAULT_INSIGHTS_TAB;
+
+  const [insightsTab, setInsightsTab] = useState(initialTab);
+  const insightsRef = useRef(null);
   const [insightsLoading, setInsightsLoading] = useState(true);
+  const [nse500Sectors, setNse500Sectors] = useState([]);
+  const [companyIndices, setCompanyIndices] = useState([]);
 
   useEffect(() => {
-    fetchCompanyDetail(symbol)
-      .then(setData)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
+    fetchCompanySectors(symbol).then(setNse500Sectors).catch(() => {});
+    fetchCompanyIndices(symbol).then(setCompanyIndices).catch(() => {});
 
     Promise.allSettled([
       fetchQuarterlyResults(symbol),
       fetchBalanceSheet(symbol),
       fetchPeSnapshot(symbol),
-      fetchCompanyMemberships(symbol),
-    ]).then(([qRes, bRes, pRes, mRes]) => {
+    ]).then(([qRes, bRes, pRes]) => {
       if (qRes.status === 'fulfilled') setQuarterly(qRes.value || []);
       if (bRes.status === 'fulfilled') setBalSheet(bRes.value || []);
       if (pRes.status === 'fulfilled') setPe(pRes.value);
-      if (mRes.status === 'fulfilled') setMemberships(mRes.value);
     }).finally(() => setFundLoading(false));
 
     Promise.allSettled([
       fetchNews(symbol),
       fetchEvents(symbol),
-    ]).then(([nRes, eRes]) => {
-      if (nRes.status === 'fulfilled') setNews(nRes.value?.news ?? []);
+      fetchSebiActivity(symbol),
+    ]).then(([nRes, eRes, sRes]) => {
+      if (nRes.status === 'fulfilled') {
+        setNews(nRes.value?.news ?? []);
+        setImportantNews(nRes.value?.importantNews ?? []);
+        // latestSentiment rides along on the existing /api/news response, so the badge costs no
+        // extra request. It is the single most recent article rather than an average: an average
+        // needs an expiry rule to avoid reading as current forever on a quiet company, whereas
+        // this claims only to be the last thing that happened — and carries its date so the
+        // tooltip can say when that was.
+        setSentiment(nRes.value?.latestSentiment ?? null);
+        // Same for the Sentiments tab breakdown: the backend already has the row loaded, so the
+        // six windows cost no extra request and no second database read when the tab is opened.
+        setSentimentWindows(nRes.value?.sentimentWindows ?? []);
+      }
       if (eRes.status === 'fulfilled') setEvents(eRes.value?.events ?? []);
+      if (sRes.status === 'fulfilled') setSebi(sRes.value);
     }).finally(() => setInsightsLoading(false));
 
-    const t = setInterval(() => {
-      fetchCompanyDetail(symbol).then(setData).catch(() => {});
-    }, 5 * 60 * 1000);
-    return () => clearInterval(t);
+    setLoading(false);
   }, [symbol]);
+
+  // Arriving with an explicit tab means the user clicked something that promised to take them
+  // there. The tabs sit well below the header, badges and index chips, so selecting one without
+  // moving the viewport leaves the reader looking at the top of the page, wondering whether the
+  // click registered at all.
+  //
+  // The guard is load-bearing. This effect has to watch `requestedTab`, because selecting a tab
+  // writes it to the URL — so without the ref it would fire again on every tab click and scroll
+  // the page each time, which is precisely the yanking it exists to avoid. Tracking the symbol
+  // rather than a plain boolean is what keeps it working when the user moves from one company to
+  // another: React Router reuses this component across route params, so there is no remount to
+  // reset anything.
+  const arrivalHandledFor = useRef(null);
+  useEffect(() => {
+    const isArrival = arrivalHandledFor.current !== symbol;
+    arrivalHandledFor.current = symbol;
+
+    if (!isArrival) return;
+    if (!INSIGHTS_TABS.includes(requestedTab)) return;
+
+    // Needed in addition to the useState initialiser: that runs once for the component's whole
+    // lifetime, so it does not fire when only the symbol changes.
+    setInsightsTab(requestedTab);
+
+    // Deferred a frame so the section has been laid out; measuring during the same paint gives the
+    // wrong offset on a first load.
+    const id = window.requestAnimationFrame(() => {
+      insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [requestedTab, symbol]);
+
+  /**
+   * Selects a tab and records it in the URL.
+   *
+   * `replace` rather than push: a reader flicking between tabs should not have to press Back once
+   * per tab to get out of the page. Back stays a way out to the table they came from.
+   */
+  const selectInsightsTab = (tab) => {
+    setInsightsTab(tab);
+    const next = new URLSearchParams(searchParams);
+    if (tab === DEFAULT_INSIGHTS_TAB) {
+      next.delete('tab');          // keep the plain company URL clean
+    } else {
+      next.set('tab', tab);
+    }
+    setSearchParams(next, { replace: true });
+  };
 
   if (loading) return (
     <div className="cdp-container">
@@ -111,25 +197,7 @@ const CompanyDetailPage = () => {
     </div>
   );
 
-  const pct      = data.percentChange != null ? Number(data.percentChange) : null;
-  const chg      = data.changeValue   != null ? Number(data.changeValue)   : null;
-  const ltp      = data.currentValue  != null ? Number(data.currentValue)  : null;
-  const hi52     = data.week52High    != null ? Number(data.week52High)    : null;
-  const lo52     = data.week52Low     != null ? Number(data.week52Low)     : null;
-  const positive = pct != null && pct > 0;
-  const negative = pct != null && pct < 0;
-  const arrow    = positive ? '▲' : negative ? '▼' : '';
-  const sign     = positive ? '+' : '';
-
-  const rangePos = (hi52 && lo52 && ltp && hi52 > lo52)
-    ? Math.min(100, Math.max(0, ((ltp - lo52) / (hi52 - lo52)) * 100))
-    : null;
-
   const peLabel = pe ? fmtPe(pe.trailingPe) : null;
-
-  const companyName    = memberships?.companyName || null;
-  const sectorBadges   = (memberships?.memberships || []).filter(m => m.type === 'SECTOR');
-  const domesticBadges = (memberships?.memberships || []).filter(m => m.type === 'DOMESTIC');
 
   return (
     <div className="cdp-container">
@@ -145,100 +213,87 @@ const CompanyDetailPage = () => {
       </div>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div className={`cdp-hero ${positive ? 'cdp-hero--gain' : negative ? 'cdp-hero--loss' : ''}`}>
+      <div className="cdp-hero">
         <div className="cdp-hero-top">
           <div className="cdp-identity">
-            <div className="cdp-symbol">{data.companyCode}</div>
-            {companyName && <div className="cdp-company-name">{companyName}</div>}
+            <div className="cdp-symbol">{symbol?.toUpperCase()}</div>
           </div>
-          {peLabel && <div className="cdp-pe-pill">P/E {peLabel}</div>}
-        </div>
-
-        <div className="cdp-price-row">
-          <div className="cdp-ltp">₹{fmt(ltp)}</div>
-          {pct != null && (
-            <div className={`cdp-change ${positive ? 'gain' : negative ? 'loss' : ''}`}>
-              {arrow} {fmt(Math.abs(chg))} ({sign}{pct.toFixed(2)}%)
+          {peLabel && <div className="cdp-pe-pill" data-tooltip={COMPANY_DESCRIPTIONS['pe']}>P/E {peLabel}</div>}
+          {sentiment && (
+            <div className="cdp-sentiment-pill" title={LATEST_NEWS_TOOLTIP}>
+              <span className="cdp-sentiment-label">Latest News</span>
+              <SentimentBadge sentiment={sentiment} variant="latest" compact showScore />
             </div>
           )}
         </div>
 
-        {data.lastUpdated && (
-          <div className="cdp-updated">
-            {new Date(data.lastUpdated).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-          </div>
-        )}
-
-        {/* Sector + index membership badges — all of them, not just the one navigated from */}
-        {(sectorBadges.length > 0 || domesticBadges.length > 0 || data.nifty50) && (
+        {(nse500Sectors.length > 0 || companyIndices.length > 0) && (
           <div className="cdp-badge-section">
-            {domesticBadges.map(m => (
-              <span key={m.nseKey} className="cdp-badge cdp-badge--index">{m.displayName}</span>
+            {nse500Sectors.map(s => (
+              <span
+                key={s.displayName}
+                className="cdp-badge cdp-badge--nifty cdp-badge--clickable"
+                data-tooltip={SECTOR_DESCRIPTIONS[s.displayName]}
+                onClick={() => navigate(
+                  `/market/domestic/sector/${encodeURIComponent(s.displayName)}`,
+                  { state: { newsKeyword: s.newsKeyword } }
+                )}
+              >
+                {s.displayName}
+              </span>
             ))}
-            {sectorBadges.map(m => (
-              <span key={m.nseKey} className="cdp-badge cdp-badge--sector">{m.displayName}</span>
+            {companyIndices.map(idx => (
+              <span
+                key={idx.indexKey}
+                className="cdp-badge cdp-badge--index cdp-badge--clickable"
+                data-tooltip={INDEX_DESCRIPTIONS[idx.displayName]}
+                onClick={() => navigate(
+                  `/market/domestic/index/${encodeURIComponent(idx.indexKey)}`,
+                  { state: { displayName: idx.displayName } }
+                )}
+              >
+                {idx.displayName}
+              </span>
             ))}
           </div>
         )}
-      </div>
-
-      {/* ── 52-week range ─────────────────────────────────────────────────── */}
-      {rangePos !== null && (
-        <div className="cdp-range-section">
-          <div className="cdp-range-header">52-Week Range</div>
-          <div className="cdp-range-label-row">
-            <span className="cdp-range-low">₹{fmt(lo52)}</span>
-            <span className="cdp-range-high">₹{fmt(hi52)}</span>
-          </div>
-          <div className="cdp-range-track">
-            <div className="cdp-range-fill" style={{ width: `${rangePos}%` }} />
-            <div className="cdp-range-dot" style={{ left: `calc(${rangePos}% - 7px)` }} />
-          </div>
-        </div>
-      )}
-
-      {/* ── Stats grid ────────────────────────────────────────────────────── */}
-      <div className="cdp-stats-grid">
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">Prev Close</div>
-          <div className="cdp-stat-value">₹{fmt(data.previousClose)}</div>
-        </div>
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">52W High</div>
-          <div className="cdp-stat-value cdp-stat--gain">₹{fmt(hi52)}</div>
-        </div>
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">52W Low</div>
-          <div className="cdp-stat-value cdp-stat--loss">₹{fmt(lo52)}</div>
-        </div>
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">All-Time High</div>
-          <div className="cdp-stat-value">₹{fmt(data.allTimeHigh)}</div>
-        </div>
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">All-Time Low</div>
-          <div className="cdp-stat-value">₹{fmt(data.allTimeLow)}</div>
-        </div>
-        <div className="cdp-stat">
-          <div className="cdp-stat-label">Volume</div>
-          <div className="cdp-stat-value">{fmtVolume(data.tradedVolume)}</div>
-        </div>
       </div>
 
       {/* ── News & Events ─────────────────────────────────────────────────── */}
-      <div className="cdp-insights">
+      <div className="cdp-insights" ref={insightsRef}>
         <div className="cdp-fund-tabs">
           <button
             className={`cdp-fund-tab ${insightsTab === 'news' ? 'active' : ''}`}
-            onClick={() => setInsightsTab('news')}
+            onClick={() => selectInsightsTab('news')}
           >
-            News
+            Latest News
+          </button>
+          <button
+            className={`cdp-fund-tab ${insightsTab === 'important' ? 'active' : ''}`}
+            onClick={() => selectInsightsTab('important')}
+          >
+            Important News
+            {importantNews.length > 0 && (
+              <span className="cdp-tab-badge">{importantNews.length}</span>
+            )}
           </button>
           <button
             className={`cdp-fund-tab ${insightsTab === 'events' ? 'active' : ''}`}
-            onClick={() => setInsightsTab('events')}
+            onClick={() => selectInsightsTab('events')}
           >
             Events
+          </button>
+          <button
+            className={`cdp-fund-tab ${insightsTab === 'regulatory' ? 'active' : ''}`}
+            onClick={() => selectInsightsTab('regulatory')}
+          >
+            Regulatory
+          </button>
+          <button
+            className={`cdp-fund-tab ${insightsTab === 'sentiments' ? 'active' : ''}`}
+            onClick={() => selectInsightsTab('sentiments')}
+          >
+            Sentiments
           </button>
         </div>
         {insightsLoading ? (
@@ -247,10 +302,18 @@ const CompanyDetailPage = () => {
           news.length === 0
             ? <div className="cdp-fund-empty">No news found for {symbol}.</div>
             : <NewsList news={news} />
-        ) : (
+        ) : insightsTab === 'important' ? (
+          importantNews.length === 0
+            ? <div className="cdp-fund-empty">No important news found for {symbol}.</div>
+            : <NewsList news={importantNews} />
+        ) : insightsTab === 'events' ? (
           events.length === 0
             ? <div className="cdp-fund-empty">No events found for {symbol}.</div>
             : <EventsList events={events} />
+        ) : insightsTab === 'sentiments' ? (
+          <SentimentWindowList windows={sentimentWindows} symbol={symbol} />
+        ) : (
+          <SebiActivityPanel sebi={sebi} symbol={symbol} />
         )}
       </div>
 
@@ -282,11 +345,11 @@ const CompanyDetailPage = () => {
                   <thead>
                     <tr>
                       <th>Quarter</th>
-                      <th>Revenue</th>
-                      <th>Gross Profit</th>
-                      <th>Op. Profit</th>
-                      <th>Net Profit</th>
-                      <th>EPS (₹)</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Revenue']}>Revenue</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Gross Profit']}>Gross Profit</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Op. Profit']}>Op. Profit</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Net Profit']}>Net Profit</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['EPS (₹)']}>EPS (₹)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -320,11 +383,11 @@ const CompanyDetailPage = () => {
                   <thead>
                     <tr>
                       <th>Year</th>
-                      <th>Total Assets</th>
-                      <th>Total Debt</th>
-                      <th>Equity</th>
-                      <th>Cash</th>
-                      <th>Liabilities</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Total Assets']}>Total Assets</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Total Debt']}>Total Debt</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Equity']}>Equity</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Cash']}>Cash</th>
+                      <th data-tooltip={FINANCIALS_DESCRIPTIONS['Liabilities']}>Liabilities</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -361,5 +424,84 @@ const CompanyDetailPage = () => {
     </div>
   );
 };
+
+function SebiActivityPanel({ sebi, symbol }) {
+  if (!sebi) {
+    return <div className="cdp-fund-empty">No SEBI activity data available for {symbol}.</div>;
+  }
+
+  const enforcement = sebi.enforcementActions || [];
+  const buybacks    = sebi.buybacks || [];
+
+  if (enforcement.length === 0 && buybacks.length === 0) {
+    return <div className="cdp-fund-empty">No SEBI regulatory activity found for {symbol}.</div>;
+  }
+
+  const eventTypeLabel = (t) => {
+    const map = {
+      ADJUDICATION_ORDER: 'Adjudication Order',
+      DIRECTION: 'Direction',
+      RECOVERY_NOTICE: 'Recovery Notice',
+      CIRCULAR: 'Circular',
+      FILING: 'Filing',
+      BUYBACK: 'Buyback Filing',
+      OTHER: 'Other',
+    };
+    return map[t] || t;
+  };
+
+  return (
+    <div className="cdp-sebi-panel">
+      {enforcement.length > 0 && (
+        <div className="cdp-sebi-section">
+          <div className="cdp-sebi-section-title">Enforcement Actions ({enforcement.length})</div>
+          <div className="cdp-sebi-list">
+            {enforcement.map((item, i) => (
+              <div key={i} className="cdp-sebi-item">
+                <div className="cdp-sebi-item-header">
+                  <span className="cdp-sebi-badge cdp-sebi-badge--enforcement">
+                    {eventTypeLabel(item.eventType)}
+                  </span>
+                  <span className="cdp-sebi-date">{item.pubDate}</span>
+                </div>
+                <div className="cdp-sebi-title">
+                  {item.sebiUrl ? (
+                    <a href={item.sebiUrl} target="_blank" rel="noopener noreferrer" className="cdp-sebi-link">
+                      {item.fullTitle}
+                    </a>
+                  ) : (
+                    item.fullTitle
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {buybacks.length > 0 && (
+        <div className="cdp-sebi-section">
+          <div className="cdp-sebi-section-title">Buyback Filings ({buybacks.length})</div>
+          <div className="cdp-sebi-list">
+            {buybacks.map((item, i) => (
+              <div key={i} className="cdp-sebi-item">
+                <div className="cdp-sebi-item-header">
+                  <span className="cdp-sebi-badge cdp-sebi-badge--buyback">Buyback</span>
+                  <span className="cdp-sebi-date">{item.buybackDate}</span>
+                </div>
+                <div className="cdp-sebi-title">
+                  {item.sebiCompanyName}
+                  {item.sebiUrl && (
+                    <a href={item.sebiUrl} target="_blank" rel="noopener noreferrer" className="cdp-sebi-link"> — View Filing</a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default CompanyDetailPage;

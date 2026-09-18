@@ -4,59 +4,62 @@ import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
 import GlobalIndicesTable from '../components/market/GlobalIndicesTable';
 import { useMarket } from '../context/MarketContext';
+import { fetchMergedNews } from '../services/indicesService';
+import { REGION_KEYWORD_MAP } from '../services/marketService';
+import { REGION_DESCRIPTIONS } from '../constants/marketDescriptions';
 
-/**
- * Available region tabs on the Global Market page.
- *
- * Each tab maps to a list of curated keywords in marketService.js.
- * - US, Europe, Asia — regional economy and market news
- * - India — macro-level India news (RBI, Budget, FII, indices, etc.)
- * - Global — worldwide impact news (macro, commodities, geopolitical)
- *
- * Note: the Domestic page covers India at sector level (IT, Banking, etc.).
- * The India tab here covers the macro/economy level.
- */
-const REGIONS = ['India', 'Global', 'US', 'Asia', 'Europe'];
-
-/**
- * GlobalMarketPage displays aggregated news for global market regions.
- *
- * Each tab fetches news from multiple curated keywords in parallel (defined
- * in marketService.js), merges them, deduplicates by article link, and sorts
- * newest-first. Data per tab is cached in MarketContext for the session —
- * switching tabs does not re-fetch if data is already loaded.
- *
- * The Refresh button force-fetches fresh data for the active tab only,
- * bypassing the cache.
- */
-const AUTO_REFRESH_MS = 15 * 60 * 1000;
-const PRICE_REFRESH_MS = 5 * 60 * 1000;
+const REGIONS = ['Global', 'US', 'Asia', 'Europe', 'Commodities'];
+const AUTO_REFRESH_MS  = 15 * 60 * 1000;
+const PRICE_REFRESH_MS = 30 * 60 * 1000;
+const NEWS_PAGE_SIZE   = 20;
 
 const GlobalMarketPage = () => {
   const {
-    globalCache, globalLoading, globalError,
+    globalCache, globalLoading,
     selectedRegion, setRegion, fetchGlobal, refreshGlobal,
     STALE_FOCUS_MS,
   } = useMarket();
 
   const [priceRefreshKey, setPriceRefreshKey] = useState(0);
-
-  /** Data for the currently active region tab, or null if not yet loaded. */
   const currentData = globalCache[selectedRegion];
 
-  /**
-   * Triggers a fetch whenever the selected region changes.
-   * fetchGlobal checks cache freshness (TTL 15 min) — re-fetches if stale.
-   */
+  // Paginated news local state
+  const [newsItems, setNewsItems]           = useState([]);
+  const [newsPage, setNewsPage]             = useState(0);
+  const [newsTotalPages, setNewsTotalPages] = useState(1);
+  const [newsLoading, setNewsLoading]       = useState(false);
+  const [newsError, setNewsError]           = useState(null);
+  const [retryKey, setRetryKey]             = useState(0);
+
+  // Fetch events via context whenever region changes
   useEffect(() => {
     fetchGlobal(selectedRegion);
   }, [selectedRegion, fetchGlobal]);
 
-  /**
-   * Auto-refresh: silently re-fetches every 15 minutes.
-   * Skips if a fetch is already in progress to prevent concurrent calls.
-   */
-  // News/events auto-refresh every 15 min
+  // Reset news page when region changes
+  useEffect(() => {
+    setNewsPage(0);
+  }, [selectedRegion]);
+
+  // Fetch paginated news whenever region, page, or retryKey changes
+  useEffect(() => {
+    let cancelled = false;
+    const keywords = REGION_KEYWORD_MAP[selectedRegion] || [];
+    if (keywords.length === 0) return;
+    setNewsLoading(true);
+    setNewsError(null);
+    fetchMergedNews(keywords, newsPage, NEWS_PAGE_SIZE)
+      .then(data => {
+        if (!cancelled) {
+          setNewsItems(data.content ?? []);
+          setNewsTotalPages(data.totalPages ?? 1);
+        }
+      })
+      .catch(e => { if (!cancelled) setNewsError(e.message); })
+      .finally(() => { if (!cancelled) setNewsLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedRegion, newsPage, retryKey]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       if (!globalLoading) refreshGlobal(selectedRegion);
@@ -64,24 +67,16 @@ const GlobalMarketPage = () => {
     return () => clearInterval(interval);
   }, [selectedRegion, globalLoading, refreshGlobal]);
 
-  // Price auto-refresh every 5 min
   useEffect(() => {
     const interval = setInterval(() => setPriceRefreshKey(k => k + 1), PRICE_REFRESH_MS);
     return () => clearInterval(interval);
   }, []);
 
-  /**
-   * Tab-focus refresh: re-fetches when the user returns to the browser tab
-   * if the cached data for the active region is older than STALE_FOCUS_MS (5 min).
-   */
   const handleVisibilityChange = useCallback(() => {
     if (document.visibilityState === 'visible') {
       const cached = globalCache[selectedRegion];
       const isStale = !cached || (Date.now() - cached.fetchedAt) > STALE_FOCUS_MS;
-      if (isStale && !globalLoading) {
-        console.log(`[GlobalMarketPage] Tab focused — stale data, refreshing region '${selectedRegion}'`);
-        refreshGlobal(selectedRegion);
-      }
+      if (isStale && !globalLoading) refreshGlobal(selectedRegion);
     }
   }, [selectedRegion, globalCache, globalLoading, refreshGlobal, STALE_FOCUS_MS]);
 
@@ -90,18 +85,16 @@ const GlobalMarketPage = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [handleVisibilityChange]);
 
-  const handleRegionChange = (region) => {
-    setRegion(region);
+  const handleRefresh = () => {
+    refreshGlobal(selectedRegion);
+    setPriceRefreshKey(k => k + 1);
+    setNewsPage(0);
+    setRetryKey(k => k + 1);
   };
 
-  /**
-   * Formats the fetchedAt timestamp into a human-readable "X min ago" string.
-   * Returns null if no timestamp is available yet.
-   */
   const getLastUpdatedLabel = () => {
     if (!currentData?.fetchedAt) return null;
-    const diffMs = Date.now() - currentData.fetchedAt;
-    const diffMin = Math.floor(diffMs / 60000);
+    const diffMin = Math.floor((Date.now() - currentData.fetchedAt) / 60000);
     if (diffMin < 1) return 'Updated just now';
     return `Updated ${diffMin} min ago`;
   };
@@ -110,25 +103,22 @@ const GlobalMarketPage = () => {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Global Market Insights</h1>
-        <button className="btn btn-secondary" onClick={() => {
-          refreshGlobal(selectedRegion);
-          setPriceRefreshKey(k => k + 1);
-        }}>
-          Refresh
-        </button>
+        <button className="btn btn-secondary" onClick={handleRefresh}>Refresh</button>
       </div>
 
-      <SectorSelector options={REGIONS} selected={selectedRegion} onSelect={handleRegionChange} />
+      <SectorSelector options={REGIONS} selected={selectedRegion} onSelect={setRegion} tooltips={REGION_DESCRIPTIONS} />
 
-      {globalLoading && (
-        <div className="page-loading"><p>Loading global insights...</p></div>
+      <GlobalIndicesTable refreshKey={priceRefreshKey} region={selectedRegion} />
+
+      {newsLoading && (
+        <div className="page-loading"><p>Loading market news...</p></div>
       )}
 
-      {globalError && (
+      {newsError && !newsLoading && (
         <div className="page-error">
-          <p>{globalError}</p>
+          <p>{newsError}</p>
           <button
-            onClick={() => refreshGlobal(selectedRegion)}
+            onClick={() => setRetryKey(k => k + 1)}
             className="btn btn-primary"
             style={{ marginTop: 16 }}
           >
@@ -137,15 +127,32 @@ const GlobalMarketPage = () => {
         </div>
       )}
 
-      <GlobalIndicesTable refreshKey={priceRefreshKey} region={selectedRegion} />
-
-      {!globalLoading && !globalError && currentData && (
+      {!newsLoading && !newsError && (
         <div className="market-content">
           {getLastUpdatedLabel() && (
             <p className="last-updated-label">{getLastUpdatedLabel()}</p>
           )}
-          <NewsList news={currentData.news?.slice(0, 5)} />
-          <EventsList events={currentData.events ?? []} />
+          <NewsList news={newsItems} />
+          {newsTotalPages > 1 && (
+            <div className="pagination">
+              <button
+                className="pagination-btn"
+                disabled={newsPage === 0}
+                onClick={() => setNewsPage(p => p - 1)}
+              >
+                Prev
+              </button>
+              <span className="page-indicator">Page {newsPage + 1} of {newsTotalPages}</span>
+              <button
+                className="pagination-btn"
+                disabled={newsPage >= newsTotalPages - 1}
+                onClick={() => setNewsPage(p => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
+          <EventsList events={currentData?.events ?? []} />
         </div>
       )}
     </div>

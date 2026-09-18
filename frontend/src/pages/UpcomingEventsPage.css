@@ -1,0 +1,178 @@
+/* ── Filters ────────────────────────────────────────────────────────────── */
+.ue-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.ue-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ue-filter-chip {
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 2px solid #e5e7eb;
+  border-radius: 20px;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-height: 36px;
+}
+
+.ue-filter-chip:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.ue-filter-chip--active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* ── Month section ──────────────────────────────────────────────────────── */
+.ue-month-section {
+  margin-bottom: 32px;
+}
+
+.ue-month-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+  text-transform: uppercase;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 14px;
+}
+
+/* ── Cards grid ─────────────────────────────────────────────────────────── */
+.ue-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+/* ── Event card — matches .news-item style ──────────────────────────────── */
+.ue-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f1f5f9;
+  border-left: 3px solid #667eea;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ue-card:hover {
+  border-color: rgba(102, 126, 234, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Card header row ────────────────────────────────────────────────────── */
+.ue-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ue-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ue-flag {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.ue-category-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 3px 9px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+/* ── Days chips ─────────────────────────────────────────────────────────── */
+.ue-days-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.ue-days-today {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ue-days-soon {
+  background: #fce7f3;
+  color: #9d174d;
+}
+
+.ue-days-future {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* ── Card body ──────────────────────────────────────────────────────────── */
+.ue-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a2e;
+  line-height: 1.4;
+}
+
+.ue-card-datetime {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.ue-card-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.5;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 8px;
+  margin-top: 2px;
+}
+
+/* ── Empty / error ──────────────────────────────────────────────────────── */
+.ue-empty {
+  text-align: center;
+  padding: 48px 16px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .ue-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ue-filter-chip {
+    font-size: 13px;
+    padding: 6px 14px;
+  }
+}
