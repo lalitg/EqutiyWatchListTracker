@@ -33,7 +33,10 @@ const TOOLTIPS = {
   articles: 'How many news articles this score is averaged over. A score resting on one article '
           + 'is a single headline, not a trend — check this number before reading anything into '
           + 'the ranking.',
-  row: 'Click to open this company’s Sentiments tab',
+  // A row now leads to two different places, so each half says where it goes. Without that the
+  // only way to find out which half you are on is to click and see where you land.
+  row: 'Click to open this company’s latest news',
+  sentiment: 'Click to open this company’s Sentiments tab',
 };
 
 /**
@@ -45,7 +48,8 @@ const TOOLTIPS = {
  * the scale, the lone headline usually ranks higher. Showing the count is what lets a reader tell
  * those two rows apart.
  */
-const Board = ({ title, tone, tooltip, entries, loading, emptyNote, onSelect }) => (
+const Board = ({ title, tone, tooltip, entries, loading, emptyNote,
+                 onOpenCompany, onOpenSentiments }) => (
   <div className={`ext-board ext-board--${tone}`}>
     <div className="ext-board-head" title={tooltip}>
       <h2>{title}</h2>
@@ -68,20 +72,32 @@ const Board = ({ title, tone, tooltip, entries, loading, emptyNote, onSelect }) 
         </thead>
         <tbody>
           {entries.map(e => (
-            <tr key={e.symbol} onClick={() => onSelect(e.symbol)} title={TOOLTIPS.row}>
+            <tr key={e.symbol} onClick={() => onOpenCompany(e.symbol)} title={TOOLTIPS.row}>
               <td className="ext-col-rank">{e.rank}</td>
               <td>
                 <strong className="ext-symbol">{e.symbol}</strong>
                 {e.companyName && <span className="ext-name">{e.companyName}</span>}
               </td>
-              <td className="ext-col-score">
+              {/* The whole cell carries the handler, not just the badge. The badge is a small pill,
+                  and a click landing a pixel outside it would quietly do the opposite of what the
+                  reader intended — open the news rather than the reading they clicked on. The badge
+                  keeps its own handler too: that is what makes it reachable by keyboard. */}
+              <td
+                className="ext-col-score"
+                title={TOOLTIPS.sentiment}
+                onClick={(event) => onOpenSentiments(event, e.symbol)}
+              >
                 <SentimentBadge
                   sentiment={{ score: e.score, label: e.label, articleCount: e.articleCount }}
                   compact
                   showScore
+                  onClick={(event) => onOpenSentiments(event, e.symbol)}
                 />
               </td>
-              <td className="ext-col-articles" title={TOOLTIPS.articles}>
+              <td
+                className="ext-col-articles"
+                title={`${TOOLTIPS.articles} ${TOOLTIPS.row}.`}
+              >
                 {e.articleCount}
               </td>
             </tr>
@@ -130,8 +146,18 @@ const ExtremesPage = () => {
     return load();
   }, [load, mode, selectedDay]);
 
-  const openSentiments = (symbol) =>
+  // Two destinations, because a row is not one thing. The badge is a claim about the news; the
+  // company name is the company. Sending both to the Sentiments tab meant a reader who wanted the
+  // headlines behind a ranking arrived at a page they had not asked for and had to navigate back.
+  const openCompany = (symbol) =>
+    navigate(`/company/${encodeURIComponent(symbol)}`);
+
+  // stopPropagation is what lets the cell win over the row it sits inside. Without it the row's
+  // handler runs as well, runs last, and every click would end up on Latest News.
+  const openSentiments = (event, symbol) => {
+    event.stopPropagation();
     navigate(`/company/${encodeURIComponent(symbol)}?tab=sentiments`);
+  };
 
   // Said differently for each mode. On a single day the honest reason for an empty board is almost
   // always that nothing was published — weekends carry roughly a quarter of a weekday's articles —
@@ -195,7 +221,8 @@ const ExtremesPage = () => {
           entries={board?.topPositives}
           loading={loading}
           emptyNote={emptyNote}
-          onSelect={openSentiments}
+          onOpenCompany={openCompany}
+          onOpenSentiments={openSentiments}
         />
         <Board
           title="Top Negatives"
@@ -204,7 +231,8 @@ const ExtremesPage = () => {
           entries={board?.topNegatives}
           loading={loading}
           emptyNote={emptyNote}
-          onSelect={openSentiments}
+          onOpenCompany={openCompany}
+          onOpenSentiments={openSentiments}
         />
       </div>
 

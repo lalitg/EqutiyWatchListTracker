@@ -196,11 +196,13 @@
 /* The article count sits in its own column, not a tooltip. With no minimum article
    count behind the ranking, it is the only thing separating a twenty-article
    consensus from one loud headline at the same point on the scale. */
+/* No help cursor here: the cell opens the company like the rest of the row, and a question mark
+   over something clickable reads as "hover me" rather than "click me". It inherits the row's
+   pointer instead; the tooltip explaining the count stays. */
 .ext-col-articles {
   width: 72px;
   color: #64748b;
   font-variant-numeric: tabular-nums;
-  cursor: help;
 }
 
 .ext-symbol {
