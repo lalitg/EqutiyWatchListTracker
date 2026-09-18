@@ -9,6 +9,40 @@ const TABLE_COLUMNS = [
   { key: 'companyName', label: 'Company', sortable: true, tooltip: WD['col.company'] },
 ];
 
+/**
+ * The two news-sentiment columns.
+ *
+ * Kept out of TABLE_COLUMNS because they render a badge rather than a cell value, but they carry
+ * everything sorting needs: `read` pulls this column's reading out of the fetched map, and
+ * `tieBreak` settles two companies that landed on the same score. Defining them once is what keeps
+ * each header, its cell and its comparator describing the same column.
+ */
+const SENTIMENT_COLUMNS = [
+  {
+    key: 'sentimentLatest',
+    label: 'Latest News Sentiments',
+    tooltip: WD['col.sentimentLatest'],
+    variant: 'latest',
+    read: (reading) => reading?.latest,
+    // Equal scores, so the newer headline goes first: of two identical readings it is the one that
+    // still describes the present.
+    tieBreak: (a, b) => (b?.latest?.publishedAt ?? 0) - (a?.latest?.publishedAt ?? 0),
+  },
+  {
+    key: 'sentimentQuarter',
+    label: 'Overall News Sentiments',
+    tooltip: WD['col.sentimentQuarter'],
+    variant: 'aggregate',
+    read: (reading) => reading?.quarter,
+    // Equal averages, so the one resting on more articles goes first — the rule the Extremes
+    // boards break ties on, and for the same reason: twenty articles agreeing is a stronger claim
+    // than one loud headline sitting at the same point on the scale.
+    tieBreak: (a, b) => (b?.quarter?.articleCount ?? 0) - (a?.quarter?.articleCount ?? 0),
+  },
+];
+
+const SENTIMENT_BY_KEY = Object.fromEntries(SENTIMENT_COLUMNS.map(col => [col.key, col]));
+
 const ROWS_PER_PAGE = 25;
 
 const DeleteIcon = () => (
@@ -31,25 +65,59 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
     return value;
   };
 
+  // Fetched for every entry rather than only the page on screen. Sorting by a sentiment column needs
+  // a reading for every row, and a watchlist holds at most ten companies anyway. Scoping it to the
+  // page would also feed the sort back into its own input: the sort decides which rows are on the
+  // page, which would decide what is fetched, which would decide the sort.
+  const { sentiments } = useSentiments(entries.map(e => e.companyCode));
+
   const sortedEntries = useMemo(() => {
     if (!sortConfig.key) return entries;
+
+    const column = SENTIMENT_BY_KEY[sortConfig.key];
+    const factor = sortConfig.direction === 'asc' ? 1 : -1;
+
+    if (!column) {
+      return [...entries].sort((a, b) => {
+        const av = a[sortConfig.key] ?? '';
+        const bv = b[sortConfig.key] ?? '';
+        if (av < bv) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (av > bv) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    const scoreOf = (entry) => {
+      const reading = column.read(sentiments[entry.companyCode]);
+      return typeof reading?.score === 'number' ? reading.score : null;
+    };
+
     return [...entries].sort((a, b) => {
-      const av = a[sortConfig.key] ?? '';
-      const bv = b[sortConfig.key] ?? '';
-      if (av < bv) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (av > bv) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
+      const av = scoreOf(a);
+      const bv = scoreOf(b);
+
+      // A company with no scored news has no place on the scale, so it sinks to the bottom in BOTH
+      // directions. Sorting it as zero would drop companies nothing has been written about into the
+      // middle of the ranking, and letting it lead the ascending sort would turn "most negative
+      // first" into a list of companies that simply have no news.
+      if (av === null && bv === null) return 0;
+      if (av === null) return 1;
+      if (bv === null) return -1;
+
+      if (av !== bv) return (av - bv) * factor;
+
+      // The tie-break deliberately ignores the sort direction: reversing the column should reverse
+      // the ranking, not demote the newest article or the best-evidenced average within a tie.
+      return column.tieBreak(sentiments[a.companyCode], sentiments[b.companyCode]);
     });
-  }, [entries, sortConfig]);
+    // `sentiments` belongs in the dependencies: it arrives after the first render, and without it a
+    // table sorted by sentiment would keep the order it had while the scores were still loading.
+  }, [entries, sortConfig, sentiments]);
 
   const paginatedEntries = useMemo(() => {
     const start = (currentPage - 1) * ROWS_PER_PAGE;
     return sortedEntries.slice(start, start + ROWS_PER_PAGE);
   }, [sortedEntries, currentPage]);
-
-  // Scoped to the current page rather than the whole watchlist: only one page of
-  // rows is rendered at a time, so fetching sentiment for every entry is wasted work.
-  const { sentiments } = useSentiments(paginatedEntries.map(e => e.companyCode));
 
   const totalPages = Math.ceil(sortedEntries.length / ROWS_PER_PAGE);
 
@@ -65,11 +133,21 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
     onCompanyClick(entry, { tab: 'sentiments' });
   };
 
+  /**
+   * Sorts by the clicked header, and reverses it when the same header is clicked again.
+   *
+   * A sentiment column opens on its most useful reading — most positive first — rather than on
+   * the ascending order the text columns start from. Nobody opens a sentiment ranking to see the
+   * worst news first, while Symbol and Company are looked up alphabetically, so the two kinds of
+   * column legitimately start from opposite ends of their scale.
+   */
   const handleSortToggle = (key) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
-    }));
+    setSortConfig(prev => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, direction: SENTIMENT_BY_KEY[key] ? 'desc' : 'asc' };
+    });
   };
 
   const getSortIcon = (key) => {
@@ -137,12 +215,24 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                   </span>
                 </th>
               ))}
-              <th className="wl-th-sentiment" data-tooltip={WD['col.sentimentLatest']}>
-                Latest News Sentiments
-              </th>
-              <th className="wl-th-sentiment" data-tooltip={WD['col.sentimentQuarter']}>
-                Overall News Sentiments
-              </th>
+              {SENTIMENT_COLUMNS.map(col => (
+                // The sort hint is appended here rather than written into the shared description,
+                // which the Nifty index and sector tables also use for these columns — and
+                // neither of those sorts.
+                <th
+                  key={col.key}
+                  onClick={() => handleSortToggle(col.key)}
+                  className="wl-th-sentiment wl-sortable"
+                  data-tooltip={`${col.tooltip} Click to sort.`}
+                >
+                  <span className="wl-th-content">
+                    {col.label}
+                    <span className={`wl-sort-icon ${sortConfig.key === col.key ? 'active' : ''}`}>
+                      {getSortIcon(col.key)}
+                    </span>
+                  </span>
+                </th>
+              ))}
               <th className="wl-th-actions"></th>
             </tr>
           </thead>
@@ -159,23 +249,17 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                     {formatCellValue(entry[col.key])}
                   </td>
                 ))}
-                <td className="wl-td-sentiment">
-                  <SentimentBadge
-                    sentiment={sentiments[entry.companyCode]?.latest}
-                    variant="latest"
-                    compact
-                    showScore
-                    onClick={(e) => openSentiments(e, entry)}
-                  />
-                </td>
-                <td className="wl-td-sentiment">
-                  <SentimentBadge
-                    sentiment={sentiments[entry.companyCode]?.quarter}
-                    compact
-                    showScore
-                    onClick={(e) => openSentiments(e, entry)}
-                  />
-                </td>
+                {SENTIMENT_COLUMNS.map(col => (
+                  <td key={col.key} className="wl-td-sentiment">
+                    <SentimentBadge
+                      sentiment={col.read(sentiments[entry.companyCode])}
+                      variant={col.variant}
+                      compact
+                      showScore
+                      onClick={(e) => openSentiments(e, entry)}
+                    />
+                  </td>
+                ))}
                 <td className="wl-td-actions">
                   <button
                     className={`wl-btn-row-delete ${isRowSelected(entry.companyCode) ? 'selected' : ''}`}
