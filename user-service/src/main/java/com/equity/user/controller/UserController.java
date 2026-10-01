@@ -5,6 +5,7 @@ import com.equity.user.dto.RegisterRequest;
 import com.equity.user.dto.UpdateInvestorProfileRequest;
 import com.equity.user.dto.UpdateProfileRequest;
 import com.equity.user.dto.UserResponse;
+import com.equity.user.service.EmailVerificationService;
 import com.equity.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -15,7 +16,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 /**
  * REST controller for user-facing operations.
@@ -41,9 +45,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final UserService userService;
+    private final EmailVerificationService emailVerificationService;
 
-    public UserController(UserService userService) {
-        this.userService = userService;
+    public UserController(UserService userService,
+                          EmailVerificationService emailVerificationService) {
+        this.userService              = userService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -155,5 +162,55 @@ public class UserController {
         Long userId = (Long) authentication.getPrincipal();
         userService.changePassword(userId, request);
         return ResponseEntity.noContent().build();
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // Email verification
+    // ────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/v1/users/me/verify-email
+     *
+     * Emails the signed-in user a link that proves they own the address on their profile.
+     * Nothing can be sent to an unverified address, so this is the gate in front of news alerts.
+     *
+     * Returns: 202 Accepted, with {@code sent} saying whether a message actually went out.
+     *          It is false when the address is already verified, and when mail is switched off in
+     *          this environment — in which case the link is written to the service log instead.
+     *
+     * Errors:
+     *   400 — no email on the account, or a link was requested moments ago
+     *   401 — missing or invalid JWT
+     */
+    @PostMapping("/me/verify-email")
+    public ResponseEntity<Map<String, Object>> sendVerificationEmail(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        boolean sent = emailVerificationService.requestVerification(userId);
+        return ResponseEntity.accepted().body(Map.of(
+            "sent", sent,
+            "message", sent
+                ? "Verification email sent. The link expires in 24 hours."
+                : "No email sent — the address is already verified, or email is disabled here."
+        ));
+    }
+
+    /**
+     * GET /api/v1/users/verify-email?token=...
+     *
+     * Redeems a verification link. Public by necessity: it is opened from a mail client, where
+     * there is no session and no token to send — the value in the query string is the credential.
+     *
+     * Returns: 200 + the verified address, which the confirmation page shows back to the reader.
+     *
+     * Errors:
+     *   400 — the link is unknown, already used, or expired
+     */
+    @GetMapping("/verify-email")
+    public ResponseEntity<Map<String, Object>> verifyEmail(@RequestParam("token") String token) {
+        String email = emailVerificationService.verify(token);
+        return ResponseEntity.ok(Map.of(
+            "verified", true,
+            "email", email
+        ));
     }
 }

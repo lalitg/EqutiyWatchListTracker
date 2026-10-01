@@ -32,6 +32,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** Find a user by their phone number (nullable field). */
     Optional<User> findByPhoneNumber(String phoneNumber);
 
+    /**
+     * Find the user holding this verification token.
+     *
+     * The token is the only credential on the verification link, so this is the lookup that
+     * authenticates it. Returns empty for an unknown or already-redeemed token.
+     */
+    Optional<User> findByEmailVerificationToken(String emailVerificationToken);
+
     /** Returns true if a user with this username already exists. */
     boolean existsByUsername(String username);
 

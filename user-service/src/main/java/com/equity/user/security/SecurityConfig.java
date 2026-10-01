@@ -56,6 +56,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Registration is public — no token needed
                 .requestMatchers(HttpMethod.POST, "/api/v1/users/register").permitAll()
+                // The verification link is opened from a mail client: no session, no bearer token.
+                // The random token in the query string is the credential, and it works once.
+                .requestMatchers(HttpMethod.GET, "/api/v1/users/verify-email").permitAll()
                 // Internal endpoints are permitted here; InternalUserController
                 // verifies the X-Internal-Api-Key header before processing
                 .requestMatchers("/api/v1/internal/**").permitAll()
