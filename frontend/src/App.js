@@ -10,6 +10,7 @@ import ExtremesPage from './pages/ExtremesPage';
 import CompanyDetailPage from './pages/CompanyDetailPage';
 import LoginPage from './pages/LoginPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import NseCalendarPage from './pages/NseCalendarPage';
 import UpcomingEventsPage from './pages/UpcomingEventsPage';
 import MutualFundsPage from './pages/MutualFundsPage';
@@ -47,6 +48,8 @@ function AppContent() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          {/* Public by necessity: opened from a mail client with no session. */}
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/" element={<Navigate to="/watchlist" replace />} />
           <Route path="/watchlist" element={
             <ProtectedRoute><WatchlistPage /></ProtectedRoute>
