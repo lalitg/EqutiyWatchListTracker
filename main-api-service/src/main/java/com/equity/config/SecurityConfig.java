@@ -83,6 +83,10 @@ public class SecurityConfig {
 
                 // ── user-service public endpoints ─────────────────────────────────────
                 .requestMatchers(HttpMethod.POST, "/api/v1/users/register").permitAll()
+                // Email verification is opened from a mail client — no session, no bearer token.
+                // The one-time random token in the query string is the credential, and the general
+                // /api/v1/users/** rule below would otherwise reject the click with a 401.
+                .requestMatchers(HttpMethod.GET, "/api/v1/users/verify-email").permitAll()
                 // Internal endpoint — protected by X-Internal-Api-Key header in controller,
                 // not by JWT.  Security layer just lets it through.
                 .requestMatchers("/api/v1/internal/**").permitAll()

@@ -3,6 +3,7 @@ package com.equity.config;
 import com.equity.auth.exception.InvalidCredentialsException;
 import com.equity.auth.exception.TokenException;
 import com.equity.auth.exception.UserBlockedException;
+import com.equity.user.exception.EmailVerificationException;
 import com.equity.user.exception.InvalidPasswordException;
 import com.equity.user.exception.UserAlreadyExistsException;
 import com.equity.user.exception.UserNotFoundException;
@@ -80,6 +81,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidPasswordException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidPassword(InvalidPasswordException ex) {
         logger.warn("InvalidPassword: {}", ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * Email verification refused: no address on the account, an expired or unknown link, or a
+     * resend asked for inside the cooldown. The message is written for the person on screen, so it
+     * is passed through rather than replaced.
+     */
+    @ExceptionHandler(EmailVerificationException.class)
+    public ResponseEntity<Map<String, Object>> handleEmailVerification(EmailVerificationException ex) {
+        logger.warn("EmailVerification: {}", ex.getMessage());
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
