@@ -182,6 +182,28 @@ public class AppConfig {
      *
      * @return a single-threaded {@link TaskScheduler} named {@code startupScheduler}
      */
+    /**
+     * Dedicated single-thread {@link TaskScheduler} for sending alert emails.
+     *
+     * <p>WHY it cannot share: the other {@code @Scheduled} jobs in this service run on one thread -
+     * the hourly cleanup and the 15-minute Google RSS fetch among them. An SMTP call on that thread
+     * puts news fetching behind whatever latency the mail server happens to have, and a mail server
+     * that stops answering would stop the news.
+     *
+     * @return a single-threaded {@link TaskScheduler} named {@code alertTaskScheduler}
+     */
+    @Bean(name = "alertTaskScheduler", destroyMethod = "shutdown")
+    public TaskScheduler alertTaskScheduler() {
+        log.info("Initializing alertTaskScheduler (poolSize=1)");
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(1);
+        scheduler.setThreadNamePrefix("alert-thread-");
+        scheduler.setWaitForTasksToCompleteOnShutdown(true);
+        scheduler.setAwaitTerminationSeconds(30);
+        scheduler.initialize();
+        return scheduler;
+    }
+
     @Bean(name = "startupScheduler", destroyMethod = "shutdown")
     public TaskScheduler startupScheduler() {
         log.info("Initializing startupScheduler (poolSize=1)");

@@ -104,6 +104,19 @@ public class NewsItem {
      */
     private Long publishedAt;
 
+    /**
+     * When an alert email about this article was sent, epoch millis, or null if none ever was.
+     *
+     * <p>This single field is what makes alerting safe without a second table. An article carrying
+     * it is never mailed again - across restarts, redeployments, and the nightly re-scoring that
+     * would otherwise look like thousands of brand-new stories. It also doubles as the overnight
+     * queue: everything published during quiet hours is simply still unstamped at 08:00.
+     *
+     * <p>Like every other field here it lives inside the {@code news} JSONB array, so older rows
+     * deserialize with null and no migration was needed.
+     */
+    private Long alertedAt;
+
     /** Default no-arg constructor required by Jackson for deserialization. */
     public NewsItem() {}
 
@@ -233,4 +246,7 @@ public class NewsItem {
      * @param publishedAt epoch millis, or {@code null} if the date string was unparseable
      */
     public void setPublishedAt(Long publishedAt) { this.publishedAt = publishedAt; }
+
+    public Long getAlertedAt() { return alertedAt; }
+    public void setAlertedAt(Long alertedAt) { this.alertedAt = alertedAt; }
 }

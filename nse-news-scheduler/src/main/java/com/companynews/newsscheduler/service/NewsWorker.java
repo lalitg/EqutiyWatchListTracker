@@ -316,6 +316,63 @@ public class NewsWorker {
     }
 
     /**
+     * Stamps articles as having had an alert email sent about them.
+     *
+     * <p>WHY this lives in NewsWorker rather than in the alert package: it rewrites a company's
+     * JSONB news array, which the fetcher also rewrites. Doing it independently would mean a fetch
+     * landing at the same moment either loses the stamp - and mails everybody a second time - or
+     * loses the articles the fetch had just added. Taking the same per-keyword lock the fetcher
+     * takes is what makes the two writers safe together.
+     *
+     * <p>Only articles that have no stamp yet are touched, so a repeat call is harmless and the
+     * original send time is never overwritten.
+     *
+     * @param keyword the company whose articles were mailed
+     * @param links   the article URLs that went out
+     * @return how many articles were stamped
+     */
+    @Transactional
+    public int markAlerted(String keyword, Set<String> links) {
+        if (keyword == null || links == null || links.isEmpty()) return 0;
+
+        ReentrantLock lock = getLock(keyword);
+        lock.lock();
+        try {
+            Optional<CompanyNews> existing = repository.findByKeyword(keyword);
+            if (existing.isEmpty() || existing.get().getNews() == null) return 0;
+
+            CompanyNews record = existing.get();
+            // Copy so Hibernate sees a genuinely new JSONB value, the same reason the backfill does.
+            List<NewsItem> updated = new ArrayList<>(record.getNews());
+
+            long now = System.currentTimeMillis();
+            int marked = 0;
+            for (NewsItem item : updated) {
+                if (item.getAlertedAt() == null && item.getLink() != null
+                        && links.contains(item.getLink())) {
+                    item.setAlertedAt(now);
+                    marked++;
+                }
+            }
+
+            if (marked == 0) return 0;
+
+            record.setNews(updated);
+            // Touching a scalar column is what makes this write happen at all. Hibernate compares
+            // the JSON attribute against its snapshot, and a rebuilt list holding the same item
+            // objects compares equal - so changing only the JSON leaves the entity looking clean
+            // and no UPDATE is issued. Every other write path here sets lastUpdated for its own
+            // reasons; this one needs it to mark the row dirty.
+            record.setLastUpdated(LocalDateTime.now());
+            repository.save(record);
+            log.debug("Marked {} article(s) as alerted for keyword: {}", marked, keyword);
+            return marked;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
      * Updates {@code last_updated} to now for the given keyword without changing its news items.
      *
      * <p>Called when Google RSS is fetched successfully but all articles are already in the
