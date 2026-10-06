@@ -8,6 +8,8 @@ import {
 } from '../services/indicesService';
 import { fetchNews } from '../services/newsService';
 import SentimentBadge from '../components/shared/SentimentBadge';
+import AlertToggle from '../components/shared/AlertToggle';
+import { useAuth } from '../context/AuthContext';
 import { fetchEvents } from '../services/eventsService';
 import { fetchSebiActivity } from '../services/sebiService';
 import { fetchCompanySectors } from '../services/sectorService';
@@ -61,6 +63,7 @@ const LATEST_NEWS_TOOLTIP =
   + 'For averages over a period, see the Sentiments tab below.';
 
 const CompanyDetailPage = () => {
+  const { isLoggedIn } = useAuth();
   const { symbol } = useParams();
   const navigate   = useNavigate();
   const { entries, activeId, addCompany, isActionLoading } = useWatchlist();
@@ -225,6 +228,9 @@ const CompanyDetailPage = () => {
               <SentimentBadge sentiment={sentiment} variant="latest" compact showScore />
             </div>
           )}
+          {/* Subscribing is deliberately its own act, separate from the watchlist: a watchlist is
+              a reading list, while this puts the company in the reader's inbox. */}
+          <AlertToggle symbol={symbol?.toUpperCase()} isLoggedIn={isLoggedIn} />
         </div>
 
         {(nse500Sectors.length > 0 || companyIndices.length > 0) && (

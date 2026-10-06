@@ -1,0 +1,60 @@
+/* ── "Alert me" toggle ──────────────────────────────────────────────────────
+   Sits in the company hero beside the P/E and sentiment pills, so it reads as part of that row
+   rather than as a call to action competing with the page. Quiet when off, clearly engaged when
+   on: this button commits the reader to email, and that state should never be ambiguous. */
+
+.cdp-alert-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+}
+
+.cdp-alert-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.cdp-alert-btn:hover:not(:disabled) {
+  border-color: #a5b4fc;
+  background: #f8faff;
+  color: #4338ca;
+}
+
+/* On is a filled state, not a subtle one — the reader is being emailed because of it. */
+.cdp-alert-btn--on {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.cdp-alert-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.cdp-alert-btn:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+.cdp-alert-error {
+  font-size: 11px;
+  color: #b91c1c;
+  max-width: 220px;
+}
+
+@media (max-width: 640px) {
+  .cdp-alert-wrap { margin-left: 0; }
+}

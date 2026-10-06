@@ -11,6 +11,7 @@ import CompanyDetailPage from './pages/CompanyDetailPage';
 import LoginPage from './pages/LoginPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import UnsubscribePage from './pages/UnsubscribePage';
 import NseCalendarPage from './pages/NseCalendarPage';
 import UpcomingEventsPage from './pages/UpcomingEventsPage';
 import MutualFundsPage from './pages/MutualFundsPage';
@@ -50,6 +51,9 @@ function AppContent() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           {/* Public by necessity: opened from a mail client with no session. */}
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          {/* Also public: an unsubscribe link must work from a mail client, and asking someone to
+              sign in before they may stop email is how a spam complaint happens instead. */}
+          <Route path="/unsubscribe" element={<UnsubscribePage />} />
           <Route path="/" element={<Navigate to="/watchlist" replace />} />
           <Route path="/watchlist" element={
             <ProtectedRoute><WatchlistPage /></ProtectedRoute>
