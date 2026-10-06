@@ -101,8 +101,14 @@ public class SecurityConfig {
                 .requestMatchers("/api/fast-movers/**").permitAll()
                 .requestMatchers("/api/internal/**").permitAll()
 
+                // ── Alert unsubscribe — opened from a mail client, no session to offer ────
+                .requestMatchers("/api/alerts/**").permitAll()
+
                 // ── Protected: all watchlist operations require a valid JWT ─────────────
                 .requestMatchers("/api/v1/watchlist/**").authenticated()
+
+                // ── Protected: alert subscriptions belong to the signed-in user ─────────
+                .requestMatchers("/api/v1/subscriptions/**").authenticated()
 
                 // ── Protected: user profile operations require a valid JWT ──────────────
                 // (register + internal are already declared public above)
