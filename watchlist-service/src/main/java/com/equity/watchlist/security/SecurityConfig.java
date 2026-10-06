@@ -43,6 +43,13 @@ public class SecurityConfig {
                 .requestMatchers("/api/user/**").permitAll()
                 .requestMatchers("/api/v1/companies/**").permitAll()
                 .requestMatchers("/api/v1/watchlist/**").authenticated()
+                // Alert subscriptions belong to the signed-in user; the path never carries a user
+                // id, so a caller can only ever change their own.
+                .requestMatchers("/api/v1/subscriptions/**").authenticated()
+                // The unsubscribe link is opened from a mail client with no session. Its signed
+                // token is the credential — requiring a login here would mean signing in to stop
+                // unwanted email, and the reliable alternative a reader reaches for is "spam".
+                .requestMatchers("/api/alerts/**").permitAll()
                 .anyRequest().permitAll()
             )
             .exceptionHandling(eh -> eh
