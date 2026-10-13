@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import NotificationBell from '../shared/NotificationBell';
 import CompanySearchBar from './CompanySearchBar';
 import { NAV_DESCRIPTIONS } from '../../constants/marketDescriptions';
 import './Navbar.css';
@@ -61,6 +62,9 @@ const Navbar = () => {
             </NavLink>
             {isLoggedIn ? (
               <div className="navbar-user">
+                {/* The bell sits with the account controls, where every other global control is,
+                    and so it is visible on every page rather than only on the watchlist. */}
+                <NotificationBell isLoggedIn={isLoggedIn} />
                 <span className="navbar-username">Hi, {user?.username}</span>
                 <button className="navbar-logout-btn" data-tooltip={NAV_DESCRIPTIONS['Logout']} onClick={handleLogout}>Logout</button>
               </div>
