@@ -110,6 +110,9 @@ public class SecurityConfig {
                 // ── Protected: alert subscriptions belong to the signed-in user ─────────
                 .requestMatchers("/api/v1/subscriptions/**").authenticated()
 
+                // ── Protected: the bell shows the reader their own notifications ────────
+                .requestMatchers("/api/v1/notifications/**").authenticated()
+
                 // ── Protected: user profile operations require a valid JWT ──────────────
                 // (register + internal are already declared public above)
                 .requestMatchers("/api/v1/users/**").authenticated()
