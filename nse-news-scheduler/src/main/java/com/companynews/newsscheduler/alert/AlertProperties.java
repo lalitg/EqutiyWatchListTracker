@@ -27,6 +27,19 @@ public class AlertProperties {
     private boolean enabled;
 
     /**
+     * Where alerts go: {@code notifications} (default) or {@code email}.
+     *
+     * <p>Exclusive on purpose. Both channels share the article stamp, so running both would mean
+     * whichever went first stamped the article and the other found nothing - a bug that would look
+     * like alerts randomly not arriving. One value cannot contradict itself.
+     *
+     * <p>Email is the dormant channel: AWS refused SES production access, so it cannot reach real
+     * users. The code stays tested and switched off, and this one value brings it back.
+     */
+    @Value("${alert.channel:notifications}")
+    private String channel;
+
+    /**
      * How extreme a score has to be. 3.5 on our scale is roughly the mentor document's ±0.75 on a
      * −1…+1 scale, and catches about 29% of scored articles.
      */
@@ -73,6 +86,15 @@ public class AlertProperties {
     private String baseUrl;
 
     public boolean isEnabled()            { return enabled; }
+
+    /** @return true when alerts are delivered as in-app notifications */
+    public boolean isNotificationChannel() { return !isEmailChannel(); }
+
+    /** @return true when alerts are delivered by email */
+    public boolean isEmailChannel() {
+        return channel != null && channel.trim().equalsIgnoreCase("email");
+    }
+
     public double getThreshold()          { return threshold; }
     public int getMaxArticleAgeHours()    { return maxArticleAgeHours; }
     public int getDailyEmailCap()         { return dailyEmailCap; }

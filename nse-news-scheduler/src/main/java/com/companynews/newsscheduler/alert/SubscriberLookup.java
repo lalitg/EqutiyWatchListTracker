@@ -36,7 +36,23 @@ public class SubscriberLookup {
 
     private static final Logger log = LogManager.getLogger(SubscriberLookup.class);
 
+    /** Every active subscriber. In-app notifications need no address at all. */
     private static final String SQL = """
+        SELECT s.company_code, u.id AS user_id, u.email, u.name
+        FROM company_subscriptions s
+        JOIN users u ON u.id = s.user_id
+        WHERE s.company_code IN (%s)
+          AND u.status = 'ACTIVE'
+        """;
+
+    /**
+     * Only subscribers whose address has been proved.
+     *
+     * <p>An unverified address has never been shown to belong to the person who typed it, and
+     * mailing it risks bounces that put the whole sending account at risk - including password
+     * resets. The in-app channel has no such exposure, which is why it uses the query above.
+     */
+    private static final String EMAIL_SQL = """
         SELECT s.company_code, u.id AS user_id, u.email, u.name
         FROM company_subscriptions s
         JOIN users u ON u.id = s.user_id
@@ -55,19 +71,27 @@ public class SubscriberLookup {
     /** One person who should hear about one or more companies. */
     public record Subscriber(Long userId, String email, String name) {}
 
-    /**
-     * @param companyCodes the companies with alertable news this cycle
-     * @return company symbol → the people subscribed to it; companies with no subscribers are absent
-     */
+    /** Subscribers with a verified email address — the email channel's recipients. */
     public Map<String, List<Subscriber>> subscribersFor(Collection<String> companyCodes) {
+        return subscribersFor(companyCodes, true);
+    }
+
+    /**
+     * @param companyCodes         the companies with alertable news this cycle
+     * @param requireVerifiedEmail true for the email channel, false for in-app notifications
+     * @return company symbol -> the people subscribed to it; companies with no subscribers are absent
+     */
+    public Map<String, List<Subscriber>> subscribersFor(Collection<String> companyCodes,
+                                                        boolean requireVerifiedEmail) {
         Map<String, List<Subscriber>> bySymbol = new HashMap<>();
         if (companyCodes == null || companyCodes.isEmpty()) return bySymbol;
 
         String placeholders = String.join(",", java.util.Collections.nCopies(companyCodes.size(), "?"));
         Object[] args = companyCodes.toArray();
+        String sql = requireVerifiedEmail ? EMAIL_SQL : SQL;
 
         try {
-            jdbcTemplate.query(String.format(SQL, placeholders), rs -> {
+            jdbcTemplate.query(String.format(sql, placeholders), rs -> {
                 bySymbol.computeIfAbsent(rs.getString("company_code"), k -> new java.util.ArrayList<>())
                         .add(new Subscriber(rs.getLong("user_id"),
                                             rs.getString("email"),
