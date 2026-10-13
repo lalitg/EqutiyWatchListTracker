@@ -1,0 +1,237 @@
+package com.companynews.newsscheduler.service;
+
+import com.companynews.newsscheduler.dto.LatestSentimentDto;
+import com.companynews.newsscheduler.dto.NewsItem;
+import com.companynews.newsscheduler.dto.NseAnnouncement;
+import com.companynews.newsscheduler.model.CompanyNews;
+import com.companynews.newsscheduler.repository.CompanyNewsRepository;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * Service layer for single-keyword company news lookups ({@code GET /api/news?key=}).
+ *
+ * <p>Wraps the on-demand fetch logic from the controller. No result caching — every call
+ * reads straight from the database via {@link CompanyNewsRepository}, or, on a miss,
+ * triggers an on-demand fetch. This endpoint is for company symbols and sector names, which
+ * never go through {@link KeywordNewsBucketCache} — that cache is scoped to keywords.txt-
+ * sourced keywords only (Domestic/Global tabs).
+ */
+@Service
+public class CompanyNewsService {
+
+    private static final Logger log = LogManager.getLogger(CompanyNewsService.class);
+
+    private final CompanyNewsRepository repository;
+    private final NseFetcher nseFetcher;
+    private final RssFetcher rssFetcher;
+    private final NewsWorker newsWorker;
+    private final SeqIdWindow seqIdWindow;
+    private final UrlWindow urlWindow;
+    private final KeywordLoader keywordLoader;
+    private final CurrentSentimentService currentSentimentService;
+    private final SentimentWindowService sentimentWindowService;
+
+    /**
+     * Latest News window in days — items within this age appear on the Latest tab.
+     *
+     * <p>Deliberately a <b>display</b> setting, separate from
+     * {@code news.retention.company.latest-window-days}, which controls how long articles are
+     * kept. The two used to be the same property, which was safe only while both meant seven
+     * days. Company news is now retained for a quarter so the Sentiments tab has history to
+     * average over, and had this tab kept reading the retention setting it would have quietly
+     * turned into a three-month archive the moment retention widened.
+     */
+    @Value("${news.display.company.latest-window-days:7}")
+    private int latestWindowDays;
+
+    /** Important News window in days — flagged items within this age appear on the Important tab. */
+    @Value("${news.display.company.important-window-days:90}")
+    private int importantWindowDays;
+
+    /** Floor count so a quiet company's Latest tab is never empty (mirrors cleanup's floor). */
+    @Value("${news.retention.min-count:15}")
+    private int minCount;
+
+    public CompanyNewsService(CompanyNewsRepository repository,
+                              NseFetcher nseFetcher,
+                              RssFetcher rssFetcher,
+                              NewsWorker newsWorker,
+                              SeqIdWindow seqIdWindow,
+                              UrlWindow urlWindow,
+                              KeywordLoader keywordLoader,
+                              CurrentSentimentService currentSentimentService,
+                              SentimentWindowService sentimentWindowService) {
+        this.repository    = repository;
+        this.nseFetcher    = nseFetcher;
+        this.rssFetcher    = rssFetcher;
+        this.newsWorker    = newsWorker;
+        this.seqIdWindow   = seqIdWindow;
+        this.urlWindow     = urlWindow;
+        this.keywordLoader = keywordLoader;
+        this.currentSentimentService = currentSentimentService;
+        this.sentimentWindowService  = sentimentWindowService;
+    }
+
+    /**
+     * Returns the news response for the given keyword.
+     *
+     * <ol>
+     *   <li>Reads from DB — returns immediately if a row exists.</li>
+     *   <li>On DB miss: triggers on-demand NSE + RSS fetch, saves, then reads back.</li>
+     *   <li>If still no data: returns an empty response (never throws).</li>
+     * </ol>
+     *
+     * @param key the keyword to look up (company symbol, sector name, or macro term)
+     * @return map with {@code keyword}, {@code sentiments}, {@code news}, {@code lastUpdated}
+     */
+    public Map<String, Object> getNews(String key) {
+        log.debug("Fetching news for key={}", key);
+
+        boolean isCompany = keywordLoader.loadCompanySymbols().contains(key);
+
+        Optional<CompanyNews> existing = repository.findByKeyword(key);
+        if (existing.isPresent()) {
+            log.info("DB hit for key={}", key);
+            return buildResponse(existing.get(), isCompany);
+        }
+
+        log.info("DB miss — on-demand fetch for key={}", key);
+
+        List<NseAnnouncement> nseAnnouncements = nseFetcher.fetch();
+        List<NewsItem> nseMatching = nseAnnouncements.stream()
+            .filter(a -> key.equalsIgnoreCase(a.getNewsItem().getSymbol()))
+            .filter(a -> {
+                if (seqIdWindow.contains(a.getSeqId())) return false;
+                seqIdWindow.add(a.getSeqId());
+                return true;
+            })
+            .map(NseAnnouncement::getNewsItem)
+            .toList();
+
+        if (!nseMatching.isEmpty()) {
+            newsWorker.saveNews(key, nseMatching, isCompany);
+        }
+
+        List<NewsItem> googleItems = rssFetcher.fetch(key);
+        List<NewsItem> googleNew = googleItems.stream()
+            .filter(item -> urlWindow.addIfAbsent(item.getLink()))
+            .toList();
+
+        if (!googleNew.isEmpty()) {
+            newsWorker.saveNews(key, googleNew, isCompany);
+        }
+
+        Optional<CompanyNews> saved = repository.findByKeyword(key);
+        if (saved.isPresent()) {
+            return buildResponse(saved.get(), isCompany);
+        }
+
+        log.warn("No news found for key={} from any source", key);
+        return buildEmptyResponse(key, isCompany);
+    }
+
+    /**
+     * Builds the API response for a keyword.
+     *
+     * <p>For sector/macro keywords ({@code isCompany == false}) the response is unchanged from
+     * the original single-list shape — {@code news} carries the full stored list. For company
+     * keywords the stored list (which cleanup retains as a superset: 7-day latest + 90-day
+     * important) is split into two views:
+     * <ul>
+     *   <li>{@code news} — the Latest tab: items within the {@code latest-window-days} window;
+     *       if fewer than {@code min-count}, floored with the newest items overall so the tab
+     *       is never empty for quiet companies (same floor semantics as cleanup).</li>
+     *   <li>{@code importantNews} — the Important tab: items flagged {@code category="important"}
+     *       within {@code important-window-days}, newest-first.</li>
+     * </ul>
+     * The two lists intentionally overlap: a recent important article appears in both tabs.
+     */
+    private Map<String, Object> buildResponse(CompanyNews companyNews, boolean isCompany) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("keyword",     companyNews.getKeyword());
+        response.put("sentiments",  companyNews.getSentiments() != null ? companyNews.getSentiments() : "");
+        response.put("lastUpdated", companyNews.getLastUpdated());
+
+        // Computed from the scores already stored on this record's items — no extra query and no
+        // model inference, so the company detail page gets sentiment for free from the call it was
+        // already making.
+        //
+        // The badge beside the company name shows the LATEST article rather than an average. An
+        // average needs an expiry rule to avoid reading as current forever on a quiet company; the
+        // latest reading needs none, because it claims only to be the last thing that happened —
+        // and it carries its date so the reader can see how long ago that was.
+        response.put("latestSentiment", currentSentimentService.computeLatest(companyNews));
+
+        List<NewsItem> all = companyNews.getNews() != null ? companyNews.getNews() : List.of();
+
+        if (!isCompany) {
+            // Sectors/macro keywords: unchanged single-list response.
+            response.put("news", companyNews.getNews());
+            return response;
+        }
+
+        // The Sentiments tab breakdown rides along on the request the company page already makes.
+        // The row is loaded and the arithmetic is a few hundred additions, so computing it here
+        // costs nothing measurable and saves the tab a second round trip and a second row read
+        // when the user opens it.
+        response.put("sentimentWindows", sentimentWindowService.computeFrom(companyNews));
+
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+        ZonedDateTime latestCutoff    = now.minusDays(latestWindowDays);
+        ZonedDateTime importantCutoff = now.minusDays(importantWindowDays);
+
+        List<NewsItem> latest    = new ArrayList<>();
+        List<NewsItem> important = new ArrayList<>();
+
+        for (NewsItem item : all) {
+            ZonedDateTime date = NewsDateParser.parse(item.getDate());
+            boolean withinLatest    = date == null || date.isAfter(latestCutoff);
+            boolean withinImportant = date == null || date.isAfter(importantCutoff);
+            boolean isImportant = NewsImportanceClassifier.CATEGORY_IMPORTANT.equals(item.getCategory());
+
+            if (withinLatest) {
+                latest.add(item);
+            }
+            if (isImportant && withinImportant) {
+                important.add(item);
+            }
+        }
+
+        // Floor: if too few items in the Latest window, pad with the newest items overall
+        // (list is stored newest-first) so a quiet company's Latest tab is never empty.
+        if (latest.size() < minCount) {
+            latest = new ArrayList<>(all.subList(0, Math.min(minCount, all.size())));
+        }
+
+        response.put("news",          latest);
+        response.put("importantNews", important);
+        return response;
+    }
+
+    private Map<String, Object> buildEmptyResponse(String key, boolean isCompany) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("keyword",     key);
+        response.put("sentiments",  "");
+        response.put("latestSentiment", LatestSentimentDto.noData());
+        response.put("news",        List.of());
+        if (isCompany) {
+            response.put("importantNews", List.of());
+            // Present but all NO_DATA, so the tab renders its usual rows rather than breaking on
+            // a missing field for a company that has no news yet.
+            response.put("sentimentWindows", sentimentWindowService.computeFrom(null));
+        }
+        response.put("lastUpdated", null);
+        return response;
+    }
+}

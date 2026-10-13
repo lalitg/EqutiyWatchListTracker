@@ -1,0 +1,14 @@
+# Never commit data or results from the PoC
+data/
+results/
+*.log
+
+# Keep the test-set template and scripts, ignore everything else CSV
+*.csv
+!testset.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

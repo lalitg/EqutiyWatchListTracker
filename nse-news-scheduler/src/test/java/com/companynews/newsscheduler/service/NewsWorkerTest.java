@@ -1,5 +1,6 @@
 package com.companynews.newsscheduler.service;
 
+import com.companynews.newsscheduler.client.SentimentModelClient;
 import com.companynews.newsscheduler.dto.NewsItem;
 import com.companynews.newsscheduler.model.CompanyNews;
 import com.companynews.newsscheduler.repository.CompanyNewsRepository;
@@ -11,7 +12,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +26,9 @@ class NewsWorkerTest {
     @Mock
     private CompanyNewsRepository repository;
 
+    @Mock
+    private NewsStore newsStore;
+
     // Use real SimilarityChecker — it has no dependencies and pure deterministic logic
     @Spy
     private SimilarityChecker similarityChecker = new SimilarityChecker();
@@ -34,9 +37,30 @@ class NewsWorkerTest {
 
     @BeforeEach
     void setUp() {
-        newsWorker = new NewsWorker(repository, similarityChecker, new SimpleMeterRegistry());
-        // @Value field cannot be injected by Mockito — set manually
-        ReflectionTestUtils.setField(newsWorker, "newsLimit", 5);
+        NewsImportanceClassifier classifier = new NewsImportanceClassifier();
+        classifier.init();   // compile phrases from important-keywords.txt (on the test classpath)
+
+        // Sentiment scoring is wired in but deliberately inert here: this suite is about
+        // deduplication and persistence, and loading a 219 MB model would make it slow and
+        // dependent on an artefact that is not committed. The scorer is constructed with a
+        // disabled model client, so score() is a no-op and items keep null sentiment fields —
+        // exactly the behaviour these tests already assert on.
+        SentimentModelClient disabledModel = new SentimentModelClient(
+                false, "models", 64, 1, 1, false, false);
+        SentimentScorer sentimentScorer = new SentimentScorer(disabledModel, 1.5, -1.5);
+
+        // Real, not mocked: saveNews calls refresh() to write the denormalised sentiment columns
+        // onto the record it is about to persist, and the tests below capture that record. With
+        // the model disabled every item stays unscored, so refresh() writes NO_DATA — which is
+        // the correct reading here and keeps these dedup-and-persistence tests unaffected by it.
+        CurrentSentimentService sentimentService = new CurrentSentimentService(
+                mock(CompanyNewsRepository.class), sentimentScorer);
+
+        newsWorker = new NewsWorker(repository, similarityChecker, newsStore, classifier,
+                                    sentimentScorer, sentimentService,
+                                    // Mocked: the rollup writes to company_daily_sentiment via its
+                                    // own repository, which is not what these dedup tests exercise.
+                                    mock(DailySentimentService.class), new SimpleMeterRegistry());
     }
 
     // ── Helper ─────────────────────────────────────────────────────────────
@@ -52,7 +76,7 @@ class NewsWorkerTest {
     void saves_new_items_when_no_existing_row() {
         when(repository.findByKeyword("INFY")).thenReturn(Optional.empty());
 
-        newsWorker.saveNews("INFY", List.of(item("https://a.com/1", "Infosys reports strong Q3")));
+        newsWorker.saveNews("INFY", List.of(item("https://a.com/1", "Infosys reports strong Q3")), true);
 
         ArgumentCaptor<CompanyNews> captor = ArgumentCaptor.forClass(CompanyNews.class);
         verify(repository).save(captor.capture());
@@ -71,7 +95,7 @@ class NewsWorkerTest {
         when(repository.findByKeyword("INFY")).thenReturn(Optional.of(record));
 
         // Submit the same URL again — should be skipped
-        newsWorker.saveNews("INFY", List.of(item("https://a.com/1", "Same URL different text")));
+        newsWorker.saveNews("INFY", List.of(item("https://a.com/1", "Same URL different text")), true);
 
         // Nothing new added → save should NOT be called
         verify(repository, never()).save(any());
@@ -87,7 +111,7 @@ class NewsWorkerTest {
         newsWorker.saveNews("INFY", List.of(
             item("https://a.com/1", "Article A"),
             item("https://a.com/1", "Article A again")
-        ));
+        ), true);
 
         ArgumentCaptor<CompanyNews> captor = ArgumentCaptor.forClass(CompanyNews.class);
         verify(repository).save(captor.capture());
@@ -106,15 +130,15 @@ class NewsWorkerTest {
 
         // Near-duplicate headline (different URL — so URL check passes, but similarity check fires)
         newsWorker.saveNews("INFY",
-            List.of(item("https://b.com/2", "Infosys Q3 results beat street estimates")));
+            List.of(item("https://b.com/2", "Infosys Q3 results beat street estimates")), true);
 
         verify(repository, never()).save(any());
     }
 
-    // ── News limit trim ────────────────────────────────────────────────────
+    // ── All deduplicated items are saved (no per-save limit — cleanup scheduler handles retention) ──
 
     @Test
-    void trims_news_to_configured_limit() {
+    void saves_all_deduplicated_items_without_limit() {
         when(repository.findByKeyword("INFY")).thenReturn(Optional.empty());
 
         List<NewsItem> sixItems = List.of(
@@ -126,24 +150,24 @@ class NewsWorkerTest {
             item("https://a.com/6", "Article six on rupee depreciation")
         );
 
-        newsWorker.saveNews("INFY", sixItems);
+        newsWorker.saveNews("INFY", sixItems, true);
 
         ArgumentCaptor<CompanyNews> captor = ArgumentCaptor.forClass(CompanyNews.class);
         verify(repository).save(captor.capture());
-        assertThat(captor.getValue().getNews()).hasSize(5); // limit = 5
+        assertThat(captor.getValue().getNews()).hasSize(6);
     }
 
     // ── Empty input ────────────────────────────────────────────────────────
 
     @Test
     void does_nothing_when_input_list_is_empty() {
-        newsWorker.saveNews("INFY", List.of());
+        newsWorker.saveNews("INFY", List.of(), true);
         verifyNoInteractions(repository);
     }
 
     @Test
     void does_nothing_when_input_list_is_null() {
-        newsWorker.saveNews("INFY", null);
+        newsWorker.saveNews("INFY", null, true);
         verifyNoInteractions(repository);
     }
 
@@ -154,7 +178,7 @@ class NewsWorkerTest {
         when(repository.findByKeyword("INFY")).thenReturn(Optional.empty());
 
         NewsItem noLink = new NewsItem("Mon, 01 Jan 2026 10:00:00 GMT", "Some news", null);
-        newsWorker.saveNews("INFY", List.of(noLink));
+        newsWorker.saveNews("INFY", List.of(noLink), true);
 
         verify(repository, never()).save(any());
     }
