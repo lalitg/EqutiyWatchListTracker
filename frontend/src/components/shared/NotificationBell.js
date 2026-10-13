@@ -56,7 +56,9 @@ const NotificationBell = ({ isLoggedIn }) => {
         aria-expanded={open}
         title={label}
       >
-        <span aria-hidden="true">{unreadCount > 0 ? '🔔' : '🔕'}</span>
+        {/* Always the plain bell. The slashed one means notifications are switched off,
+            not that there is nothing unread - an empty panel is not a disabled one. */}
+        <span aria-hidden="true">🔔</span>
         {unreadCount > 0 && (
           // Capped at 99+: past that the exact number tells the reader nothing they can act on.
           <span className="nf-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
