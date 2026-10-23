@@ -37,7 +37,10 @@ import java.util.List;
  * WebhookHandler handles auto-renewal (subscription.charged event).
  * This service handles user-initiated actions only.
  */
-@Service
+// Explicit bean name: watchlist-service has its own SubscriptionService (news alerts) and both
+// run in the same context inside main-api-service. Spring would name both "subscriptionService"
+// and refuse to start. Injection is by type, so nothing else changes.
+@Service("billingSubscriptionService")
 @Transactional
 public class SubscriptionService {
 

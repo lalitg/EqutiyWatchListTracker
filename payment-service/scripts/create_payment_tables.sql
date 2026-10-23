@@ -44,6 +44,12 @@ CREATE TABLE IF NOT EXISTS plans (
     -- Required to create Razorpay Subscriptions.
     razorpay_plan_id  VARCHAR(100),
 
+    -- What the plan grants: BASIC or ADVANCED. The price lives in this row so marketing can
+    -- change it without a deployment; the feature list lives in EntitlementService, because
+    -- "what does Advanced include?" must have exactly one answer.
+    -- NULL or an unrecognised value is read as FREE: a row typed wrongly grants nothing.
+    tier              VARCHAR(20)     CHECK (tier IN ('FREE', 'BASIC', 'ADVANCED')),
+
     -- Set to false to stop selling this plan (existing subs are unaffected)
     is_active         BOOLEAN         NOT NULL DEFAULT true,
 
@@ -51,16 +57,40 @@ CREATE TABLE IF NOT EXISTS plans (
     updated_at        TIMESTAMP       NOT NULL DEFAULT NOW()
 );
 
--- Seed: the current plan decided by the team
-INSERT INTO plans (name, display_name, description, price_paise, billing_cycle, duration_days)
+-- For a plans table created before the tier column existed
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS tier VARCHAR(20);
+
+-- Seed: the two paid tiers. Prices are provisional (Rs.149 / Rs.299) and are expected to change
+-- once they are signed off - editing these two rows is all that takes.
+-- There is no FREE row on purpose: free is what a user has when no subscription is active, not
+-- something they buy, renew and cancel.
+INSERT INTO plans (name, display_name, description, price_paise, billing_cycle, duration_days, tier)
 VALUES (
-    'MONTHLY_499',
-    'Pro Monthly',
-    'Full access to all Equity Watchlist Tracker features for 30 days',
-    49900,
+    'BASIC_MONTHLY',
+    'Basic',
+    'Market pages, company news and events, with larger watchlists',
+    14900,
     'MONTHLY',
-    30
+    30,
+    'BASIC'
 ) ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO plans (name, display_name, description, price_paise, billing_cycle, duration_days, tier)
+VALUES (
+    'ADVANCED_MONTHLY',
+    'Advanced',
+    'Everything in Basic, plus news sentiment, the sentiment extremes boards and news alerts',
+    29900,
+    'MONTHLY',
+    30,
+    'ADVANCED'
+) ON CONFLICT (name) DO NOTHING;
+
+-- The original single plan predates tiers. It is withdrawn rather than deleted: a plan row that
+-- a payment or a subscription points at must stay readable, and is_active=false simply stops it
+-- being sold or shown on the pricing page.
+UPDATE plans SET is_active = false, updated_at = NOW()
+WHERE name = 'MONTHLY_499' AND tier IS NULL;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. coupons
