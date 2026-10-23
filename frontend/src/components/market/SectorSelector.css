@@ -76,3 +76,22 @@
 .sector-tab.active .sector-tab-pct.loss {
   color: rgba(255, 255, 255, 0.9);
 }
+
+/* The region and sector tabs are the main navigation of the market pages, and they were 36px. */
+@media (max-width: 600px) {
+  .sector-tab {
+    min-height: 44px;
+    padding-top: 0;
+    padding-bottom: 0;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* A fixed 220px dropdown does not fit a 390px screen beside anything else. */
+  .sector-dropdown,
+  .sector-select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+}

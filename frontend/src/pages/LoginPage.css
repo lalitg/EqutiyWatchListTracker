@@ -1,5 +1,12 @@
 .login-page {
-  min-height: 100vh;
+  /* Fills what is left between the navbar and the disclaimer, rather than demanding a full
+     viewport and pushing the footer off the bottom of the screen. Shared by sign-in, password
+     reset, email verification and unsubscribe.
+
+     100% resolves against .app-main, whose height is settled by its flex: 1 in the app shell. The
+     420px floor covers the case where that height is indefinite - a percentage against an auto
+     height resolves to zero, and the panel would collapse to the height of the card. */
+  min-height: max(420px, 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -218,4 +225,28 @@
   border-top-color: #1e293b;
   z-index: 200;
   pointer-events: none;
+}
+
+/* ── Phones ─────────────────────────────────────────────────────────────────
+   The form everybody meets first. Fields were 38px tall at 14px type: too small to hit, and
+   under 16px iOS zooms the whole page in the moment the field is focused, which leaves the
+   reader panning around a form they were halfway through. */
+@media (max-width: 600px) {
+  .login-field input,
+  .login-select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .login-tab,
+  .login-btn {
+    min-height: 44px;
+  }
+
+  .login-forgot-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
 }

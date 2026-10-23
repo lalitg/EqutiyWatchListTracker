@@ -17,6 +17,8 @@ import NewsList from '../components/market/NewsList';
 import SentimentWindowList from '../components/market/SentimentWindowList';
 import EventsList from '../components/market/EventsList';
 import { useWatchlist } from '../context/WatchlistContext';
+import { useEntitlements, FEATURES } from '../context/EntitlementsContext';
+import Locked from '../components/shared/Locked';
 import { SECTOR_DESCRIPTIONS, INDEX_DESCRIPTIONS, FINANCIALS_DESCRIPTIONS, COMPANY_DESCRIPTIONS } from '../constants/marketDescriptions';
 import './CompanyDetailPage.css';
 
@@ -62,8 +64,38 @@ const LATEST_NEWS_TOOLTIP =
   + 'It may be from today or from weeks ago; hover the badge itself to see its date. '
   + 'For averages over a period, see the Sentiments tab below.';
 
+/**
+ * Which plan each tab belongs to.
+ *
+ * Latest News is open to everyone: a company page that says nothing to a free reader is not a
+ * teaser, it is a dead end. The three middle tabs come with Basic and Sentiments with Advanced -
+ * the same split the pricing page describes.
+ */
+const TAB_FEATURE = {
+  news:       null,
+  important:  FEATURES.COMPANY_NEWS_TABS,
+  events:     FEATURES.COMPANY_NEWS_TABS,
+  regulatory: FEATURES.COMPANY_NEWS_TABS,
+  sentiments: FEATURES.SENTIMENTS,
+};
+
+const TAB_LOCK_COPY = {
+  [FEATURES.COMPANY_NEWS_TABS]: {
+    title: 'Important news, events and filings',
+    note: 'The headlines that matter sorted out from the rest, the company event calendar, and the '
+        + 'SEBI filings. Included from the Basic plan upwards.',
+  },
+  [FEATURES.SENTIMENTS]: {
+    title: 'News sentiment',
+    note: 'How this company reads in the news, today and averaged over six windows up to a quarter '
+        + '- the scores behind the watchlist columns and the Extremes boards. Part of the Advanced '
+        + 'plan.',
+  },
+};
+
 const CompanyDetailPage = () => {
   const { isLoggedIn } = useAuth();
+  const { can } = useEntitlements();
   const { symbol } = useParams();
   const navigate   = useNavigate();
   const { entries, activeId, addCompany, isActionLoading } = useWatchlist();
@@ -202,6 +234,43 @@ const CompanyDetailPage = () => {
 
   const peLabel = pe ? fmtPe(pe.trailingPe) : null;
 
+  /** A padlock on a tab the reader cannot open yet. The tab still selects; its panel explains. */
+  const tabLock = (tab) => {
+    const feature = TAB_FEATURE[tab];
+    return feature && !can(feature)
+      ? <span className="nf-nav-lock" aria-label="paid feature">&#128274;</span>
+      : null;
+  };
+
+  /** What the feature the open tab needs, or null when it is open to everyone. */
+  const openTabFeature = TAB_FEATURE[insightsTab];
+  const tabLocked      = Boolean(openTabFeature) && !can(openTabFeature);
+
+  /**
+   * The selected tab's panel, built once.
+   *
+   * Pulled out of the JSX so the locked case can put this exact content behind the blur instead of
+   * a stand-in. All of it arrived in the same request as Latest News, so showing its shape costs
+   * nothing and tells the reader what they would be paying for.
+   */
+  const insightsPanel = insightsTab === 'news' ? (
+    news.length === 0
+      ? <div className="cdp-fund-empty">No news found for {symbol}.</div>
+      : <NewsList news={news} />
+  ) : insightsTab === 'important' ? (
+    importantNews.length === 0
+      ? <div className="cdp-fund-empty">No important news found for {symbol}.</div>
+      : <NewsList news={importantNews} />
+  ) : insightsTab === 'events' ? (
+    events.length === 0
+      ? <div className="cdp-fund-empty">No events found for {symbol}.</div>
+      : <EventsList events={events} />
+  ) : insightsTab === 'sentiments' ? (
+    <SentimentWindowList windows={sentimentWindows} symbol={symbol} />
+  ) : (
+    <SebiActivityPanel sebi={sebi} symbol={symbol} />
+  );
+
   return (
     <div className="cdp-container">
       <div className="cdp-top-bar">
@@ -222,7 +291,7 @@ const CompanyDetailPage = () => {
             <div className="cdp-symbol">{symbol?.toUpperCase()}</div>
           </div>
           {peLabel && <div className="cdp-pe-pill" data-tooltip={COMPANY_DESCRIPTIONS['pe']}>P/E {peLabel}</div>}
-          {sentiment && (
+          {sentiment && can(FEATURES.SENTIMENTS) && (
             <div className="cdp-sentiment-pill" title={LATEST_NEWS_TOOLTIP}>
               <span className="cdp-sentiment-label">Latest News</span>
               <SentimentBadge sentiment={sentiment} variant="latest" compact showScore />
@@ -278,8 +347,10 @@ const CompanyDetailPage = () => {
             className={`cdp-fund-tab ${insightsTab === 'important' ? 'active' : ''}`}
             onClick={() => selectInsightsTab('important')}
           >
-            Important News
-            {importantNews.length > 0 && (
+            Important News{tabLock('important')}
+            {/* The count is held back with the tab: "4 important stories" is itself part of what
+                the tab is selling. */}
+            {can(FEATURES.COMPANY_NEWS_TABS) && importantNews.length > 0 && (
               <span className="cdp-tab-badge">{importantNews.length}</span>
             )}
           </button>
@@ -287,39 +358,34 @@ const CompanyDetailPage = () => {
             className={`cdp-fund-tab ${insightsTab === 'events' ? 'active' : ''}`}
             onClick={() => selectInsightsTab('events')}
           >
-            Events
+            Events{tabLock('events')}
           </button>
           <button
             className={`cdp-fund-tab ${insightsTab === 'regulatory' ? 'active' : ''}`}
             onClick={() => selectInsightsTab('regulatory')}
           >
-            Regulatory
+            Regulatory{tabLock('regulatory')}
           </button>
           <button
             className={`cdp-fund-tab ${insightsTab === 'sentiments' ? 'active' : ''}`}
             onClick={() => selectInsightsTab('sentiments')}
           >
-            Sentiments
+            Sentiments{tabLock('sentiments')}
           </button>
         </div>
         {insightsLoading ? (
           <div className="cdp-fund-loading">Loading…</div>
-        ) : insightsTab === 'news' ? (
-          news.length === 0
-            ? <div className="cdp-fund-empty">No news found for {symbol}.</div>
-            : <NewsList news={news} />
-        ) : insightsTab === 'important' ? (
-          importantNews.length === 0
-            ? <div className="cdp-fund-empty">No important news found for {symbol}.</div>
-            : <NewsList news={importantNews} />
-        ) : insightsTab === 'events' ? (
-          events.length === 0
-            ? <div className="cdp-fund-empty">No events found for {symbol}.</div>
-            : <EventsList events={events} />
-        ) : insightsTab === 'sentiments' ? (
-          <SentimentWindowList windows={sentimentWindows} symbol={symbol} />
+        ) : tabLocked ? (
+          <Locked
+            compact
+            feature={openTabFeature}
+            title={TAB_LOCK_COPY[openTabFeature].title}
+            note={TAB_LOCK_COPY[openTabFeature].note}
+          >
+            {insightsPanel}
+          </Locked>
         ) : (
-          <SebiActivityPanel sebi={sebi} symbol={symbol} />
+          insightsPanel
         )}
       </div>
 

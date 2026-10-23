@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useEntitlements, FEATURES } from '../../context/EntitlementsContext';
 import NotificationPanel from './NotificationPanel';
 import './NotificationPanel.css';
 
@@ -19,10 +20,17 @@ import './NotificationPanel.css';
 const NotificationBell = ({ isLoggedIn }) => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const { can } = useEntitlements();
+
+  // Alerts are an Advanced feature, so a reader without them has no notifications to count. The
+  // hook is told there is no session rather than being skipped, which is what stops the minute
+  // polling running for every free reader in the product - a locked bell would cost the same
+  // requests as a working one and never show a number.
+  const allowed = can(FEATURES.ALERTS);
 
   const {
     unreadCount, items, loading, error, refreshList, open: markOpened, dismiss, readAll,
-  } = useNotifications(isLoggedIn);
+  } = useNotifications(isLoggedIn && allowed);
 
   const toggle = useCallback(() => {
     setOpen(prev => {
@@ -40,7 +48,10 @@ const NotificationBell = ({ isLoggedIn }) => {
     navigate(`/company/${encodeURIComponent(item.companyCode)}`);
   }, [markOpened, navigate]);
 
-  if (!isLoggedIn) return null;
+  // Hidden rather than locked: a bell is a container for things that have happened, and there is
+  // nothing behind this one to show through a blur. The feature is advertised where it can be
+  // explained - on the company page's "Alert me" button and on the pricing page.
+  if (!isLoggedIn || !allowed) return null;
 
   const label = unreadCount > 0
     ? `Notifications — ${unreadCount} unread`

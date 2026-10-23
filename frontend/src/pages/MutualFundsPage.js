@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { fetchAmfiFiles, amfiNoteUrl, amfiReportUrl } from '../services/amfiService';
+import Locked from '../components/shared/Locked';
+import { FEATURES } from '../context/EntitlementsContext';
 import './MutualFundsPage.css';
 
 function monthLabel(monthStr) {
@@ -70,21 +72,26 @@ const MutualFundsPage = () => {
 
       {loading && <div className="page-loading"><p>Loading documents…</p></div>}
 
-      {error && !loading && (
-        <div className="page-error">
-          <p>{error}</p>
-          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={load}>Retry</button>
-        </div>
-      )}
-
-      {!loading && !error && files.length === 0 && (
-        <div className="mf-empty">No AMFI documents available yet.</div>
-      )}
-
-      {!loading && !error && files.length > 0 && (
-        <div className="mf-list">
-          {files.map(file => <MutualFundRow key={file.month} file={file} />)}
-        </div>
+      {!loading && (
+        <Locked
+          feature={FEATURES.MUTUAL_FUNDS}
+          title="AMFI monthly documents"
+          note="The industry note and the full data report for every month, straight from AMFI.
+                Included from the Basic plan upwards."
+        >
+          {error ? (
+            <div className="page-error">
+              <p>{error}</p>
+              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={load}>Retry</button>
+            </div>
+          ) : files.length === 0 ? (
+            <div className="mf-empty">No AMFI documents available yet.</div>
+          ) : (
+            <div className="mf-list">
+              {files.map(file => <MutualFundRow key={file.month} file={file} />)}
+            </div>
+          )}
+        </Locked>
       )}
     </div>
   );

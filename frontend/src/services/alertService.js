@@ -6,25 +6,28 @@ import apiClient from './apiClient';
  * Subscribing is separate from the watchlist on purpose: a watchlist is a reading list, while an
  * alert is a push into someone's inbox. Keeping them apart is what stops "I added a company to
  * look at it" turning into email the reader never asked for.
+ *
+ * The paths sit under /api/v1/alerts/ because /api/v1/subscriptions belongs to payment-service: a
+ * news alert and a paid plan are both "subscriptions" to a reader, and never to the router.
  */
 
 /** @returns {Promise<string[]>} symbols this user receives alerts for */
 export async function listSubscriptions() {
-  return apiClient('/subscriptions');
+  return apiClient('/alerts/subscriptions');
 }
 
 /** @returns {Promise<{symbol: string, subscribed: boolean}>} */
 export async function getSubscriptionStatus(symbol) {
-  return apiClient(`/subscriptions/${encodeURIComponent(symbol)}`);
+  return apiClient(`/alerts/subscriptions/${encodeURIComponent(symbol)}`);
 }
 
 /** Idempotent — subscribing to a company you already follow is not an error. */
 export async function subscribe(symbol) {
-  return apiClient(`/subscriptions/${encodeURIComponent(symbol)}`, { method: 'POST' });
+  return apiClient(`/alerts/subscriptions/${encodeURIComponent(symbol)}`, { method: 'POST' });
 }
 
 export async function unsubscribe(symbol) {
-  return apiClient(`/subscriptions/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
+  return apiClient(`/alerts/subscriptions/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
 }
 
 /**

@@ -150,6 +150,14 @@
 }
 
 @media (max-width: 768px) {
-  .nifty-table-wrap { overflow-x: auto; }
+  .nifty-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .nifty-table { min-width: 600px; }
+
+  /* A visible scrollbar is the only affordance a table this wide has on a phone - without it the
+     columns past the edge simply look missing. */
+  .nifty-table-wrap::-webkit-scrollbar { height: 3px; }
+  .nifty-table-wrap::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.35);
+    border-radius: 3px;
+  }
 }

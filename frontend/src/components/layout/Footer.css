@@ -1,0 +1,36 @@
+/* The site-wide disclaimer. One block, no links — it is there to be read, not navigated. */
+
+.nf-footer {
+  /* The rule is the separation: without it the small grey text reads as a trailing paragraph of
+     whatever page it happens to follow. */
+  border-top: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.6);
+  padding: 20px 32px 26px;
+}
+
+.nf-footer-text {
+  /* Matches .app-main, so the disclaimer lines up with the content above it rather than running
+     the full width of a wide screen. */
+  max-width: 1400px;
+  margin: 0 auto;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.65;
+  text-align: justify;
+}
+
+.nf-footer-text strong {
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+  .nf-footer {
+    padding: 16px 16px 20px;
+  }
+
+  .nf-footer-text {
+    font-size: 11.5px;
+    /* Justified text breaks badly in a narrow column — rivers of white space between words. */
+    text-align: left;
+  }
+}

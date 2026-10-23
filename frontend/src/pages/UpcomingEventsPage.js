@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import Locked from '../components/shared/Locked';
+import { FEATURES } from '../context/EntitlementsContext';
 import './UpcomingEventsPage.css';
 
 const CATEGORY_META = {
@@ -156,25 +158,36 @@ const UpcomingEventsPage = () => {
       {/* ── Content ─────────────────────────────────────────────────────────── */}
       {loading && <div className="page-loading"><p>Loading events…</p></div>}
 
-      {error && !loading && (
-        <div className="page-error">
-          <p>{error}</p>
-          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={load}>Retry</button>
-        </div>
+      {/* The filters stay usable above the lock; what is gated is the calendar itself - and the
+          lock is shown whether or not there is anything behind it today, a failed fetch
+          included: a reader without the plan cannot act on an error message. */}
+      {!loading && (
+        <Locked
+          feature={FEATURES.EVENTS}
+          title="Upcoming events"
+          note="Every scheduled Indian and US event that moves markets - policy decisions,
+                inflation prints, jobs numbers - with the dates and times. Included from the Basic
+                plan upwards."
+        >
+          {error ? (
+            <div className="page-error">
+              <p>{error}</p>
+              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={load}>Retry</button>
+            </div>
+          ) : months.length === 0 ? (
+            <div className="ue-empty">No upcoming events for the selected filter.</div>
+          ) : (
+            months.map(month => (
+              <div key={month} className="ue-month-section">
+                <div className="ue-month-label">{monthLabel(month + '-01')}</div>
+                <div className="ue-cards-grid">
+                  {grouped[month].map(ev => <EventCard key={ev.id} event={ev} />)}
+                </div>
+              </div>
+            ))
+          )}
+        </Locked>
       )}
-
-      {!loading && !error && months.length === 0 && (
-        <div className="ue-empty">No upcoming events for the selected filter.</div>
-      )}
-
-      {!loading && !error && months.map(month => (
-        <div key={month} className="ue-month-section">
-          <div className="ue-month-label">{monthLabel(month + '-01')}</div>
-          <div className="ue-cards-grid">
-            {grouped[month].map(ev => <EventCard key={ev.id} event={ev} />)}
-          </div>
-        </div>
-      ))}
     </div>
   );
 };

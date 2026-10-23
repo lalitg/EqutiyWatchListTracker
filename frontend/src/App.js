@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
 import WatchlistPage from './pages/WatchlistPage';
 import GlobalMarketPage from './pages/GlobalMarketPage';
 import DomesticMarketPage from './pages/DomesticMarketPage';
@@ -15,10 +16,12 @@ import UnsubscribePage from './pages/UnsubscribePage';
 import NseCalendarPage from './pages/NseCalendarPage';
 import UpcomingEventsPage from './pages/UpcomingEventsPage';
 import MutualFundsPage from './pages/MutualFundsPage';
+import SubscribePage from './pages/SubscribePage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WatchlistProvider } from './context/WatchlistContext';
 import { MarketProvider } from './context/MarketContext';
 import { CompanyListProvider } from './context/CompanyListContext';
+import { EntitlementsProvider } from './context/EntitlementsContext';
 import { useIdleTimer } from './hooks/useIdleTimer';
 import './App.css';
 
@@ -67,8 +70,14 @@ function AppContent() {
           <Route path="/mutual-funds" element={<MutualFundsPage />} />
           <Route path="/upcoming-events" element={<UpcomingEventsPage />} />
           <Route path="/market/calendar" element={<NseCalendarPage />} />
+          {/* Public: a visitor has to be able to read the prices before they have an account. */}
+          <Route path="/subscribe" element={<SubscribePage />} />
         </Routes>
       </main>
+      {/* Outside <Routes> on purpose: one instance, on every page, surviving navigation. A
+          disclaimer that each page had to remember to render is a disclaimer that will be missing
+          from the next page somebody adds. */}
+      <Footer />
     </div>
   );
 }
@@ -76,13 +85,17 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <CompanyListProvider>
-        <WatchlistProvider>
-          <MarketProvider>
-            <AppContent />
-          </MarketProvider>
-        </WatchlistProvider>
-      </CompanyListProvider>
+      {/* Inside AuthProvider, because what a reader may see depends on who they are; outside
+          everything else, because almost every page asks. */}
+      <EntitlementsProvider>
+        <CompanyListProvider>
+          <WatchlistProvider>
+            <MarketProvider>
+              <AppContent />
+            </MarketProvider>
+          </WatchlistProvider>
+        </CompanyListProvider>
+      </EntitlementsProvider>
     </AuthProvider>
   );
 }

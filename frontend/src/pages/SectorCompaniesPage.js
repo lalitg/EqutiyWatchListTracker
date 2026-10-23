@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import SentimentBadge from '../components/shared/SentimentBadge';
+import Locked, { LockBadge } from '../components/shared/Locked';
+import { useEntitlements, FEATURES } from '../context/EntitlementsContext';
 import { useSentiments } from '../hooks/useSentiments';
 import { WATCHLIST_DESCRIPTIONS as WD } from '../constants/marketDescriptions';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -31,6 +33,9 @@ const SECTOR_DESCRIPTIONS = {
 };
 
 const SectorCompaniesPage = () => {
+  const { can } = useEntitlements();
+  const canSentiments = can(FEATURES.SENTIMENTS);
+
   const { sectorKey } = useParams();
   const navigate      = useNavigate();
   const location      = useLocation();
@@ -51,7 +56,8 @@ const SectorCompaniesPage = () => {
   const [companies, setCompanies]               = useState([]);
 
   // One batched request for the whole table rather than one per row.
-  const { sentiments } = useSentiments(companies.map(c => c.symbol));
+  // Skipped entirely when the columns are locked: no request, nothing to blur.
+  const { sentiments } = useSentiments(canSentiments ? companies.map(c => c.symbol) : []);
 
   /**
    * Opens a company's Sentiments tab from a sentiment badge.
@@ -205,13 +211,22 @@ const SectorCompaniesPage = () => {
       {activeTab === 'companies' && (
         <div>
           {companiesLoading && <div className="page-loading"><p>Loading companies…</p></div>}
-          {companiesError && (
-            <div className="page-error">
-              <p>{companiesError}</p>
-              <button onClick={loadCompanies} className="btn btn-primary" style={{ marginTop: 16 }}>Retry</button>
-            </div>
-          )}
-          {!companiesLoading && !companiesError && (
+
+          {/* The refused request lives inside the lock: for a reader without the plan the 403 is
+              the expected answer, and "Retry" would only ask again for something they cannot have. */}
+          {!companiesLoading && (
+            <Locked
+              feature={FEATURES.DOMESTIC_DRILLDOWN}
+              title="Sector constituents"
+              note="Every company in the index or sector, each with how its news reads. Included from
+                the Basic plan upwards."
+            >
+            {companiesError ? (
+              <div className="page-error">
+                <p>{companiesError}</p>
+                <button onClick={loadCompanies} className="btn btn-primary" style={{ marginTop: 16 }}>Retry</button>
+              </div>
+            ) : (
             <div className="nifty-table-wrap">
               <table className="nifty-table">
                 <thead>
@@ -240,19 +255,27 @@ const SectorCompaniesPage = () => {
                         <td><strong className="nifty-symbol">{c.symbol}</strong></td>
                         <td>{c.companyName || '—'}</td>
                         <td>
-                          <SentimentBadge
-                            sentiment={sentiments[c.symbol]?.latest}
-                            variant="latest"
-                            compact
-                            onClick={(e) => openSentiments(e, c.symbol)}
-                          />
+                          {canSentiments ? (
+                            <SentimentBadge
+                              sentiment={sentiments[c.symbol]?.latest}
+                              variant="latest"
+                              compact
+                              onClick={(e) => openSentiments(e, c.symbol)}
+                            />
+                          ) : (
+                            <LockBadge feature={FEATURES.SENTIMENTS} title="News sentiment scores are part of the Advanced plan" />
+                          )}
                         </td>
                         <td>
-                          <SentimentBadge
-                            sentiment={sentiments[c.symbol]?.quarter}
-                            compact
-                            onClick={(e) => openSentiments(e, c.symbol)}
-                          />
+                          {canSentiments ? (
+                            <SentimentBadge
+                              sentiment={sentiments[c.symbol]?.quarter}
+                              compact
+                              onClick={(e) => openSentiments(e, c.symbol)}
+                            />
+                          ) : (
+                            <LockBadge feature={FEATURES.SENTIMENTS} title="News sentiment scores are part of the Advanced plan" />
+                          )}
                         </td>
                       </tr>
                     ))
@@ -260,6 +283,8 @@ const SectorCompaniesPage = () => {
                 </tbody>
               </table>
             </div>
+            )}
+            </Locked>
           )}
         </div>
       )}

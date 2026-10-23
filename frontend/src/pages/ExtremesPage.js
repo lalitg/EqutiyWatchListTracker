@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TabBar from '../components/shared/TabBar';
 import SentimentBadge from '../components/shared/SentimentBadge';
+import Locked from '../components/shared/Locked';
+import { FEATURES } from '../context/EntitlementsContext';
 import {
   fetchExtremesDays,
   fetchDailyExtremes,
@@ -213,28 +215,39 @@ const ExtremesPage = () => {
         </div>
       )}
 
-      <div className="ext-boards">
-        <Board
-          title="Top Positives"
-          tone="positive"
-          tooltip={TOOLTIPS.positives}
-          entries={board?.topPositives}
-          loading={loading}
-          emptyNote={emptyNote}
-          onOpenCompany={openCompany}
-          onOpenSentiments={openSentiments}
-        />
-        <Board
-          title="Top Negatives"
-          tone="negative"
-          tooltip={TOOLTIPS.negatives}
-          entries={board?.topNegatives}
-          loading={loading}
-          emptyNote={emptyNote}
-          onOpenCompany={openCompany}
-          onOpenSentiments={openSentiments}
-        />
-      </div>
+      {/* The boards are the product here, so they are what the lock covers - the day and period
+          pickers above stay live, because a reader deciding whether this is worth paying for
+          should see that it covers every day and every period, not one blurred snapshot. */}
+      <Locked
+        feature={FEATURES.EXTREMES}
+        title="Sentiment Extremes"
+        note="The ten companies whose news reads most positively and most negatively, for any day or
+              rolling period. Part of the Advanced plan, with sentiment scores everywhere else in
+              the app."
+      >
+        <div className="ext-boards">
+          <Board
+            title="Top Positives"
+            tone="positive"
+            tooltip={TOOLTIPS.positives}
+            entries={board?.topPositives}
+            loading={loading}
+            emptyNote={emptyNote}
+            onOpenCompany={openCompany}
+            onOpenSentiments={openSentiments}
+          />
+          <Board
+            title="Top Negatives"
+            tone="negative"
+            tooltip={TOOLTIPS.negatives}
+            entries={board?.topNegatives}
+            loading={loading}
+            emptyNote={emptyNote}
+            onOpenCompany={openCompany}
+            onOpenSentiments={openSentiments}
+          />
+        </div>
+      </Locked>
 
       {board?.generatedAt && (
         // Worth showing: the Today board moves on the 15-minute fetch cycle, so a reader needs to

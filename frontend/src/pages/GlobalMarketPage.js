@@ -1,4 +1,5 @@
 import React, { useEffect, useCallback, useState } from 'react';
+import { Link } from 'react-router-dom';
 import SectorSelector from '../components/market/SectorSelector';
 import NewsList from '../components/market/NewsList';
 import EventsList from '../components/market/EventsList';
@@ -7,6 +8,8 @@ import { useMarket } from '../context/MarketContext';
 import { fetchMergedNews } from '../services/indicesService';
 import { REGION_KEYWORD_MAP } from '../services/marketService';
 import { REGION_DESCRIPTIONS } from '../constants/marketDescriptions';
+import Locked from '../components/shared/Locked';
+import { useEntitlements, FEATURES } from '../context/EntitlementsContext';
 
 const REGIONS = ['Global', 'US', 'Asia', 'Europe', 'Commodities'];
 const AUTO_REFRESH_MS  = 15 * 60 * 1000;
@@ -14,6 +17,12 @@ const PRICE_REFRESH_MS = 30 * 60 * 1000;
 const NEWS_PAGE_SIZE   = 20;
 
 const GlobalMarketPage = () => {
+  const { can } = useEntitlements();
+
+  // The Global tab stays open to everyone - a market page with nothing on it sells nothing. The
+  // four regional breakdowns are what Basic adds.
+  const canAllRegions = can(FEATURES.GLOBAL_ALL_REGIONS);
+
   const {
     globalCache, globalLoading,
     selectedRegion, setRegion, fetchGlobal, refreshGlobal,
@@ -108,6 +117,16 @@ const GlobalMarketPage = () => {
 
       <SectorSelector options={REGIONS} selected={selectedRegion} onSelect={setRegion} tooltips={REGION_DESCRIPTIONS} />
 
+      {!canAllRegions && selectedRegion === 'Global' && (
+        // Said once, on the open tab, so a free reader learns what the other four tabs are before
+        // clicking one and meeting a blur with no explanation of why it is there.
+        <p className="nf-locked-inline" role="note">
+          <span aria-hidden="true">&#128274; </span>
+          US, Asia, Europe and Commodities are part of the paid plans.{' '}
+          <Link to="/subscribe?feature=globalAllRegions">See plans</Link>
+        </p>
+      )}
+
       <GlobalIndicesTable refreshKey={priceRefreshKey} region={selectedRegion} />
 
       {newsLoading && (
@@ -128,6 +147,13 @@ const GlobalMarketPage = () => {
       )}
 
       {!newsLoading && !newsError && (
+        <Locked
+          /* Null on the Global tab, which is free: see the note above the region selector. */
+          feature={selectedRegion === 'Global' ? null : FEATURES.GLOBAL_ALL_REGIONS}
+          title={`${selectedRegion} market news`}
+          note="US, Asian, European and commodity news, each with its own indices and events.
+                Included from the Basic plan upwards - the Global view stays free."
+        >
         <div className="market-content">
           {getLastUpdatedLabel() && (
             <p className="last-updated-label">{getLastUpdatedLabel()}</p>
@@ -154,6 +180,7 @@ const GlobalMarketPage = () => {
           )}
           <EventsList events={currentData?.events ?? []} />
         </div>
+        </Locked>
       )}
     </div>
   );

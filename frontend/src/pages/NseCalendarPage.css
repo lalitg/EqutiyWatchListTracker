@@ -257,3 +257,12 @@
     flex-basis: 100%;
   }
 }
+
+/* Touch target: the year tab was 34px tall. */
+@media (max-width: 600px) {
+  .cal-year-tab {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}

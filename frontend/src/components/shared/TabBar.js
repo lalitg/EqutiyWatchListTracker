@@ -9,6 +9,10 @@ const TabBar = ({ tabs, activeTab, onTabChange }) => {
   };
 
   const tabStyle = (isActive) => ({
+    // 44px at every width rather than in a media query: these styles are inline, where media
+    // queries cannot follow, and a tab bar that is comfortable on a phone is not worse on a
+    // desktop.
+    minHeight: '44px',
     padding: '10px 20px',
     fontSize: '14px',
     fontWeight: isActive ? 600 : 500,
@@ -21,12 +25,15 @@ const TabBar = ({ tabs, activeTab, onTabChange }) => {
     transition: 'all 0.2s ease',
   });
 
+  // minHeight only takes effect on a button if its content is allowed to centre in it.
+  const tabLayout = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
+
   return (
     <div style={containerStyle}>
       {tabs.map((tab) => (
         <button
           key={tab.key}
-          style={tabStyle(activeTab === tab.key)}
+          style={{ ...tabStyle(activeTab === tab.key), ...tabLayout }}
           onClick={() => onTabChange(tab.key)}
         >
           {tab.label}

@@ -2,11 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { WATCHLIST_DESCRIPTIONS as WD } from '../../constants/marketDescriptions';
 import './WatchlistTable.css';
 import SentimentBadge from '../shared/SentimentBadge';
+import { LockBadge } from '../shared/Locked';
+import { useEntitlements, FEATURES } from '../../context/EntitlementsContext';
 import { useSentiments } from '../../hooks/useSentiments';
 
 const TABLE_COLUMNS = [
-  { key: 'companyCode', label: 'Symbol',  sortable: true, tooltip: WD['col.symbol'] },
-  { key: 'companyName', label: 'Company', sortable: true, tooltip: WD['col.company'] },
+  { key: 'companyCode', label: 'Symbol',  shortLabel: 'Symbol',  sortable: true, tooltip: WD['col.symbol'] },
+  { key: 'companyName', label: 'Company', shortLabel: 'Company', sortable: true, tooltip: WD['col.company'] },
 ];
 
 /**
@@ -21,6 +23,8 @@ const SENTIMENT_COLUMNS = [
   {
     key: 'sentimentLatest',
     label: 'Latest News Sentiments',
+    // Used by the sort chips and the card rows, where the full column name would wrap twice.
+    shortLabel: 'Latest',
     tooltip: WD['col.sentimentLatest'],
     variant: 'latest',
     read: (reading) => reading?.latest,
@@ -31,6 +35,7 @@ const SENTIMENT_COLUMNS = [
   {
     key: 'sentimentQuarter',
     label: 'Overall News Sentiments',
+    shortLabel: 'Overall',
     tooltip: WD['col.sentimentQuarter'],
     variant: 'aggregate',
     read: (reading) => reading?.quarter,
@@ -53,6 +58,9 @@ const DeleteIcon = () => (
 );
 
 const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
+  const { can } = useEntitlements();
+  const canSentiments = can(FEATURES.SENTIMENTS);
+
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRowIds, setSelectedRowIds] = useState(new Set());
@@ -69,7 +77,10 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
   // a reading for every row, and a watchlist holds at most ten companies anyway. Scoping it to the
   // page would also feed the sort back into its own input: the sort decides which rows are on the
   // page, which would decide what is fetched, which would decide the sort.
-  const { sentiments } = useSentiments(entries.map(e => e.companyCode));
+  // No symbols when the columns are locked, so the request is never made. Blurring a score the
+  // browser has already fetched is theatre; not asking for it is the honest version, and it saves
+  // every free reader a round trip on each visit.
+  const { sentiments } = useSentiments(canSentiments ? entries.map(e => e.companyCode) : []);
 
   const sortedEntries = useMemo(() => {
     if (!sortConfig.key) return entries;
@@ -142,6 +153,8 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
    * column legitimately start from opposite ends of their scale.
    */
   const handleSortToggle = (key) => {
+    // A locked column has nothing to sort by: every cell holds the same padlock.
+    if (SENTIMENT_BY_KEY[key] && !canSentiments) return;
     setSortConfig(prev => {
       if (prev.key === key) {
         return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
@@ -200,6 +213,30 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
         )}
       </div>
 
+      {/* Sorting lives in the column headers on a wide screen. On a phone the headers are gone -
+          each row is a card - so the same four sorts are offered as chips. Rendered always and
+          hidden by CSS above 600px, which keeps one source of truth for the sort state. */}
+      <div className="wl-sort-chips" role="group" aria-label="Sort companies">
+        <span className="wl-sort-chips-label">Sort</span>
+        {[...TABLE_COLUMNS, ...SENTIMENT_COLUMNS].map(col => {
+          const isSentiment = Boolean(SENTIMENT_BY_KEY[col.key]);
+          if (isSentiment && !canSentiments) return null;
+          const active = sortConfig.key === col.key;
+          return (
+            <button
+              key={col.key}
+              type="button"
+              className={`wl-sort-chip ${active ? 'wl-sort-chip--active' : ''}`}
+              onClick={() => handleSortToggle(col.key)}
+              aria-pressed={active}
+            >
+              {col.shortLabel || col.label}
+              {active && <span className="wl-sort-chip-icon">{getSortIcon(col.key)}</span>}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="wl-table-scroll">
         <table className="wl-data-table">
           <thead>
@@ -222,14 +259,18 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
                 <th
                   key={col.key}
                   onClick={() => handleSortToggle(col.key)}
-                  className="wl-th-sentiment wl-sortable"
-                  data-tooltip={`${col.tooltip} Click to sort.`}
+                  className={`wl-th-sentiment ${canSentiments ? 'wl-sortable' : ''}`}
+                  data-tooltip={canSentiments
+                    ? `${col.tooltip} Click to sort.`
+                    : `${col.tooltip} Included in the Advanced plan.`}
                 >
                   <span className="wl-th-content">
                     {col.label}
-                    <span className={`wl-sort-icon ${sortConfig.key === col.key ? 'active' : ''}`}>
-                      {getSortIcon(col.key)}
-                    </span>
+                    {canSentiments && (
+                      <span className={`wl-sort-icon ${sortConfig.key === col.key ? 'active' : ''}`}>
+                        {getSortIcon(col.key)}
+                      </span>
+                    )}
                   </span>
                 </th>
               ))}
@@ -245,19 +286,31 @@ const WatchlistTable = ({ entries, onCompanyClick, onBulkDelete }) => {
               >
                 <td className="wl-sno">{getSerialNumber(index)}</td>
                 {TABLE_COLUMNS.map(col => (
-                  <td key={col.key} className={col.key === 'companyName' ? 'wl-company-name' : ''}>
+                  <td
+                    key={col.key}
+                    className={col.key === 'companyName' ? 'wl-company-name' : 'wl-td-symbol'}
+                  >
                     {formatCellValue(entry[col.key])}
                   </td>
                 ))}
                 {SENTIMENT_COLUMNS.map(col => (
-                  <td key={col.key} className="wl-td-sentiment">
-                    <SentimentBadge
-                      sentiment={col.read(sentiments[entry.companyCode])}
-                      variant={col.variant}
-                      compact
-                      showScore
-                      onClick={(e) => openSentiments(e, entry)}
-                    />
+                  // data-label is what the card layout prints in place of the missing column
+                  // header; above 600px it is inert.
+                  <td key={col.key} className="wl-td-sentiment" data-label={col.shortLabel}>
+                    {canSentiments ? (
+                      <SentimentBadge
+                        sentiment={col.read(sentiments[entry.companyCode])}
+                        variant={col.variant}
+                        compact
+                        showScore
+                        onClick={(e) => openSentiments(e, entry)}
+                      />
+                    ) : (
+                      <LockBadge
+                        feature={FEATURES.SENTIMENTS}
+                        title="News sentiment scores are part of the Advanced plan"
+                      />
+                    )}
                   </td>
                 ))}
                 <td className="wl-td-actions">

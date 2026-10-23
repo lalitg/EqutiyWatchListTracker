@@ -41,6 +41,10 @@ body {
 }
 
 .app-main {
+  /* A flex ITEM of .App, never a flex container: as a column container it would inherit the
+     min-content width of its widest child, and a page with a wide table would then widen the whole
+     document on a phone. Its height is resolved by this flex: 1, which is what lets a child ask
+     for min-height: 100% (see .login-page). */
   flex: 1;
   padding: 32px;
   max-width: 1400px;
@@ -396,4 +400,32 @@ body {
 
   /* Tighter page titles */
   .page-title { font-size: 20px; }
+}
+
+/* ── Touch targets ──────────────────────────────────────────────────────────
+   Below 600px every control a finger has to hit is at least 44px tall. Measured offenders before
+   this block: Refresh 80x35, Retry 65x35, the region tabs at 36, the year tab at 34. */
+@media (max-width: 600px) {
+  .btn,
+  .btn-add,
+  .btn-secondary,
+  .btn-primary,
+  .btn-danger {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* The rail of index and sector cards: two per row on a phone, each comfortably tappable. */
+  .index-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .index-card { min-height: 64px; }
+
+  /* Prev / Next under the market news - 34px before this. */
+  .pagination-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }

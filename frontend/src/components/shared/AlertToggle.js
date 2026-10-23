@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getSubscriptionStatus, subscribe, unsubscribe } from '../../services/alertService';
+import { useEntitlements, FEATURES } from '../../context/EntitlementsContext';
+import { LockBadge } from './Locked';
 import './AlertToggle.css';
 
 /**
@@ -16,13 +18,15 @@ import './AlertToggle.css';
  * @param {boolean} isLoggedIn whether there is a session to subscribe with
  */
 const AlertToggle = ({ symbol, isLoggedIn }) => {
+  const { can } = useEntitlements();
+  const allowed = can(FEATURES.ALERTS);
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!isLoggedIn || !symbol) {
+    if (!isLoggedIn || !symbol || !allowed) {
       setLoading(false);
       return;
     }
@@ -38,7 +42,7 @@ const AlertToggle = ({ symbol, isLoggedIn }) => {
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [symbol, isLoggedIn]);
+  }, [symbol, isLoggedIn, allowed]);
 
   const toggle = useCallback(async () => {
     setBusy(true);
@@ -60,6 +64,22 @@ const AlertToggle = ({ symbol, isLoggedIn }) => {
   }, [subscribed, symbol]);
 
   if (!isLoggedIn || loading) return null;
+
+  // Shown rather than hidden, and in the same place as the real button: this is the one spot in the
+  // app where alerts can be explained in a sentence, to a reader looking at the company they would
+  // want them for.
+  if (!allowed) {
+    return (
+      <div className="cdp-alert-wrap">
+        <LockBadge
+          feature={FEATURES.ALERTS}
+          label="Alert me"
+          title={`Get notified when ${symbol} makes news that reads strongly positive or negative `
+                 + '- part of the Advanced plan'}
+        />
+      </div>
+    );
+  }
 
   const title = subscribed
     ? `You get an email when ${symbol} makes news that reads strongly positive or negative. `
