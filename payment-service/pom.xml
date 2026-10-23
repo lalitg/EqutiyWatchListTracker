@@ -125,6 +125,16 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<!--
+					  classifier=exec keeps BOTH jars: the runnable fat jar
+					  (payment-service-*-exec.jar) and the plain library jar that main-api-service
+					  depends on. Without it the repackage step overwrites the plain jar with the
+					  fat one, and main-api cannot compile against these classes - the same reason
+					  auth-service, user-service and watchlist-service carry this setting.
+					-->
+					<classifier>exec</classifier>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
