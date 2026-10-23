@@ -7,6 +7,11 @@ import com.equity.user.exception.EmailVerificationException;
 import com.equity.user.exception.InvalidPasswordException;
 import com.equity.user.exception.UserAlreadyExistsException;
 import com.equity.user.exception.UserNotFoundException;
+import com.equity.payment.exception.CouponException;
+import com.equity.payment.exception.PaymentException;
+import com.equity.payment.exception.PlanNotFoundException;
+import com.equity.payment.exception.SubscriptionException;
+import com.equity.watchlist.exception.EntitlementRequiredException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
@@ -36,7 +41,8 @@ import java.util.Map;
  * Covered exceptions:
  *   auth-service  : InvalidCredentialsException, UserBlockedException, TokenException
  *   user-service  : UserNotFoundException, UserAlreadyExistsException, InvalidPasswordException
- *   watchlist     : IllegalArgumentException
+ *   watchlist     : IllegalArgumentException, EntitlementRequiredException
+ *   payment       : PlanNotFoundException, CouponException, PaymentException, SubscriptionException
  *   shared        : MethodArgumentNotValidException (@Valid failures), Exception (catch-all)
  */
 @RestControllerAdvice
@@ -100,6 +106,50 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         logger.warn("BadRequest: {}", ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * The plan did not stretch far enough. 403 and not 400: the request was correct, the account
+     * was not big enough, and the body names the tier and feature so the browser can link to the
+     * row on the pricing page that explains it.
+     */
+    @ExceptionHandler(EntitlementRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handleEntitlementRequired(EntitlementRequiredException ex) {
+        logger.info("Entitlement required: {} ({})", ex.getMessage(), ex.getFeature());
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now().toString());
+        body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("error", ex.getMessage());
+        body.put("code", "UPGRADE_REQUIRED");
+        body.put("requiredTier", ex.getRequiredTier());
+        body.put("feature", ex.getFeature());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
+    // ── payment-service exceptions ────────────────────────────────────────────
+
+    @ExceptionHandler(PlanNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handlePlanNotFound(PlanNotFoundException ex) {
+        logger.warn("PlanNotFound: {}", ex.getMessage());
+        return build(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(CouponException.class)
+    public ResponseEntity<Map<String, Object>> handleCoupon(CouponException ex) {
+        logger.warn("Coupon: {}", ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(PaymentException.class)
+    public ResponseEntity<Map<String, Object>> handlePayment(PaymentException ex) {
+        logger.warn("Payment: {}", ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(SubscriptionException.class)
+    public ResponseEntity<Map<String, Object>> handleSubscription(SubscriptionException ex) {
+        logger.warn("Subscription: {}", ex.getMessage());
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 

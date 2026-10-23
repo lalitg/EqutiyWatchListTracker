@@ -1,6 +1,8 @@
 package com.equity.config;
 
+import com.equity.payment.service.EntitlementService;
 import com.equity.watchlist.security.JwtAuthFilter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -46,6 +48,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *     /**                          — React SPA static assets + frontend routes
  *
  *   PROTECTED (valid JWT required):
+ *     /api/v1/entitlements/**      — what this user's plan allows
+ *     /api/v1/subscriptions/**     — billing (payment-service), not news alerts
  *     /api/v1/watchlist/**         — all watchlist CRUD operations
  *     /api/v1/users/**             — user profile endpoints (change password, update profile)
  *       exceptions above: register + internal are already declared PUBLIC
@@ -55,9 +59,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final EntitlementService entitlementService;
+    private final ObjectMapper objectMapper;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
-        this.jwtAuthFilter = jwtAuthFilter;
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          EntitlementService entitlementService,
+                          ObjectMapper objectMapper) {
+        this.jwtAuthFilter      = jwtAuthFilter;
+        this.entitlementService = entitlementService;
+        this.objectMapper       = objectMapper;
     }
 
     @Bean
@@ -108,10 +118,25 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/watchlist/**").authenticated()
 
                 // ── Protected: alert subscriptions belong to the signed-in user ─────────
-                .requestMatchers("/api/v1/subscriptions/**").authenticated()
+                // Under /api/v1/alerts/ rather than /api/v1/subscriptions/, which payment-service
+                // owns for billing. Both services answer behind this gateway, so one path could
+                // not mean two things.
+                .requestMatchers("/api/v1/alerts/subscriptions/**").authenticated()
 
                 // ── Protected: the bell shows the reader their own notifications ────────
                 .requestMatchers("/api/v1/notifications/**").authenticated()
+
+                // ── payment-service: the price list is public, the rest is not ─────────
+                // A visitor has to be able to read the prices before they have an account, and
+                // Razorpay's webhooks arrive with a signature rather than a token - the handler
+                // verifies that signature itself.
+                .requestMatchers(HttpMethod.GET,  "/api/v1/plans").permitAll()
+                .requestMatchers(HttpMethod.GET,  "/api/v1/plans/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/**").permitAll()
+
+                // ── Protected: billing and entitlements belong to the signed-in user ───
+                .requestMatchers("/api/v1/entitlements/**").authenticated()
+                .requestMatchers("/api/v1/subscriptions/**").authenticated()
 
                 // ── Protected: user profile operations require a valid JWT ──────────────
                 // (register + internal are already declared public above)
@@ -124,6 +149,11 @@ public class SecurityConfig {
             // JWT filter runs before Spring's default form-login filter.
             // Reads Authorization: Bearer <token>, verifies it, sets SecurityContext.
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+
+            // The paywall. After the JWT filter, because it needs to know who is asking, and
+            // constructed here rather than declared a @Component so that Boot does not also
+            // register it in the outer servlet chain and run it twice per request.
+            .addFilterAfter(new EntitlementGate(entitlementService, objectMapper), JwtAuthFilter.class)
 
             // Return HTTP 401 (not a redirect to login page) for unauthenticated requests.
             .exceptionHandling(ex -> ex

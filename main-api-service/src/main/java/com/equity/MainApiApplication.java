@@ -6,6 +6,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.event.EventListener;
 
@@ -45,11 +46,15 @@ import org.springframework.context.event.EventListener;
  * The calls loop back via localhost TCP (~0.1 ms).  No code changes required.
  */
 @SpringBootApplication
+@EnableScheduling   // payment-service's nightly subscription expiry job, and watchlist-service's
+                    // monthly NSE holiday refresh. Both carry @Scheduled and both lost their
+                    // scheduler when their @SpringBootApplication classes were excluded above.
 @ComponentScan(
     basePackages = {
         "com.equity.auth",
         "com.equity.user",
         "com.equity.watchlist",
+        "com.equity.payment",
         "com.equity.config"
     },
     excludeFilters = {
@@ -57,7 +62,8 @@ import org.springframework.context.event.EventListener;
         @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
             com.equity.auth.AuthServiceApplication.class,
             com.equity.user.UserServiceApplication.class,
-            com.equity.watchlist.WatchlistServiceApplication.class
+            com.equity.watchlist.WatchlistServiceApplication.class,
+            com.equity.payment.PaymentServiceApplication.class
         }),
         // ── Duplicate PasswordEncoder + RestTemplate beans ────────────────────────
         // Replaced by com.equity.config.AppConfig in this module.
@@ -71,14 +77,23 @@ import org.springframework.context.event.EventListener;
         @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
             com.equity.auth.config.SecurityConfig.class,
             com.equity.user.security.SecurityConfig.class,
-            com.equity.watchlist.security.SecurityConfig.class
+            com.equity.watchlist.security.SecurityConfig.class,
+            com.equity.payment.config.SecurityConfig.class
         }),
         // ── Duplicate JwtAuthFilter ───────────────────────────────────────────────
         // user-service and watchlist-service both define a JwtAuthFilter bean.
         // We keep com.equity.watchlist.security.JwtAuthFilter (uses Log4j2, matches
         // the logging setup in this combined app) and exclude user-service's version.
         @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
-            com.equity.user.security.JwtAuthFilter.class
+            com.equity.user.security.JwtAuthFilter.class,
+            com.equity.payment.security.JwtAuthFilter.class
+        }),
+        // ── Duplicate JwtService ──────────────────────────────────────────────────
+        // auth-service's JwtService SIGNS tokens; payment-service's only verifies them,
+        // and its single caller — payment-service's own JwtAuthFilter — is excluded above.
+        // Both classes are named JwtService, so both would register as "jwtService".
+        @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
+            com.equity.payment.security.JwtService.class
         }),
         // ── Duplicate GlobalExceptionHandler ─────────────────────────────────────
         // All three services define a class named GlobalExceptionHandler.
@@ -89,7 +104,8 @@ import org.springframework.context.event.EventListener;
         @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
             com.equity.auth.exception.GlobalExceptionHandler.class,
             com.equity.user.exception.GlobalExceptionHandler.class,
-            com.equity.watchlist.controller.GlobalExceptionHandler.class
+            com.equity.watchlist.controller.GlobalExceptionHandler.class,
+            com.equity.payment.exception.GlobalExceptionHandler.class
         })
     }
 )
@@ -103,6 +119,6 @@ public class MainApiApplication {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onReady() {
-        logger.info("main-api-service is READY — user-service + auth-service + watchlist-service running on port 8080");
+        logger.info("main-api-service is READY — user-service + auth-service + watchlist-service + payment-service running on port 8080");
     }
 }
