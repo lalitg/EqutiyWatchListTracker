@@ -1,8 +1,10 @@
 package com.equity.watchlist.service;
 
+import com.equity.watchlist.client.EntitlementClient;
 import com.equity.watchlist.entity.CompanyMaster;
 import com.equity.watchlist.entity.CompanySubscription;
 import com.equity.watchlist.repository.CompanyRepository;
+import com.equity.watchlist.exception.EntitlementRequiredException;
 import com.equity.watchlist.repository.CompanySubscriptionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -11,6 +13,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,14 +33,51 @@ class SubscriptionServiceTest {
 
     private CompanySubscriptionRepository subscriptions;
     private CompanyRepository companies;
+    private EntitlementClient entitlements;
     private SubscriptionService service;
+
+    /** An answer from payment-service with alerts switched on or off. */
+    private static EntitlementClient.Entitlements plan(boolean alerts) {
+        return new EntitlementClient.Entitlements(
+                alerts ? "ADVANCED" : "FREE", Map.of("alerts", alerts), Map.of(), false);
+    }
 
     @BeforeEach
     void setUp() {
         subscriptions = mock(CompanySubscriptionRepository.class);
         companies     = mock(CompanyRepository.class);
+        entitlements  = mock(EntitlementClient.class);
         when(companies.findBySymbol(anyString())).thenReturn(Optional.of(new CompanyMaster()));
-        service = new SubscriptionService(subscriptions, companies);
+        // Most of these tests are about the subscription rules, not the paywall, so the default
+        // caller is one who has paid for alerts.
+        when(entitlements.forUser(any())).thenReturn(plan(true));
+        service = new SubscriptionService(subscriptions, companies, entitlements);
+    }
+
+    @Test
+    @DisplayName("a plan without alerts cannot subscribe, and nothing is written")
+    void subscribeRequiresTheAdvancedPlan() {
+        when(entitlements.forUser(7L)).thenReturn(plan(false));
+
+        EntitlementRequiredException ex =
+                assertThrows(EntitlementRequiredException.class, () -> service.subscribe(7L, "INFY"));
+
+        assertEquals("ADVANCED", ex.getRequiredTier());
+        assertEquals("alerts", ex.getFeature());
+        verify(subscriptions, never()).save(any(CompanySubscription.class));
+    }
+
+    @Test
+    @DisplayName("a lapsed plan can still list and remove what it is signed up to")
+    void theOffSwitchIsNeverPaywalled() {
+        // Someone whose plan ended must be able to stop the email they are still receiving.
+        // A paywall in front of the off switch is how a product earns a spam complaint.
+        when(entitlements.forUser(7L)).thenReturn(plan(false));
+        when(subscriptions.deleteByUserIdAndCompanyCode(7L, "INFY")).thenReturn(1L);
+        when(subscriptions.findByUserIdOrderByCreatedAtDesc(7L)).thenReturn(List.of());
+
+        assertTrue(service.unsubscribe(7L, "INFY"));
+        assertEquals(List.of(), service.listSymbols(7L));
     }
 
     @Test

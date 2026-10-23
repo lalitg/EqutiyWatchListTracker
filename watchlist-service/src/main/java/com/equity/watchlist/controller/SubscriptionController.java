@@ -18,12 +18,14 @@ import java.util.Map;
 /**
  * News-alert subscriptions for the signed-in user.
  *
- * <p>Base path {@code /api/v1/subscriptions}, all authenticated. The user id comes from the JWT
+ * <p>Base path {@code /api/v1/alerts/subscriptions}, all authenticated. The {@code alerts} segment keeps it
+ * clear of payment-service, which owns {@code /api/v1/subscriptions} for billing - two
+ * different kinds of subscription that must never share a path once both run behind main-api. The user id comes from the JWT
  * principal, exactly as in {@link WatchlistController} — a caller can only ever change their own
  * subscriptions, because the path carries a company symbol and never a user id.
  */
 @RestController
-@RequestMapping("/api/v1/subscriptions")
+@RequestMapping("/api/v1/alerts/subscriptions")
 public class SubscriptionController {
 
     private static final Logger logger = LogManager.getLogger(SubscriptionController.class);
@@ -35,7 +37,7 @@ public class SubscriptionController {
     }
 
     /**
-     * GET /api/v1/subscriptions
+     * GET /api/v1/alerts/subscriptions
      *
      * @return every symbol this user receives alerts for
      */
@@ -46,7 +48,7 @@ public class SubscriptionController {
     }
 
     /**
-     * GET /api/v1/subscriptions/{symbol}
+     * GET /api/v1/alerts/subscriptions/{symbol}
      *
      * <p>Lets the company page render the toggle in the right state on load without fetching the
      * whole list.
@@ -62,7 +64,7 @@ public class SubscriptionController {
     }
 
     /**
-     * POST /api/v1/subscriptions/{symbol}
+     * POST /api/v1/alerts/subscriptions/{symbol}
      *
      * <p>Idempotent: subscribing to a company you already follow returns 200 with
      * {@code created=false} rather than an error, because the end state is what the user asked for.
@@ -83,7 +85,7 @@ public class SubscriptionController {
     }
 
     /**
-     * DELETE /api/v1/subscriptions/{symbol}
+     * DELETE /api/v1/alerts/subscriptions/{symbol}
      *
      * <p>Also idempotent: removing something already gone is success, not 404.
      */
@@ -100,7 +102,7 @@ public class SubscriptionController {
     }
 
     /**
-     * DELETE /api/v1/subscriptions
+     * DELETE /api/v1/alerts/subscriptions
      *
      * <p>Turns off every alert for this user, from inside the app rather than from an email link.
      */

@@ -1,6 +1,8 @@
 package com.equity.watchlist.service;
 
+import com.equity.watchlist.client.EntitlementClient;
 import com.equity.watchlist.entity.CompanySubscription;
+import com.equity.watchlist.exception.EntitlementRequiredException;
 import com.equity.watchlist.repository.CompanyRepository;
 import com.equity.watchlist.repository.CompanySubscriptionRepository;
 import org.apache.logging.log4j.LogManager;
@@ -23,6 +25,11 @@ import java.util.List;
  * <h2>Symbols are validated, not trusted</h2>
  * A subscription for a symbol that does not exist would sit in the table forever, matching nothing,
  * and give the user a toggle that silently never fires.
+ *
+ * <h2>Alerts are a paid feature</h2>
+ * Subscribing requires the Advanced plan; reading and removing subscriptions does not. Someone
+ * whose plan lapses must always be able to see what they are signed up to and turn it off - a
+ * paywall in front of the off switch is how a product earns a spam complaint.
  */
 @Service
 @Transactional
@@ -30,13 +37,19 @@ public class SubscriptionService {
 
     private static final Logger logger = LogManager.getLogger(SubscriptionService.class);
 
+    /** The feature key payment-service uses for news alerts. */
+    private static final String F_ALERTS = "alerts";
+
     private final CompanySubscriptionRepository subscriptionRepository;
     private final CompanyRepository companyRepository;
+    private final EntitlementClient entitlementClient;
 
     public SubscriptionService(CompanySubscriptionRepository subscriptionRepository,
-                               CompanyRepository companyRepository) {
+                               CompanyRepository companyRepository,
+                               EntitlementClient entitlementClient) {
         this.subscriptionRepository = subscriptionRepository;
         this.companyRepository      = companyRepository;
+        this.entitlementClient      = entitlementClient;
     }
 
     /** @return the symbols this user is subscribed to, newest first */
@@ -62,6 +75,13 @@ public class SubscriptionService {
         String symbol = normalise(companyCode);
         if (symbol.isEmpty()) {
             throw new IllegalArgumentException("A company symbol is required");
+        }
+        // Checked here rather than at the controller: this is the one door through which a company
+        // gets into somebody's alert list, whether the call came from the toggle on the company
+        // page or from anywhere else later.
+        if (!entitlementClient.forUser(userId).can(F_ALERTS)) {
+            throw new EntitlementRequiredException(
+                    "News alerts are part of the Advanced plan.", "ADVANCED", F_ALERTS);
         }
         if (companyRepository.findBySymbol(symbol).isEmpty()) {
             throw new IllegalArgumentException("Unknown company symbol: " + symbol);

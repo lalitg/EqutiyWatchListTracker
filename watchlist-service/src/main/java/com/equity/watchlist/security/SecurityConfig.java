@@ -45,7 +45,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/watchlist/**").authenticated()
                 // Alert subscriptions belong to the signed-in user; the path never carries a user
                 // id, so a caller can only ever change their own.
-                .requestMatchers("/api/v1/subscriptions/**").authenticated()
+                .requestMatchers("/api/v1/alerts/subscriptions/**").authenticated()
                 // The bell and its panel: the reader's own notifications, and nothing else.
                 .requestMatchers("/api/v1/notifications/**").authenticated()
                 // The unsubscribe link is opened from a mail client with no session. Its signed
