@@ -216,3 +216,253 @@
 
   .sub-compare-label { min-width: 190px; }
 }
+
+/* ── Payment states ───────────────────────────────────────────────────────── */
+
+/* Said above the cards, where the reader is looking after the window closes. */
+.sub-pay-error {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* What replaces the price list once a payment is confirmed. */
+.sub-done {
+  max-width: 540px;
+  margin: 48px auto;
+  padding: 36px 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.sub-done-tick {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-light) 100%);
+  color: #fff;
+  font-size: 28px;
+  line-height: 56px;
+  font-weight: 700;
+}
+
+.sub-done-note {
+  margin: 10px 0 22px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.sub-done-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  padding: 11px 24px;
+  text-decoration: none;
+}
+
+/* ── The reader's own plan ─────────────────────────────────────────────────────
+   Above the cards on purpose: cancelling and downgrading are the same decision, so the cheaper
+   plan stays in view at the moment somebody is deciding to leave. */
+.sub-plan-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 20px;
+  padding: 16px 20px;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-success);
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-surface, #fff);
+}
+
+/* Amber, never red: a cancelled plan is a choice the reader made, not a fault. */
+.sub-plan-panel--ending {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.sub-plan-main { min-width: 0; }
+
+.sub-plan-heading {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.sub-plan-name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sub-plan-price {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.sub-plan-status {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--color-text-secondary);
+}
+
+.sub-plan-status--ending { color: #92400e; }
+
+.sub-plan-actions { flex-shrink: 0; }
+
+.sub-plan-resume { width: auto; padding: 9px 18px; }
+
+/* Quiet, but a real target: findable in a glance without competing with "Get Advanced". */
+.sub-plan-cancel {
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.sub-plan-cancel:hover {
+  border-color: var(--color-border);
+  background: #fef2f2;
+  color: var(--color-danger, #dc2626);
+  text-decoration: none;
+}
+
+.sub-card-flag--ending {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+/* ── The cancellation dialog ──────────────────────────────────────────────── */
+.sub-cancel-lead {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-text);
+}
+
+.sub-cancel-terms {
+  margin: 0 0 16px;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+}
+
+.sub-cancel-losing {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: #f8fafc;
+}
+
+.sub-cancel-losing h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.sub-cancel-losing ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--color-text);
+}
+
+.sub-cancel-limits {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.sub-cancel-error {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.sub-cancel-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.sub-cancel-buttons button {
+  flex: 1;
+  padding: 11px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sub-cancel-buttons button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Staying is the safer thing to click by accident, so it gets the solid button. */
+.sub-cancel-keep {
+  border: none;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+}
+
+.sub-cancel-go {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-danger, #dc2626);
+}
+
+.sub-cancel-go:hover:not(:disabled) {
+  border-color: var(--color-danger, #dc2626);
+  background: #fef2f2;
+}
+
+/* On a phone the panel stacks, and the action goes full width under the detail. */
+@media (max-width: 600px) {
+  .sub-plan-panel {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .sub-plan-actions { width: 100%; }
+
+  /* 44px, the figure the rest of this stylesheet already uses for anything a finger has to hit.
+     The quiet styling of the cancel link is about visual weight, not about being a smaller
+     target - it was 33px tall here before, which is a miss waiting to happen. */
+  .sub-plan-resume,
+  .sub-plan-cancel {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  /* Reversed, so "Keep my plan" falls under the thumb and the destructive one is the reach. */
+  .sub-cancel-buttons { flex-direction: column-reverse; }
+  .sub-cancel-buttons button { min-height: 44px; }
+}

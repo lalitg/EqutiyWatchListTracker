@@ -9,7 +9,7 @@ import './Navbar.css';
 
 const Navbar = () => {
   const { isLoggedIn, user, logout } = useAuth();
-  const { can, tier } = useEntitlements();
+  const { can, tier, cancelAtPeriodEnd } = useEntitlements();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -86,7 +86,12 @@ const Navbar = () => {
                   className={`navbar-tier navbar-tier--${(tier || 'free').toLowerCase()}`}
                   title={tier === 'FREE'
                     ? 'You are on the free plan - see what the paid plans include'
-                    : `You are on the ${tier} plan - see all plans`}
+                    : cancelAtPeriodEnd
+                      // No badge, no dot: the reader chose this, and a warning marker on every
+                      // page would nag them about a decision they already made. The tooltip is
+                      // enough to stop the chip reading as "renewing".
+                      ? `Your ${tier} plan is cancelled and will not renew - see your plan`
+                      : `You are on the ${tier} plan - see all plans`}
                 >
                   {tier === 'FREE' ? 'Upgrade' : tier === 'BASIC' ? 'Basic' : 'Advanced'}
                 </NavLink>

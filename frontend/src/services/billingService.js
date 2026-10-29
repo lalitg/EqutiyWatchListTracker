@@ -33,3 +33,52 @@ export async function fetchEntitlements() {
 export async function fetchPlans() {
   return apiClient('/plans');
 }
+
+/**
+ * Starts a purchase: creates the Razorpay subscription and returns what the checkout window needs.
+ *
+ * The key id comes back with it rather than being baked into the bundle at build time, so the same
+ * build works against test keys locally and live keys on the server, and rotating a key never
+ * means rebuilding the frontend. The key secret stays on the server and is never part of this
+ * exchange.
+ *
+ * @param {number} planId     the plan being bought
+ * @param {string} couponCode optional
+ * @returns {Promise<{razorpaySubscriptionId: string, razorpayKeyId: string,
+ *                    firstPaymentAmountPaise: number, renewalAmountPaise: number,
+ *                    discountPaise: number, currency: string}>}
+ */
+export async function createSubscription(planId, couponCode) {
+  return apiClient('/subscriptions/create', {
+    method: 'POST',
+    body: JSON.stringify({ planId, couponCode: couponCode || null }),
+  });
+}
+
+/**
+ * Confirms a completed payment.
+ *
+ * The three values come straight from the checkout window and mean nothing on their own: the
+ * server recomputes the HMAC signature with its own key secret and only then marks the
+ * subscription active. A failure here is a 400 and the plan stays unpaid, which is the only safe
+ * direction for this call to fail in.
+ *
+ * @param {{razorpayPaymentId: string, razorpaySubscriptionId: string, razorpaySignature: string}} payment
+ * @returns {Promise<{planName: string, status: string, currentPeriodEnd: string}>}
+ */
+export async function verifySubscription(payment) {
+  return apiClient('/subscriptions/verify', {
+    method: 'POST',
+    body: JSON.stringify(payment),
+  });
+}
+
+/** The caller's current subscription, or null when they have never bought one. */
+export async function fetchMySubscription() {
+  return apiClient('/subscriptions/me');
+}
+
+/** Stops the renewal. Access continues to the end of the period already paid for. */
+export async function cancelSubscription() {
+  return apiClient('/subscriptions/cancel', { method: 'POST' });
+}

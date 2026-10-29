@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useEntitlements, FEATURES } from '../context/EntitlementsContext';
-import { fetchPlans } from '../services/billingService';
+import {
+  cancelSubscription, createSubscription, fetchPlans, verifySubscription,
+} from '../services/billingService';
+import { loadRazorpayCheckout } from '../services/razorpayCheckout';
+import Modal from '../components/shared/Modal';
+import Toast from '../components/shared/Toast';
 import './SubscribePage.css';
 
 /**
@@ -19,6 +24,11 @@ import './SubscribePage.css';
  * <p>Arriving with {@code ?feature=sentiments} highlights the row the reader was blocked on and
  * marks the cheapest plan that includes it. A padlock that forgets what the reader wanted makes
  * them hunt for it on a page of nine rows.
+ *
+ * <p>This is also where a reader manages what they already have, which is why cancelling lives
+ * here rather than on an account page of its own. Cancelling and downgrading are the same
+ * decision taken with different amounts of patience, and someone heading for "cancel" often
+ * actually wants the cheaper plan — so the plan cards stay in view at the moment of leaving.
  */
 
 const TIERS = ['FREE', 'BASIC', 'ADVANCED'];
@@ -68,14 +78,28 @@ const HIGHLIGHTS = {
 const includes = (row, tier) => TIERS.indexOf(tier) >= TIERS.indexOf(row.from);
 
 const SubscribePage = () => {
-  const { isLoggedIn } = useAuth();
-  const { tier: currentTier, expiresAt, failed } = useEntitlements();
+  const { isLoggedIn, user } = useAuth();
+  const { tier: currentTier, expiresAt, cancelAtPeriodEnd, failed, refresh } = useEntitlements();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const wanted = searchParams.get('feature');
 
   const [plans, setPlans]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+
+  // Which plan's purchase is in flight, the message under the cards, and the confirmation that
+  // replaces them once a payment has been verified.
+  const [buying, setBuying]     = useState(null);
+  const [payError, setPayError] = useState(null);
+  const [bought, setBought]     = useState(null);
+
+  // The cancellation: whether the confirmation is open, whether the call is in flight, what went
+  // wrong if it did, and the note that confirms it afterwards.
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [cancelling, setCancelling]             = useState(false);
+  const [cancelError, setCancelError]           = useState(null);
+  const [cancelled, setCancelled]               = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +131,150 @@ const SubscribePage = () => {
     return row ? row.label : null;
   }, [wanted]);
 
+  /** The row behind the plan the reader is on, for its price and its real name. */
+  const currentPlan = useMemo(
+    () => plans.find(p => p.tier === currentTier) || null,
+    [plans, currentTier],
+  );
+
+  /** Whether there is a paid plan here to manage at all. */
+  const hasPaidPlan = isLoggedIn && !failed && currentTier !== 'FREE';
+
+  /**
+   * What cancelling actually takes away, read off the same table the page already compares with.
+   *
+   * Anything the reader's tier includes and Free does not. Generated rather than written out, so
+   * it cannot drift from the comparison below it — or from the paywall, which is fed by the same
+   * `from` values. Telling someone they will lose a feature they never had, or quietly not
+   * mentioning one they will, is exactly the sort of thing that turns a cancellation into a
+   * complaint.
+   */
+  const losing = useMemo(() => COMPARISON
+    .filter(row => !row.value && includes(row, currentTier) && !includes(row, 'FREE'))
+    .map(row => row.label), [currentTier]);
+
+  const formatDate = (value) => (value
+    ? new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null);
+
+  /**
+   * Stops the renewal.
+   *
+   * The server owns every consequence of this: it tells Razorpay to stop at cycle end, records the
+   * intent, and keeps the tier granted until the period runs out. All that happens here is the
+   * call, the refresh that makes the rest of the app agree, and saying so.
+   */
+  const doCancel = async () => {
+    setCancelError(null);
+    setCancelling(true);
+    try {
+      await cancelSubscription();
+      // Everything gated in the app reads the context, and the plan is still live - so this is
+      // what keeps the padlocks off until the period genuinely ends.
+      await refresh();
+      setConfirmingCancel(false);
+      setCancelled(true);
+    } catch (e) {
+      setCancelError(e.message || 'The cancellation did not go through.');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  /**
+   * Buys a plan.
+   *
+   * Three steps, in this order and no other: the server creates the Razorpay subscription and
+   * tells us which key to open the window with; the reader pays inside Razorpay's own frame,
+   * which is the only place their card details ever exist; the server verifies the signature on
+   * what comes back and only then grants the plan. Nothing here decides that a payment succeeded
+   * - this code cannot, and should not be able to.
+   */
+  const buy = async (plan) => {
+    if (!isLoggedIn) {
+      // A purchase has to belong to an account. Coming back here afterwards is the least a
+      // reader expects after being interrupted.
+      navigate('/login', { state: { from: `/subscribe${wanted ? `?feature=${wanted}` : ''}` } });
+      return;
+    }
+
+    setPayError(null);
+    setBuying(plan.id);
+
+    try {
+      await loadRazorpayCheckout();
+      const order = await createSubscription(plan.id);
+
+      const checkout = new window.Razorpay({
+        key: order.razorpayKeyId,
+        subscription_id: order.razorpaySubscriptionId,
+        name: 'NiveshFlow',
+        description: `${plan.displayName} plan`,
+        prefill: { name: user?.username || '' },
+        theme: { color: '#667eea' },
+
+        /** Razorpay hands back the payment, the subscription and a signature over both. */
+        handler: async (response) => {
+          try {
+            const result = await verifySubscription({
+              razorpayPaymentId:      response.razorpay_payment_id,
+              razorpaySubscriptionId: response.razorpay_subscription_id,
+              razorpaySignature:      response.razorpay_signature,
+            });
+            // The locks across the app read from this context, so it is refreshed before the
+            // reader goes anywhere: the page they were blocked on should simply work now.
+            await refresh();
+            setBought({ plan, until: result.currentPeriodEnd });
+          } catch (e) {
+            // Money may well have left their account; what failed is our confirmation of it.
+            // Say so plainly rather than claiming the payment failed.
+            setPayError(`We could not confirm the payment: ${e.message} `
+                        + 'If you were charged, contact support with the payment id '
+                        + `${response.razorpay_payment_id} and nothing will be lost.`);
+          } finally {
+            setBuying(null);
+          }
+        },
+
+        modal: {
+          // Closing the window is not a failure, so it gets no error message - only the button
+          // back to its normal state.
+          ondismiss: () => setBuying(null),
+        },
+      });
+
+      checkout.on('payment.failed', (event) => {
+        const reason = event?.error?.description || 'The payment did not go through.';
+        setPayError(`${reason} Nothing has been charged — you can try again.`);
+        setBuying(null);
+      });
+
+      checkout.open();
+    } catch (e) {
+      setPayError(e.message);
+      setBuying(null);
+    }
+  };
+
+  if (bought) {
+    return (
+      <div className="page-container sub-page">
+        <div className="sub-done" role="status">
+          <div className="sub-done-tick" aria-hidden="true">✓</div>
+          <h1 className="page-title">You are on {bought.plan.displayName}</h1>
+          <p className="sub-done-note">
+            Your payment went through{bought.until && (
+              <> and your plan runs to {new Date(bought.until).toLocaleDateString('en-IN', {
+                day: 'numeric', month: 'short', year: 'numeric',
+              })}</>
+            )}. Everything it includes is unlocked now.
+          </p>
+          <Link className="sub-card-cta sub-done-cta" to="/watchlist">Go to my watchlist</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page-container sub-page">
       <div className="sub-header">
@@ -124,16 +292,73 @@ const SubscribePage = () => {
         </div>
       )}
 
-      {isLoggedIn && !failed && (
+      {/* The free plan needs no panel: there is nothing to manage and nothing to cancel, so one
+          line is the honest size of the statement. */}
+      {isLoggedIn && !failed && currentTier === 'FREE' && (
         <p className="sub-current-line">
-          You are on the <strong>{currentTier === 'FREE' ? 'Free' : currentTier === 'BASIC' ? 'Basic' : 'Advanced'}</strong> plan
-          {expiresAt && currentTier !== 'FREE' && (
-            <> — your period runs to {new Date(expiresAt).toLocaleDateString('en-IN', {
-              day: 'numeric', month: 'short', year: 'numeric',
-            })}</>
-          )}
-          .
+          You are on the <strong>Free</strong> plan.
         </p>
+      )}
+
+      {hasPaidPlan && (
+        <section className={`sub-plan-panel ${cancelAtPeriodEnd ? 'sub-plan-panel--ending' : ''}`}>
+          <div className="sub-plan-main">
+            <h2 className="sub-plan-heading">Your plan</h2>
+            <p className="sub-plan-name">
+              {currentPlan?.displayName || (currentTier === 'BASIC' ? 'Basic' : 'Advanced')}
+              {!cancelAtPeriodEnd && currentPlan && (
+                <span className="sub-plan-price">
+                  {' · '}
+                  {currentPlan.priceDisplay ?? `₹${Math.round((currentPlan.pricePaise ?? 0) / 100)}`}
+                  {currentPlan.billingCycle === 'ANNUAL' ? '/year' : '/month'}
+                </span>
+              )}
+            </p>
+
+            {cancelAtPeriodEnd ? (
+              <p className="sub-plan-status sub-plan-status--ending">
+                <strong>Cancelled</strong> — this plan will not renew.
+                {expiresAt && <> Everything it includes stays available until {formatDate(expiresAt)}.</>}
+              </p>
+            ) : (
+              <p className="sub-plan-status">
+                {expiresAt
+                  ? <>Renews on {formatDate(expiresAt)}.</>
+                  : <>Active.</>}
+              </p>
+            )}
+          </div>
+
+          <div className="sub-plan-actions">
+            {cancelAtPeriodEnd ? (
+              /* Not an "undo": Razorpay cannot revive a cancelled mandate, so coming back is a
+                 fresh purchase through the ordinary checkout. Labelled for what it is. */
+              <button
+                className="sub-card-cta sub-plan-resume"
+                type="button"
+                onClick={() => currentPlan && buy(currentPlan)}
+                disabled={buying !== null || !currentPlan}
+              >
+                {buying === currentPlan?.id ? 'Opening payment…' : 'Resubscribe'}
+              </button>
+            ) : (
+              /* Deliberately quiet, and deliberately present. A cancel button that has to be
+                 hunted for does not keep the customer - it turns the cancellation into a
+                 chargeback, which costs the fee as well as the plan. */
+              <button
+                className="sub-plan-cancel"
+                type="button"
+                onClick={() => { setCancelError(null); setConfirmingCancel(true); }}
+              >
+                Cancel plan
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {payError && (
+        <div className="sub-pay-error" role="alert">{payError}</div>
       )}
 
       {loading && <div className="page-loading"><p>Loading plans…</p></div>}
@@ -158,7 +383,12 @@ const SubscribePage = () => {
                             ${isCurrent ? 'sub-card--current' : ''}`}
               >
                 {isSuggested && <div className="sub-card-flag">Answers what you clicked</div>}
-                {isCurrent && !isSuggested && <div className="sub-card-flag sub-card-flag--current">Your plan</div>}
+                {isCurrent && !isSuggested && (
+                  <div className={`sub-card-flag sub-card-flag--current
+                                   ${cancelAtPeriodEnd ? 'sub-card-flag--ending' : ''}`}>
+                    {cancelAtPeriodEnd ? 'Ending' : 'Your plan'}
+                  </div>
+                )}
 
                 <h2 className="sub-card-name">{plan.displayName}</h2>
                 <div className="sub-card-price">
@@ -179,13 +409,31 @@ const SubscribePage = () => {
                   <div className="sub-card-cta sub-card-cta--muted">
                     {isCurrent ? 'Your current plan' : 'Always free'}
                   </div>
+                ) : isCurrent && cancelAtPeriodEnd ? (
+                  // Their own plan, on its way out: the one action worth offering here is the one
+                  // that keeps it. Same purchase as any other - see the panel above.
+                  <button
+                    className="sub-card-cta"
+                    type="button"
+                    onClick={() => buy(plan)}
+                    disabled={buying !== null}
+                  >
+                    {buying === plan.id ? 'Opening payment…' : 'Resubscribe'}
+                  </button>
                 ) : isCurrent ? (
                   <div className="sub-card-cta sub-card-cta--muted">Your current plan</div>
                 ) : (
-                  // Checkout arrives with the payment flow. A button that opened nothing would be
-                  // worse than one that says so.
-                  <button className="sub-card-cta" type="button" disabled title="Payments are not switched on yet">
-                    Coming soon
+                  <button
+                    className="sub-card-cta"
+                    type="button"
+                    onClick={() => buy(plan)}
+                    disabled={buying !== null}
+                  >
+                    {buying === plan.id
+                      ? 'Opening payment…'
+                      : currentTier === 'FREE'
+                        ? `Get ${plan.displayName}`
+                        : `Switch to ${plan.displayName}`}
                   </button>
                 )}
               </div>
@@ -235,6 +483,73 @@ const SubscribePage = () => {
           <>You will need an account to subscribe — <Link to="/login">sign in or create one</Link>.</>
         )}
       </div>
+
+      {/* Everything the reader needs to know is here, before they click - not in terms they would
+          have to go and find. The no-refund line especially: a policy discovered afterwards is
+          how a cancellation becomes a dispute. */}
+      <Modal
+        isOpen={confirmingCancel}
+        onClose={() => { if (!cancelling) setConfirmingCancel(false); }}
+        title={`Cancel your ${currentPlan?.displayName || currentTier} plan?`}
+        maxWidth={480}
+      >
+        <p className="sub-cancel-lead">
+          {expiresAt
+            ? <>You keep everything this plan includes until <strong>{formatDate(expiresAt)}</strong>.
+               After that your account returns to the free plan.</>
+            : <>Your account will return to the free plan at the end of the period you have paid for.</>}
+        </p>
+
+        <ul className="sub-cancel-terms">
+          <li>You will not be charged again.</li>
+          <li>The remaining time is not refunded.</li>
+          <li>Resubscribing later needs your card details again.</li>
+        </ul>
+
+        {losing.length > 0 && (
+          <div className="sub-cancel-losing">
+            <h3>What you will lose on {formatDate(expiresAt) || 'that date'}</h3>
+            <ul>
+              {losing.map(label => <li key={label}>{label}</li>)}
+            </ul>
+            <p className="sub-cancel-limits">
+              Your watchlists drop to 1, with up to 5 companies in it. Watchlists above that limit
+              are not deleted — you keep them if you subscribe again.
+            </p>
+          </div>
+        )}
+
+        {cancelError && <div className="sub-cancel-error" role="alert">{cancelError}</div>}
+
+        <div className="sub-cancel-buttons">
+          {/* "Keep" is the one that looks like the default, because staying is the safer of the
+              two outcomes to click by accident. */}
+          <button
+            className="sub-cancel-keep"
+            type="button"
+            onClick={() => setConfirmingCancel(false)}
+            disabled={cancelling}
+          >
+            Keep my plan
+          </button>
+          <button
+            className="sub-cancel-go"
+            type="button"
+            onClick={doCancel}
+            disabled={cancelling}
+          >
+            {cancelling ? 'Cancelling…' : 'Cancel the plan'}
+          </button>
+        </div>
+      </Modal>
+
+      <Toast
+        message={expiresAt
+          ? `Your plan is cancelled. You keep it until ${formatDate(expiresAt)}.`
+          : 'Your plan is cancelled.'}
+        visible={cancelled}
+        onHide={() => setCancelled(false)}
+      />
     </div>
   );
 };

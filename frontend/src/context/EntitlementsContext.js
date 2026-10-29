@@ -42,6 +42,7 @@ const SIGNED_OUT = {
   limits: { watchlists: 1, companiesPerWatchlist: 5, domesticNewsItems: 5 },
   expiresAt: null,
   status: null,
+  cancelAtPeriodEnd: false,
 };
 
 /**
@@ -57,6 +58,9 @@ const UNREACHABLE = {
   limits: { watchlists: 20, companiesPerWatchlist: 25, domesticNewsItems: -1 },
   expiresAt: null,
   status: null,
+  // Never claim a plan is ending on the strength of a failed lookup: that reads as a threat to
+  // somebody whose subscription is perfectly healthy.
+  cancelAtPeriodEnd: false,
 };
 
 const EntitlementsContext = createContext(null);
@@ -81,6 +85,7 @@ export function EntitlementsProvider({ children }) {
         limits:    data.limits || SIGNED_OUT.limits,
         expiresAt: data.expiresAt || null,
         status:    data.status || null,
+        cancelAtPeriodEnd: data.cancelAtPeriodEnd === true,
         ready:     true,
         failed:    false,
       }))
@@ -98,6 +103,15 @@ export function EntitlementsProvider({ children }) {
     status:    state.status,
     ready:     state.ready,
     failed:    state.failed,
+
+    /**
+     * True when the plan is still live but will not renew.
+     *
+     * The server decides this, like everything else here. It is the difference between "renews on
+     * 27 Nov" and "ends on 27 Nov" - two opposite sentences that {@code expiresAt} alone cannot
+     * tell apart, and getting it backwards is the kind of billing message people screenshot.
+     */
+    cancelAtPeriodEnd: state.cancelAtPeriodEnd === true,
 
     /**
      * Whether a feature is open to this reader.
