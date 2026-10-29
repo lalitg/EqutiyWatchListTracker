@@ -22,7 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
  * POST /api/v1/subscriptions/cancel  — Cancel at end of period
  * GET  /api/v1/subscriptions/me      — Current subscription status
  */
-@RestController
+// Explicit bean name, for the same reason as the service: watchlist-service also has a
+// SubscriptionController, for alert subscriptions, and both live in main-api-service.
+@RestController("billingSubscriptionController")
 @RequestMapping("/api/v1/subscriptions")
 public class SubscriptionController {
 

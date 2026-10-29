@@ -44,6 +44,17 @@ CREATE TABLE IF NOT EXISTS plans (
     -- Required to create Razorpay Subscriptions.
     razorpay_plan_id  VARCHAR(100),
 
+    -- What that Razorpay plan charges. Razorpay plans are immutable, so when price_paise is
+    -- edited the service creates a new Razorpay plan for new subscribers rather than letting the
+    -- row advertise one price while the mandate bills another.
+    razorpay_plan_price_paise INTEGER,
+
+    -- What the plan grants: BASIC or ADVANCED. The price lives in this row so marketing can
+    -- change it without a deployment; the feature list lives in EntitlementService, because
+    -- "what does Advanced include?" must have exactly one answer.
+    -- NULL or an unrecognised value is read as FREE: a row typed wrongly grants nothing.
+    tier              VARCHAR(20)     CHECK (tier IN ('FREE', 'BASIC', 'ADVANCED')),
+
     -- Set to false to stop selling this plan (existing subs are unaffected)
     is_active         BOOLEAN         NOT NULL DEFAULT true,
 
@@ -51,16 +62,41 @@ CREATE TABLE IF NOT EXISTS plans (
     updated_at        TIMESTAMP       NOT NULL DEFAULT NOW()
 );
 
--- Seed: the current plan decided by the team
-INSERT INTO plans (name, display_name, description, price_paise, billing_cycle, duration_days)
+-- For a plans table created before these columns existed
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS tier VARCHAR(20);
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS razorpay_plan_price_paise INTEGER;
+
+-- Seed: the two paid tiers. Prices are provisional (Rs.149 / Rs.299) and are expected to change
+-- once they are signed off - editing these two rows is all that takes.
+-- There is no FREE row on purpose: free is what a user has when no subscription is active, not
+-- something they buy, renew and cancel.
+INSERT INTO plans (name, display_name, description, price_paise, billing_cycle, duration_days, tier)
 VALUES (
-    'MONTHLY_499',
-    'Pro Monthly',
-    'Full access to all Equity Watchlist Tracker features for 30 days',
-    49900,
+    'BASIC_MONTHLY',
+    'Basic',
+    'Market pages, company news and events, with larger watchlists',
+    14900,
     'MONTHLY',
-    30
+    30,
+    'BASIC'
 ) ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO plans (name, display_name, description, price_paise, billing_cycle, duration_days, tier)
+VALUES (
+    'ADVANCED_MONTHLY',
+    'Advanced',
+    'Everything in Basic, plus news sentiment, the sentiment extremes boards and news alerts',
+    29900,
+    'MONTHLY',
+    30,
+    'ADVANCED'
+) ON CONFLICT (name) DO NOTHING;
+
+-- The original single plan predates tiers. It is withdrawn rather than deleted: a plan row that
+-- a payment or a subscription points at must stay readable, and is_active=false simply stops it
+-- being sold or shown on the pricing page.
+UPDATE plans SET is_active = false, updated_at = NOW()
+WHERE name = 'MONTHLY_499' AND tier IS NULL;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. coupons
@@ -198,6 +234,11 @@ CREATE TABLE IF NOT EXISTS payments (
     -- REFUNDED : Payment refunded
     status                    VARCHAR(15)  NOT NULL CHECK (status IN ('CREATED','PAID','FAILED','REFUNDED')),
 
+    -- The Razorpay subscription this attempt was created against. Set before any money moves,
+    -- so a confirmation can find the exact attempt it belongs to instead of guessing at the
+    -- user's most recent payment row.
+    razorpay_subscription_id  VARCHAR(100),
+
     -- Filled when Razorpay processes the payment
     razorpay_payment_id       VARCHAR(100) UNIQUE,
     razorpay_signature        VARCHAR(255),
@@ -209,6 +250,23 @@ CREATE TABLE IF NOT EXISTS payments (
 
 CREATE INDEX IF NOT EXISTS idx_payments_user_id          ON payments (user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_razorpay_pay_id  ON payments (razorpay_payment_id);
+-- Every payment confirmation looks the attempt up by this.
+CREATE INDEX IF NOT EXISTS idx_payments_razorpay_sub_id  ON payments (razorpay_subscription_id);
+
+-- At most one purchase open per user, enforced by the database rather than by hoping two
+-- requests never arrive together. Two tabs, a retry after a timeout or a double click would
+-- otherwise each create a mandate at Razorpay, and a customer who completed both would be
+-- charged twice a month. The request that loses this race cancels its own mandate and returns
+-- the winner's checkout.
+--
+-- Hibernate's ddl-auto cannot express a partial index, so this script is the only place it
+-- exists: it must be run against any database that serves payments.
+CREATE UNIQUE INDEX IF NOT EXISTS uk_payments_one_open_attempt
+    ON payments (user_id)
+    WHERE status = 'CREATED' AND payment_type = 'FIRST_PAYMENT';
+
+-- For a payments table created before the column existed.
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS razorpay_subscription_id VARCHAR(100);
 
 
 -- How to run the jar

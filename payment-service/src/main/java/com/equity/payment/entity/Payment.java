@@ -66,6 +66,17 @@ public class Payment {
     private PaymentStatus status;
 
     /** Filled after Razorpay processes the payment. */
+    /**
+     * The Razorpay subscription this attempt was created against.
+     *
+     * Set when the attempt is created, before any money moves, which makes it the key that ties a
+     * confirmation back to the exact attempt it belongs to. Without it the only way to find the
+     * row was "the most recent payment for this user", which picks the wrong row the moment a
+     * renewal or a second attempt lands in between.
+     */
+    @Column(name = "razorpay_subscription_id", length = 100)
+    private String razorpaySubscriptionId;
+
     @Column(name = "razorpay_payment_id", unique = true, length = 100)
     private String razorpayPaymentId;
 
@@ -115,6 +126,8 @@ public class Payment {
     public void setCurrency(String currency) { this.currency = currency; }
     public PaymentStatus getStatus() { return status; }
     public void setStatus(PaymentStatus status) { this.status = status; }
+    public String getRazorpaySubscriptionId() { return razorpaySubscriptionId; }
+    public void setRazorpaySubscriptionId(String razorpaySubscriptionId) { this.razorpaySubscriptionId = razorpaySubscriptionId; }
     public String getRazorpayPaymentId() { return razorpayPaymentId; }
     public void setRazorpayPaymentId(String razorpayPaymentId) { this.razorpayPaymentId = razorpayPaymentId; }
     public String getRazorpaySignature() { return razorpaySignature; }

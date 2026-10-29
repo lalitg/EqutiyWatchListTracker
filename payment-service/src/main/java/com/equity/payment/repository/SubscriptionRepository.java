@@ -27,6 +27,23 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     List<Subscription> findExpiredCancellations(LocalDateTime now);
 
     /**
+     * Subscriptions that simply ran out: still ACTIVE, not cancelled, and past their period.
+     *
+     * <p>This is what a lost renewal looks like — a {@code subscription.charged} webhook that
+     * never arrived, a mandate that died at Razorpay, or the service being down when Razorpay
+     * called. Nothing else in the nightly job covers it, so these rows read as paying customers
+     * for ever: every count of subscribers, every churn figure and every revenue estimate drifts
+     * upward, and a webhook pipeline that stopped weeks ago looks exactly like one that is working.
+     *
+     * @param cutoff now minus the grace period — a renewal that is merely late must not expire
+     */
+    @Query("SELECT s FROM Subscription s WHERE s.status = com.equity.payment.enums.SubscriptionStatus.ACTIVE " +
+           "AND s.cancelAtPeriodEnd = false " +
+           "AND s.currentPeriodEnd IS NOT NULL " +
+           "AND s.currentPeriodEnd < :cutoff")
+    List<Subscription> findLapsedActive(LocalDateTime cutoff);
+
+    /**
      * Find HALTED subscriptions whose period has also ended.
      * These should be set to EXPIRED to revoke access.
      */
