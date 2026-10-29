@@ -1,0 +1,20 @@
+# Secrets. The real values live in .env on the machine that runs the service, and in the
+# environment on the server. Nothing here ever reaches the repository.
+.env
+.env.local
+*.pem
+
+# Build output and runtime logs — never commit these.
+**/target/
+**/logs/
+*.log
+*.log.gz
+
+# Node
+**/node_modules/
+**/build/
+
+# Editors
+.idea/
+.vscode/
+*.iml

@@ -79,18 +79,30 @@ public class RazorpayClientWrapper {
     /**
      * Creates a Razorpay Subscription linked to a Razorpay Plan.
      * Called when a user subscribes. Returns Razorpay subscription ID: "sub_YYYYYY".
-     * total_count=0 means the subscription repeats indefinitely until cancelled.
+     *
+     * <p>total_count is how many billing cycles the mandate covers, and Razorpay requires at
+     * least 1 — an open-ended subscription is not something the API accepts, whatever we would
+     * prefer. ("The total count must be at least 1.") So the caller passes a count far beyond any
+     * real subscription's life: the customer cancels, or their card expires, long before it runs
+     * out, and if one ever did reach the end Razorpay simply stops charging rather than
+     * overcharging.
      *
      * Razorpay Subscription API: POST https://api.razorpay.com/v1/subscriptions
+     *
+     * @param razorpayPlanId the plan this subscription bills against
+     * @param totalCount     number of billing cycles to authorise; must be at least 1
      */
-    public String createSubscription(String razorpayPlanId) {
+    public String createSubscription(String razorpayPlanId, int totalCount) {
         try {
             RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
             JSONObject subscriptionRequest = new JSONObject();
             subscriptionRequest.put("plan_id", razorpayPlanId);
-            subscriptionRequest.put("total_count", 0);     // 0 = infinite recurring
+            subscriptionRequest.put("total_count", Math.max(1, totalCount));
             subscriptionRequest.put("quantity", 1);
+            // Razorpay's own emails about the mandate: we send our own messages, and two sets of
+            // mail about the same payment is how a reader learns to ignore both.
+            subscriptionRequest.put("customer_notify", 0);
 
             com.razorpay.Subscription subscription = client.subscriptions.create(subscriptionRequest);
             String subscriptionId = subscription.get("id");
@@ -111,11 +123,24 @@ public class RazorpayClientWrapper {
      * Razorpay Cancel API: POST https://api.razorpay.com/v1/subscriptions/{id}/cancel
      */
     public void cancelSubscription(String razorpaySubscriptionId) {
+        cancelSubscription(razorpaySubscriptionId, false);
+    }
+
+    /**
+     * Cancels a Razorpay subscription, now or at the end of the cycle.
+     *
+     * <p>A customer cancelling keeps what they paid for, so that cancels at cycle end. A mandate
+     * being replaced — a plan switch, or an attempt that was abandoned — must stop immediately,
+     * or the customer is charged twice a month for one product.
+     *
+     * @param immediately true to stop the mandate now, false to let the paid cycle finish
+     */
+    public void cancelSubscription(String razorpaySubscriptionId, boolean immediately) {
         try {
             RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
             JSONObject cancelRequest = new JSONObject();
-            cancelRequest.put("cancel_at_cycle_end", 1);   // 1 = cancel at end of billing cycle
+            cancelRequest.put("cancel_at_cycle_end", immediately ? 0 : 1);
 
             client.subscriptions.cancel(razorpaySubscriptionId, cancelRequest);
             logger.info("Razorpay subscription cancelled: {}", razorpaySubscriptionId);
@@ -129,12 +154,18 @@ public class RazorpayClientWrapper {
     /**
      * Verifies the HMAC-SHA256 signature for a subscription payment.
      *
-     * Razorpay computes:
-     *   HMAC-SHA256(razorpayPaymentId + "|" + razorpaySubscriptionId, keySecret)
+     * <p>Razorpay signs a subscription payment over
+     * {@code razorpayPaymentId + "|" + razorpaySubscriptionId}, and a one-off order payment over
+     * {@code razorpayOrderId + "|" + razorpayPaymentId}. They are different messages, and the SDK
+     * has a different helper for each: {@code Utils.verifySubscription} and
+     * {@code Utils.verifyPaymentSignature}. Using the order helper here — as this did — made every
+     * subscription verification throw {@code JSONObject["razorpay_order_id"] not found}, which
+     * surfaced as a 500 and meant no purchase could ever be confirmed.
      *
-     * Called in SubscriptionService.verifyAndActivate() to confirm the first payment.
-     * Returns true if the signature is valid — safe to activate subscription.
-     * Returns false if tampered — reject with 400.
+     * <p>Called by SubscriptionService.verifyAndActivate() to confirm the first payment.
+     *
+     * @return true when the signature is genuine and the subscription may be activated; false for
+     *         anything else, which the caller turns into a 400 with nothing marked as paid
      */
     public boolean verifyPaymentSignature(String razorpayPaymentId,
                                           String razorpaySubscriptionId,
@@ -145,10 +176,13 @@ public class RazorpayClientWrapper {
             options.put("razorpay_subscription_id", razorpaySubscriptionId);
             options.put("razorpay_signature", razorpaySignature);
 
-            return Utils.verifyPaymentSignature(options, keySecret);
+            return Utils.verifySubscription(options, keySecret);
 
-        } catch (RazorpayException e) {
-            logger.warn("Payment signature verification failed: {}", e.getMessage());
+        } catch (Exception e) {
+            // Deliberately broad. A missing field makes the SDK throw a JSONException rather than
+            // a RazorpayException, and an unverified payment must always come back as "no", never
+            // as a server error that leaves the caller guessing whether they were charged.
+            logger.warn("Subscription payment signature rejected: {}", e.getMessage());
             return false;
         }
     }
