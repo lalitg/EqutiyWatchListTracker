@@ -23,11 +23,17 @@ import java.util.Map;
  * @param features  feature name → allowed
  * @param limits    limit name → value
  * @param expiresAt when the current paid period ends, null on FREE
- * @param status    the underlying subscription status, null on FREE — for "renews on" messaging
+ * @param status    the underlying subscription status, null on FREE
+ * @param cancelAtPeriodEnd whether the renewal has been stopped - the difference between "renews
+ *                  on 27 Nov" and "ends on 27 Nov", which {@code expiresAt} alone cannot express.
+ *                  Carried here rather than left to a second call against /subscriptions/me,
+ *                  because the navbar needs the answer on every page and a billing lookup per
+ *                  page load is a price not worth paying for one boolean.
  */
 public record EntitlementsResponse(PlanTier tier,
                                    Map<String, Boolean> features,
                                    Map<String, Integer> limits,
                                    LocalDateTime expiresAt,
-                                   String status) {
+                                   String status,
+                                   boolean cancelAtPeriodEnd) {
 }

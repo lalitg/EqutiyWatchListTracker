@@ -36,13 +36,16 @@ public class WebhookHandler {
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentRepository      paymentRepository;
     private final PlanService            planService;
+    private final SubscriptionService    subscriptionService;
 
     public WebhookHandler(SubscriptionRepository subscriptionRepository,
                           PaymentRepository paymentRepository,
-                          PlanService planService) {
+                          PlanService planService,
+                          SubscriptionService subscriptionService) {
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository      = paymentRepository;
         this.planService            = planService;
+        this.subscriptionService    = subscriptionService;
     }
 
     /**
@@ -76,24 +79,18 @@ public class WebhookHandler {
                     .getJSONObject("entity")
                     .getString("id");
 
-            Subscription sub = subscriptionRepository
-                    .findByRazorpaySubscriptionId(rzpSubId)
-                    .orElse(null);
+            // Delegated rather than done here: SubscriptionService.activate is the single place
+            // that knows how to grant a plan, and it sets the period dates. This handler used to
+            // flip the status to ACTIVE on its own and leave currentPeriodEnd null, which gave the
+            // reader a subscription with no end date — access for ever in the eyes of the
+            // entitlement check, and a guaranteed null pointer at the first renewal.
+            boolean granted = subscriptionService.activateFromWebhook(rzpSubId);
 
-            if (sub == null) {
-                logger.warn("subscription.authenticated: no subscription found for rzpSubId={}", rzpSubId);
-                return;
+            if (granted) {
+                logger.info("subscription.authenticated: granted the plan for rzpSubId={}", rzpSubId);
+            } else {
+                logger.debug("subscription.authenticated: nothing to do for rzpSubId={}", rzpSubId);
             }
-
-            if (sub.getStatus() == SubscriptionStatus.ACTIVE) {
-                logger.debug("subscription.authenticated: already ACTIVE, skipping. rzpSubId={}", rzpSubId);
-                return;
-            }
-
-            // Activate if not already done
-            sub.setStatus(SubscriptionStatus.ACTIVE);
-            subscriptionRepository.save(sub);
-            logger.info("subscription.authenticated: activated subscription for userId={}", sub.getUserId());
 
         } catch (Exception e) {
             logger.error("Error handling subscription.authenticated: {}", e.getMessage(), e);
@@ -155,12 +152,43 @@ public class WebhookHandler {
             renewal.setRazorpayPaymentId(rzpPayId);
             paymentRepository.save(renewal);
 
-            // Step 4 — extend subscription period
+            // Step 4 — extend subscription period.
+            //
+            // The new period runs from the end of the old one, so a renewal paid a day early does
+            // not cost the customer a day. Two cases cannot use that end date: it may be null
+            // (the first charge for a subscription activated by webhook), and it may be in the
+            // past (a lapse, or a retry that finally succeeded). Both start from now instead.
+            // Reading it straight, as this did, threw a NullPointerException that the catch below
+            // swallowed — leaving a customer charged, a PAID row written, and no access granted.
             var plan = planService.getPlanById(sub.getPlanId());
+            var now = java.time.LocalDateTime.now();
             var oldEnd = sub.getCurrentPeriodEnd();
-            sub.setCurrentPeriodStart(oldEnd);
-            sub.setCurrentPeriodEnd(oldEnd.plusDays(plan.getDurationDays()));
+            var base = (oldEnd == null || oldEnd.isBefore(now)) ? now : oldEnd;
+
+            sub.setCurrentPeriodStart(base);
+            sub.setCurrentPeriodEnd(base.plusDays(plan.getDurationDays()));
             sub.setStatus(SubscriptionStatus.ACTIVE);       // re-activate if it was HALTED
+
+            // A charge usually means the subscription was not cancelled - but not always, and the
+            // exception is the one that costs money. Cancel at 23:58 on the last day of a cycle
+            // and Razorpay may already have the renewal in flight; the charge then lands here a
+            // few minutes later. Clearing the flag at that point would extend the plan, take the
+            // payment, and erase every trace that the customer ever asked to stop - which is a
+            // chargeback with nothing on our side to answer it.
+            //
+            // So the intent survives the charge. The period is still extended, because they were
+            // charged and must get what they paid for, and the cancellation still stands, because
+            // they asked for it first. Support gets told, since this is the one case here that
+            // wants a human and probably a goodwill refund.
+            if (sub.isCancelAtPeriodEnd()) {
+                logger.error("PAYMENT ATTENTION: userId={} was charged {} paise on rzpPayId={} "
+                             + "after cancelling - the mandate is cancelled at Razorpay but this "
+                             + "charge arrived anyway. Access now runs to {}; consider refunding.",
+                             sub.getUserId(), amount, rzpPayId, sub.getCurrentPeriodEnd());
+            } else {
+                sub.setCancelAtPeriodEnd(false);
+            }
+
             subscriptionRepository.save(sub);
 
             logger.info("AUTO-RENEWAL: userId={}, rzpPayId={}, newPeriodEnd={}",

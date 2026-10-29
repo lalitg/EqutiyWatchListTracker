@@ -220,7 +220,36 @@ class EntitlementServiceTest {
             when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.of(sub));
             when(planRepository.findById(7L)).thenReturn(Optional.of(plan));
 
-            assertEquals(PlanTier.ADVANCED, service.forUser(USER).tier());
+            EntitlementsResponse r = service.forUser(USER);
+
+            assertEquals(PlanTier.ADVANCED, r.tier());
+            assertTrue(r.cancelAtPeriodEnd(),
+                       "the browser needs this to say \"ends\" rather than \"renews\"");
+        }
+
+        @Test
+        void aPlanThatIsSimplyRunningDoesNotClaimToBeEnding() {
+            Subscription sub = subscription(SubscriptionStatus.ACTIVE, LocalDateTime.now().plusDays(3));
+            Plan plan = new Plan();
+            plan.setTier("ADVANCED");
+            when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.of(sub));
+            when(planRepository.findById(7L)).thenReturn(Optional.of(plan));
+
+            assertFalse(service.forUser(USER).cancelAtPeriodEnd());
+        }
+
+        @Test
+        void aCancellationThatHasRunOutIsNotReportedAsPending() {
+            // Past its period end, so FREE. Telling a free reader their plan "will not renew"
+            // describes a plan they no longer have - the flag belongs with the tier it modifies.
+            Subscription sub = subscription(SubscriptionStatus.ACTIVE, LocalDateTime.now().minusDays(1));
+            sub.setCancelAtPeriodEnd(true);
+            when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.of(sub));
+
+            EntitlementsResponse r = service.forUser(USER);
+
+            assertEquals(PlanTier.FREE, r.tier());
+            assertFalse(r.cancelAtPeriodEnd());
         }
 
         @Test
@@ -248,9 +277,9 @@ class EntitlementServiceTest {
         }
 
         @Test
-        void haltedCancelledAndExpiredAllGrantNothing() {
+        void cancelledAndExpiredGrantNothing() {
             for (SubscriptionStatus status : new SubscriptionStatus[]{
-                    SubscriptionStatus.HALTED, SubscriptionStatus.CANCELLED, SubscriptionStatus.EXPIRED}) {
+                    SubscriptionStatus.CANCELLED, SubscriptionStatus.EXPIRED}) {
 
                 when(subscriptionRepository.findByUserId(USER))
                         .thenReturn(Optional.of(subscription(status, LocalDateTime.now().plusDays(10))));
@@ -261,15 +290,40 @@ class EntitlementServiceTest {
         }
 
         @Test
-        void anOpenEndedActivePeriodStillGrantsTheTier() {
-            // A null period end means "no known end" - a lifetime or manually granted row.
+        void aFailedRenewalKeepsTheMonthAlreadyPaidFor() {
+            // HALTED means Razorpay gave up retrying - an expired card, usually. The period they
+            // paid for is still theirs; cutting them off the moment a card fails punishes the most
+            // fixable payment problem there is, and the webhook handler promises otherwise.
+            Plan plan = new Plan();
+            plan.setTier("ADVANCED");
+            when(subscriptionRepository.findByUserId(USER))
+                    .thenReturn(Optional.of(subscription(SubscriptionStatus.HALTED,
+                                                         LocalDateTime.now().plusDays(9))));
+            when(planRepository.findById(7L)).thenReturn(Optional.of(plan));
+
+            assertEquals(PlanTier.ADVANCED, service.forUser(USER).tier());
+        }
+
+        @Test
+        void aFailedRenewalLosesTheTierOnceThatPeriodEnds() {
+            when(subscriptionRepository.findByUserId(USER))
+                    .thenReturn(Optional.of(subscription(SubscriptionStatus.HALTED,
+                                                         LocalDateTime.now().minusDays(1))));
+
+            assertEquals(PlanTier.FREE, service.forUser(USER).tier());
+        }
+
+        @Test
+        void anActiveRowWithNoEndDateGrantsNothing() {
+            // Not "for ever" - a row written wrong. It used to mean unlimited access, which is the
+            // one reading there is no recovering from.
             Plan plan = new Plan();
             plan.setTier("BASIC");
             when(subscriptionRepository.findByUserId(USER))
                     .thenReturn(Optional.of(subscription(SubscriptionStatus.ACTIVE, null)));
             when(planRepository.findById(7L)).thenReturn(Optional.of(plan));
 
-            assertEquals(PlanTier.BASIC, service.forUser(USER).tier());
+            assertEquals(PlanTier.FREE, service.forUser(USER).tier());
         }
     }
 

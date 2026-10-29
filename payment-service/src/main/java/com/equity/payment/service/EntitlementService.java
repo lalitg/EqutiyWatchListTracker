@@ -37,7 +37,8 @@ import java.util.Optional;
  * </ol>
  *
  * <p>A cancellation that has not yet reached its period end still grants the paid tier: the user
- * paid for that month and cancelling only stops the renewal.
+ * paid for that month and cancelling only stops the renewal. {@code cancelAtPeriodEnd} on the
+ * response is what lets the browser say so, without ever deciding it.
  *
  * <h2>The switch that matters when things go wrong</h2>
  * {@code billing.enabled=false} grants everyone ADVANCED. If this service, the database or Razorpay
@@ -87,27 +88,31 @@ public class EntitlementService {
     public EntitlementsResponse forUser(Long userId) {
         if (!billingEnabled) {
             logger.debug("billing.enabled=false - granting ADVANCED to userId={}", userId);
-            return response(PlanTier.ADVANCED, null, null);
+            return response(PlanTier.ADVANCED, null, null, false);
         }
 
         // No session, no subscription. The gate in main-api asks this question for anonymous
         // visitors too, and they get exactly what a signed-in user without a plan gets.
-        if (userId == null) return response(PlanTier.FREE, null, null);
+        if (userId == null) return response(PlanTier.FREE, null, null, false);
 
         try {
             Optional<Subscription> found = subscriptionRepository.findByUserId(userId);
-            if (found.isEmpty()) return response(PlanTier.FREE, null, null);
+            if (found.isEmpty()) return response(PlanTier.FREE, null, null, false);
 
             Subscription sub = found.get();
             PlanTier tier = tierOf(sub);
             return response(tier,
                             tier == PlanTier.FREE ? null : sub.getCurrentPeriodEnd(),
-                            sub.getStatus() == null ? null : sub.getStatus().name());
+                            sub.getStatus() == null ? null : sub.getStatus().name(),
+                            // Only meaningful while something is still granted. On FREE the
+                            // period is already over, and "will not renew" about a plan the
+                            // reader no longer has would be a puzzle rather than information.
+                            tier != PlanTier.FREE && sub.isCancelAtPeriodEnd());
         } catch (Exception e) {
             // Never lock a paying user out because a lookup failed.
             logger.error("Could not resolve entitlements for userId={} - granting ADVANCED: {}",
                          userId, e.getMessage());
-            return response(PlanTier.ADVANCED, null, null);
+            return response(PlanTier.ADVANCED, null, null, false);
         }
     }
 
@@ -120,10 +125,26 @@ public class EntitlementService {
     // ─── internals ───────────────────────────────────────────────────────────
 
     private PlanTier tierOf(Subscription sub) {
-        if (sub.getStatus() != SubscriptionStatus.ACTIVE) return PlanTier.FREE;
+        // ACTIVE is the ordinary case. HALTED means Razorpay has given up retrying a renewal -
+        // an expired card, usually - and the customer has not yet fixed it. They have still paid
+        // for the period they are in, so they keep it to its end, exactly as the webhook handler
+        // promises; the date check below is what eventually takes it away. Taking access the
+        // moment a card fails would punish the commonest and most fixable payment problem there
+        // is. PENDING, CANCELLED and EXPIRED all mean there is nothing paid for.
+        SubscriptionStatus status = sub.getStatus();
+        if (status != SubscriptionStatus.ACTIVE && status != SubscriptionStatus.HALTED) {
+            return PlanTier.FREE;
+        }
 
         LocalDateTime end = sub.getCurrentPeriodEnd();
-        if (end != null && end.isBefore(LocalDateTime.now())) {
+        if (end == null) {
+            // Active with no period end is not "for ever", it is a row that was written wrong.
+            // Granting nothing is the safe reading; the logs will say which subscription it was.
+            logger.warn("Subscription for userId={} is {} with no period end - treating as FREE",
+                        sub.getUserId(), status);
+            return PlanTier.FREE;
+        }
+        if (end.isBefore(LocalDateTime.now())) {
             // Paid period is over and the nightly job has not caught it yet.
             return PlanTier.FREE;
         }
@@ -140,7 +161,8 @@ public class EntitlementService {
      * <p>Written as one table rather than scattered {@code if (tier == ...)} checks, so the whole
      * product's gating can be read at a glance and compared against the plan document.
      */
-    private EntitlementsResponse response(PlanTier tier, LocalDateTime expiresAt, String status) {
+    private EntitlementsResponse response(PlanTier tier, LocalDateTime expiresAt, String status,
+                                          boolean cancelAtPeriodEnd) {
         boolean basic    = tier.atLeast(PlanTier.BASIC);
         boolean advanced = tier.atLeast(PlanTier.ADVANCED);
 
@@ -161,6 +183,6 @@ public class EntitlementService {
         // Free sees a teaser of the domestic news list; paid tiers see all of it. -1 means no cap.
         limits.put(L_DOMESTIC_NEWS,           basic ? -1 : 5);
 
-        return new EntitlementsResponse(tier, features, limits, expiresAt, status);
+        return new EntitlementsResponse(tier, features, limits, expiresAt, status, cancelAtPeriodEnd);
     }
 }
