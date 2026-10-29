@@ -58,3 +58,11 @@
   color: #94a3b8;
   font-size: 15px;
 }
+
+/* Why a document would not open — next to the button that failed, not at the top of the page,
+   because only that one month is affected. */
+.mf-doc-error {
+  font-size: 13px;
+  color: #dc2626;
+  align-self: center;
+}

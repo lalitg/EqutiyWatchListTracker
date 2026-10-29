@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { fetchAmfiFiles, amfiNoteUrl, amfiReportUrl } from '../services/amfiService';
+import { fetchAmfiFiles, openAmfiNote, downloadAmfiReport } from '../services/amfiService';
 import Locked from '../components/shared/Locked';
 import { FEATURES } from '../context/EntitlementsContext';
 import './MutualFundsPage.css';
@@ -10,34 +10,76 @@ function monthLabel(monthStr) {
   return d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
 }
 
+/**
+ * One month's documents.
+ *
+ * These are buttons rather than links. A link is a browser navigation and a navigation sends no
+ * Authorization header, so once the documents moved behind the paywall every click came back 403
+ * whatever the reader had paid for. Fetching the bytes here is what lets the request carry the
+ * token — at the cost of having to show "Opening…" ourselves, because a fetch has no progress bar
+ * of its own the way a navigation does.
+ */
 function MutualFundRow({ file }) {
+  const [busy, setBusy] = useState(null);
+  const [error, setError] = useState(null);
+
+  const run = async (which, action) => {
+    setBusy(which);
+    setError(null);
+    try {
+      await action();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const openNote = () => {
+    // Opened by the click itself, before anything is awaited: a tab opened after the fetch
+    // resolves is outside the user gesture and a popup blocker stops it.
+    const tab = window.open('', '_blank');
+    return run('note', async () => {
+      try {
+        await openAmfiNote(file.month, tab);
+      } catch (e) {
+        if (tab && !tab.closed) tab.close();
+        throw e;
+      }
+    });
+  };
+
+  const saveReport = () => run('report', () => downloadAmfiReport(file.month));
+
   return (
     <div className="mf-row">
       <div className="mf-month">{file.monthLabel || monthLabel(file.month)}</div>
       <div className="mf-actions">
         {file.noteAvailable ? (
-          <a
+          <button
+            type="button"
             className="btn btn-secondary mf-action-btn"
-            href={amfiNoteUrl(file.month)}
-            target="_blank"
-            rel="noopener noreferrer"
+            onClick={openNote}
+            disabled={busy !== null}
           >
-            📄 View Monthly Note
-          </a>
+            {busy === 'note' ? '📄 Opening…' : '📄 View Monthly Note'}
+          </button>
         ) : (
           <span className="mf-unavailable">Monthly Note unavailable</span>
         )}
         {file.reportAvailable ? (
-          <a
+          <button
+            type="button"
             className="btn btn-secondary mf-action-btn"
-            href={amfiReportUrl(file.month)}
-            download
+            onClick={saveReport}
+            disabled={busy !== null}
           >
-            📊 Download Report (Excel)
-          </a>
+            {busy === 'report' ? '📊 Downloading…' : '📊 Download Report (Excel)'}
+          </button>
         ) : (
           <span className="mf-unavailable">Report unavailable</span>
         )}
+        {error && <span className="mf-doc-error" role="alert">{error}</span>}
       </div>
     </div>
   );

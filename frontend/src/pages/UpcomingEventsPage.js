@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Locked from '../components/shared/Locked';
 import { FEATURES } from '../context/EntitlementsContext';
+import { fetchMacroEvents } from '../services/eventsService';
 import './UpcomingEventsPage.css';
 
 const CATEGORY_META = {
@@ -81,8 +82,7 @@ const UpcomingEventsPage = () => {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetch('/api/macro-events?upcoming=true')
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    fetchMacroEvents()
       .then(setEvents)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));

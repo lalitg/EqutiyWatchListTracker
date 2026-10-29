@@ -119,16 +119,27 @@ const ExtremesPage = () => {
   const [range, setRange] = useState('WEEK_1');
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  // Whether the day list has come back at all, successfully or not. Without it an empty list is
+  // indistinguishable from one still in flight, and the page spins for ever on a failure.
+  const [daysLoaded, setDaysLoaded] = useState(false);
 
   // The day list comes from the backend so both sides agree on which day is "today": the boards are
   // bucketed in Indian market time, and a viewer in another timezone would otherwise request a day
   // the server does not consider current.
-  useEffect(() => {
-    fetchExtremesDays().then(result => {
-      setDays(result);
-      if (result.length > 0) setSelectedDay(result[0].day);
-    });
+  const loadDays = useCallback(() => {
+    setError(null);
+    setDaysLoaded(false);
+    fetchExtremesDays()
+      .then(result => {
+        setDays(result);
+        if (result.length > 0) setSelectedDay(result[0].day);
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setDaysLoaded(true));
   }, []);
+
+  useEffect(() => { loadDays(); }, [loadDays]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -138,15 +149,28 @@ const ExtremesPage = () => {
 
     let cancelled = false;
     request
-      .then(result => { if (!cancelled) setBoard(result); })
+      .then(result => { if (!cancelled) { setBoard(result); setError(null); } })
+      .catch(e => { if (!cancelled) { setError(e.message); setBoard(null); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [mode, selectedDay, range]);
 
   useEffect(() => {
-    if (mode === 'daily' && !selectedDay) return;   // wait for the day list
+    if (mode === 'daily' && !selectedDay) {
+      // Once the list has arrived, no day means there is no day to ask about — a finished state,
+      // not a pending one.
+      if (daysLoaded) setLoading(false);
+      return;
+    }
     return load();
-  }, [load, mode, selectedDay]);
+  }, [load, mode, selectedDay, daysLoaded]);
+
+  // The day list is what fails first when the whole feature is refused, so a retry has to be able
+  // to ask for it again rather than only re-requesting a board it has no day for.
+  const retry = () => {
+    if (mode === 'daily' && days.length === 0) loadDays();
+    else load();
+  };
 
   // Two destinations, because a row is not one thing. The badge is a claim about the news; the
   // company name is the company. Sending both to the Sentiments tab meant a reader who wanted the
@@ -225,28 +249,38 @@ const ExtremesPage = () => {
               rolling period. Part of the Advanced plan, with sentiment scores everywhere else in
               the app."
       >
-        <div className="ext-boards">
-          <Board
-            title="Top Positives"
-            tone="positive"
-            tooltip={TOOLTIPS.positives}
-            entries={board?.topPositives}
-            loading={loading}
-            emptyNote={emptyNote}
-            onOpenCompany={openCompany}
-            onOpenSentiments={openSentiments}
-          />
-          <Board
-            title="Top Negatives"
-            tone="negative"
-            tooltip={TOOLTIPS.negatives}
-            entries={board?.topNegatives}
-            loading={loading}
-            emptyNote={emptyNote}
-            onOpenCompany={openCompany}
-            onOpenSentiments={openSentiments}
-          />
-        </div>
+        {error ? (
+          // Inside the lock, not above it: for a reader who has not paid, Locked covers this and
+          // shows the offer instead. Anyone who sees this message is entitled to the boards and
+          // something really did go wrong.
+          <div className="page-error">
+            <p>{error}</p>
+            <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={retry}>Retry</button>
+          </div>
+        ) : (
+          <div className="ext-boards">
+            <Board
+              title="Top Positives"
+              tone="positive"
+              tooltip={TOOLTIPS.positives}
+              entries={board?.topPositives}
+              loading={loading}
+              emptyNote={emptyNote}
+              onOpenCompany={openCompany}
+              onOpenSentiments={openSentiments}
+            />
+            <Board
+              title="Top Negatives"
+              tone="negative"
+              tooltip={TOOLTIPS.negatives}
+              entries={board?.topNegatives}
+              loading={loading}
+              emptyNote={emptyNote}
+              onOpenCompany={openCompany}
+              onOpenSentiments={openSentiments}
+            />
+          </div>
+        )}
       </Locked>
 
       {board?.generatedAt && (
