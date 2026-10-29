@@ -2,14 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <!--
+      Two icon declarations on purpose. The .ico carries 16, 32 and 48 in one file and stays at
+      /favicon.ico, which browsers request by that path whatever the markup says, and which Google
+      expects to remain stable once it has crawled it. The PNG is offered to browsers that prefer
+      one; `sizes="any"` on the .ico stops them treating it as a lower-resolution fallback.
+    -->
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/favicon-32.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <!-- The navy the emblem sits on. Tints the browser chrome on Android and the iOS status bar. -->
+    <meta name="theme-color" content="#293054" />
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="Track Indian equities, company news and market sentiment in one watchlist."
     />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png" />
     <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
