@@ -61,6 +61,31 @@ public class Plan {
     @Column(name = "razorpay_plan_id", length = 100)
     private String razorpayPlanId;
 
+    /**
+     * What this plan grants: BASIC or ADVANCED (see {@code PlanTier}).
+     *
+     * Stored as a plain String, not an @Enumerated enum, on purpose: a row typed wrongly by hand
+     * would make Hibernate throw on every read of the plans table. Read it through
+     * PlanTier.fromName(), which turns anything unrecognised into FREE — the row grants nothing
+     * instead of taking the service down.
+     *
+     * Nullable so an older plans table still loads; a null tier also reads as FREE.
+     */
+    @Column(name = "tier", length = 20)
+    private String tier;
+
+    /**
+     * The price the Razorpay plan behind {@link #razorpayPlanId} actually charges.
+     *
+     * A Razorpay plan's amount cannot be edited, so changing price_paise here does nothing to the
+     * mandate Razorpay bills against: the row would advertise one price and the customer would be
+     * charged another. Recording what was sent lets startup notice the difference and create a new
+     * Razorpay plan for new subscribers, while everyone already subscribed keeps the price they
+     * agreed to.
+     */
+    @Column(name = "razorpay_plan_price_paise")
+    private Integer razorpayPlanPricePaise;
+
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
@@ -98,6 +123,10 @@ public class Plan {
     public void setDurationDays(int durationDays) { this.durationDays = durationDays; }
     public String getRazorpayPlanId() { return razorpayPlanId; }
     public void setRazorpayPlanId(String razorpayPlanId) { this.razorpayPlanId = razorpayPlanId; }
+    public String getTier() { return tier; }
+    public void setTier(String tier) { this.tier = tier; }
+    public Integer getRazorpayPlanPricePaise() { return razorpayPlanPricePaise; }
+    public void setRazorpayPlanPricePaise(Integer razorpayPlanPricePaise) { this.razorpayPlanPricePaise = razorpayPlanPricePaise; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public LocalDateTime getCreatedAt() { return createdAt; }

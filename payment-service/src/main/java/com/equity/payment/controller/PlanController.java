@@ -61,7 +61,8 @@ public class PlanController {
                 plan.getDescription(),
                 plan.getPricePaise(),
                 plan.getBillingCycle().name(),
-                plan.getDurationDays()
+                plan.getDurationDays(),
+                plan.getTier()
         );
     }
 }
