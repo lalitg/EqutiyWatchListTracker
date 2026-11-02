@@ -7,6 +7,8 @@ import { fetchSectorTabs } from '../services/sectorService';
 import { fetchIndices, fetchGlobalIndices, fetchMergedNews } from '../services/indicesService';
 import { DOMESTIC_MACRO_KEYWORDS } from '../services/marketService';
 import { SECTOR_DESCRIPTIONS, INDEX_DESCRIPTIONS } from '../constants/marketDescriptions';
+import { LockedNote } from '../components/shared/Locked';
+import { useEntitlements, FEATURES, LIMITS } from '../context/EntitlementsContext';
 
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
 const NEWS_PAGE_SIZE  = 20;
@@ -27,6 +29,15 @@ const SECTOR_INDEX_NAME = {
 
 const DomesticMarketPage = () => {
   const navigate = useNavigate();
+  const { can, limit } = useEntitlements();
+
+  // Opening an index or a sector is a paid feature; the grids themselves are not, because the
+  // prices on them are the reason to come back to this page.
+  const canDrilldown = can(FEATURES.DOMESTIC_DRILLDOWN);
+
+  // -1 means no cap. A free reader gets the first few headlines - enough to see that the feed is
+  // real and current, which a locked empty box would not show.
+  const newsCap = limit(LIMITS.DOMESTIC_NEWS, -1);
   const {
     domestic, domesticLoading,
     fetchDomestic, refreshDomestic,
@@ -105,6 +116,22 @@ const DomesticMarketPage = () => {
     setRetryKey(k => k + 1);
   };
 
+  /**
+   * Where a card goes.
+   *
+   * A locked card leads to the pricing page rather than to a page that would only lock again. The
+   * card keeps its padlock, so the reader knows before clicking.
+   */
+  const openIndex = (idx) => navigate(canDrilldown
+    ? `/market/domestic/index/${encodeURIComponent(idx.indexKey)}`
+    : '/subscribe?feature=domesticDrilldown',
+    canDrilldown ? { state: { displayName: idx.displayName } } : undefined);
+
+  const openSector = (s) => navigate(canDrilldown
+    ? `/market/domestic/sector/${encodeURIComponent(s.displayName)}`
+    : '/subscribe?feature=domesticDrilldown',
+    canDrilldown ? { state: { newsKeyword: s.newsKeyword } } : undefined);
+
   const getLastUpdatedLabel = () => {
     if (!domestic?.fetchedAt) return null;
     const diffMin = Math.floor((Date.now() - domestic.fetchedAt) / 60000);
@@ -129,12 +156,12 @@ const DomesticMarketPage = () => {
                 key={idx.indexKey}
                 className="index-card"
                 data-tooltip={INDEX_DESCRIPTIONS[idx.displayName]}
-                onClick={() => navigate(
-                  `/market/domestic/index/${encodeURIComponent(idx.indexKey)}`,
-                  { state: { displayName: idx.displayName } }
-                )}
+                onClick={() => openIndex(idx)}
               >
-                <div className="index-card__name">{idx.displayName}</div>
+                <div className="index-card__name">
+                  {idx.displayName}
+                  {!canDrilldown && <span className="nf-nav-lock" aria-label="paid feature">&#128274;</span>}
+                </div>
                 <div className="index-card__count">{idx.companyCount} companies</div>
               </button>
             ))}
@@ -158,12 +185,12 @@ const DomesticMarketPage = () => {
                   key={s.displayName}
                   className="index-card"
                   data-tooltip={SECTOR_DESCRIPTIONS[s.displayName]}
-                  onClick={() => navigate(
-                    `/market/domestic/sector/${encodeURIComponent(s.displayName)}`,
-                    { state: { newsKeyword: s.newsKeyword } }
-                  )}
+                  onClick={() => openSector(s)}
                 >
-                  <div className="index-card__name">{s.displayName}</div>
+                  <div className="index-card__name">
+                    {s.displayName}
+                    {!canDrilldown && <span className="nf-nav-lock" aria-label="paid feature">&#128274;</span>}
+                  </div>
                   {price && (
                     <>
                       <div className="index-card__count">
@@ -203,8 +230,15 @@ const DomesticMarketPage = () => {
             {getLastUpdatedLabel() && (
               <p className="last-updated-label">{getLastUpdatedLabel()}</p>
             )}
-            <NewsList news={newsItems} />
-            {newsTotalPages > 1 && (
+            <NewsList news={newsCap >= 0 ? newsItems.slice(0, newsCap) : newsItems} />
+            {newsCap >= 0 && (
+              <LockedNote feature={FEATURES.DOMESTIC_DRILLDOWN}>
+                Showing {Math.min(newsCap, newsItems.length)} of the day&rsquo;s market news. The
+                full feed, and the companies behind every index and sector, come with the paid
+                plans.
+              </LockedNote>
+            )}
+            {newsCap < 0 && newsTotalPages > 1 && (
               <div className="pagination">
                 <button className="pagination-btn" disabled={newsPage === 0} onClick={() => setNewsPage(p => p - 1)}>
                   Prev

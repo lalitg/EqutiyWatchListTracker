@@ -99,6 +99,16 @@
   color: #667eea;
 }
 
+/* The same chip, rendered as a link once the plan's watchlist allowance is used up. Needs the
+   inline-flex and the reset because an <a> does not line up with a <button> on its own. */
+.wl-new-tab-btn--locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
 .wl-new-form {
   display: flex;
   align-items: center;

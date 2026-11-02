@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { fetchHolidays } from '../services/holidayService';
 import { getUpcomingHolidays, isWeekend } from '../utils/nseCalendar';
+import Locked from '../components/shared/Locked';
+import { FEATURES } from '../context/EntitlementsContext';
 import './NseCalendarPage.css';
 
 const MONTHS = [
@@ -85,6 +87,12 @@ const NseCalendarPage = () => {
       {error && <div className="page-error"><p>Could not load holiday data: {error}</p></div>}
 
       {!loading && !error && (
+        <Locked
+          feature={FEATURES.CALENDAR}
+          title="NSE holiday calendar"
+          note="Every NSE trading holiday for the year, the days left to trade, and what is coming
+                next. Included from the Basic plan upwards."
+        >
         <div className="cal-layout">
           <div className="cal-main">
             {selectedYear === thisYear && tradingDaysLeft !== null && (
@@ -153,6 +161,7 @@ const NseCalendarPage = () => {
             </div>
           </div>
         </div>
+        </Locked>
       )}
     </div>
   );

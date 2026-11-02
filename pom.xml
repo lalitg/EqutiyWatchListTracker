@@ -12,10 +12,15 @@
         and installs each artifact to ~/.m2 so the launcher can depend on them.
 
         Build order:
-          1. user-service      — no deps on the other two
-          2. auth-service      — depends on user-service at runtime (HTTP call)
-          3. watchlist-service — depends on both auth and user at runtime
-          4. main-api-service  — launcher; depends on the 3 plain JARs above
+          1. user-service      - no deps on the other three
+          2. auth-service      - depends on user-service at runtime (HTTP call)
+          3. watchlist-service - depends on auth, user and payment at runtime
+          4. payment-service   - plans, subscriptions, entitlements, Razorpay webhooks
+          5. main-api-service  - launcher; depends on the 4 plain JARs above
+
+        payment-service is a module rather than an external dependency so that a clean checkout
+        of this branch builds on its own. Resolving it from ~/.m2 worked on a developer machine
+        that had built it from its own branch, and failed everywhere else.
     -->
     <groupId>com.equity</groupId>
     <artifactId>equity-watchlist-main-api</artifactId>
@@ -27,6 +32,7 @@
         <module>user-service</module>
         <module>auth-service</module>
         <module>watchlist-service</module>
+        <module>payment-service</module>
         <module>main-api-service</module>
     </modules>
 

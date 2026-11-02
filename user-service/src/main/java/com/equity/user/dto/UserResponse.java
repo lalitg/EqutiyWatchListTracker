@@ -27,6 +27,7 @@ public class UserResponse {
     private String name;
     private String email;
     private String phoneNumber;
+    private boolean emailVerified;
     private UserType userType;
     private UserStatus status;
     private InvestmentYears investmentYears;
@@ -46,6 +47,7 @@ public class UserResponse {
         r.name             = user.getName();
         r.email            = user.getEmail();
         r.phoneNumber      = user.getPhoneNumber();
+        r.emailVerified    = user.isEmailVerified();
         r.userType         = user.getUserType();
         r.status           = user.getStatus();
         r.investmentYears  = user.getInvestmentYears();
@@ -63,6 +65,7 @@ public class UserResponse {
     public String getName() { return name; }
     public String getEmail() { return email; }
     public String getPhoneNumber() { return phoneNumber; }
+    public boolean isEmailVerified() { return emailVerified; }
     public UserType getUserType() { return userType; }
     public UserStatus getStatus() { return status; }
     public InvestmentYears getInvestmentYears() { return investmentYears; }

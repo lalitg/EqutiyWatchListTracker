@@ -20,6 +20,9 @@ public interface UserWatchlistRepository extends JpaRepository<UserWatchlist, Lo
     /** Checks if a user already has a watchlist with the given name. */
     boolean existsByUserIdAndName(Long userId, String name);
 
+    /** How many watchlists this user already has — checked against the plan's allowance. */
+    long countByUserId(Long userId);
+
     /** Returns the first watchlist for a user (used as default until auth is implemented). */
     Optional<UserWatchlist> findFirstByUserIdOrderByCreatedAtAsc(Long userId);
 }

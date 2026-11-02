@@ -7,8 +7,8 @@
 #    ./main-api-service/build.sh
 #
 #  What it does:
-#    1. Installs user-service, auth-service, watchlist-service as plain library
-#       JARs into the local Maven repository (~/.m2/).
+#    1. Installs user-service, auth-service, watchlist-service and payment-service
+#       as plain library JARs into the local Maven repository (~/.m2/).
 #       The <classifier>exec</classifier> in each service's pom.xml means:
 #         *-exec.jar  = runnable fat JAR  (standalone use)
 #         *.jar       = plain library JAR (installed, used by main-api-service)
@@ -20,6 +20,10 @@
 #  EC2 environment variables:
 #    DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD
 #    JWT_SECRET, INTERNAL_API_KEY
+#    RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET
+#    POLICY_CURRENT_VERSION  (must match POLICY_VERSION in
+#                             frontend/src/pages/legal/policyMeta.js; a mismatch refuses
+#                             every purchase with "please refresh the page")
 #    APP_LOG_DIR (e.g. /var/log/main-api-service)
 #    CORS_ALLOWED_ORIGINS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -35,7 +39,7 @@ echo "════════════════════════�
 
 # ── Step 1: Build React frontend ─────────────────────────────────────────────
 echo ""
-echo "▶ [1/5] Building React frontend..."
+echo "▶ [1/6] Building React frontend..."
 cd "$REPO_ROOT/frontend"
 npm ci --silent
 npm run build --silent
@@ -47,28 +51,38 @@ echo "  ✓ frontend built and copied to main-api-service/src/main/resources/sta
 
 # ── Step 2: Install user-service plain JAR ───────────────────────────────────
 echo ""
-echo "▶ [2/5] Installing user-service library JAR..."
+echo "▶ [2/6] Installing user-service library JAR..."
 cd "$REPO_ROOT/user-service"
 mvn install -DskipTests -q
 echo "  ✓ user-service installed"
 
 # ── Step 3: Install auth-service plain JAR ───────────────────────────────────
 echo ""
-echo "▶ [3/5] Installing auth-service library JAR..."
+echo "▶ [3/6] Installing auth-service library JAR..."
 cd "$REPO_ROOT/auth-service"
 mvn install -DskipTests -q
 echo "  ✓ auth-service installed"
 
 # ── Step 4: Install watchlist-service plain JAR ──────────────────────────────
 echo ""
-echo "▶ [4/5] Installing watchlist-service library JAR..."
+echo "▶ [4/6] Installing watchlist-service library JAR..."
 cd "$REPO_ROOT/watchlist-service"
 mvn install -DskipTests -q
 echo "  ✓ watchlist-service installed"
 
-# ── Step 5: Build main-api-service fat JAR ───────────────────────────────────
+# ── Step 5: Install payment-service plain JAR ────────────────────────────────
+# Plans, subscriptions, entitlements and the Razorpay webhooks. main-api-service depends on
+# it, so a checkout that skips this step packages fine on a machine that happens to have the
+# artifact cached, and fails on every other one.
 echo ""
-echo "▶ [5/5] Packaging main-api-service..."
+echo "▶ [5/6] Installing payment-service library JAR..."
+cd "$REPO_ROOT/payment-service"
+mvn install -DskipTests -q
+echo "  ✓ payment-service installed"
+
+# ── Step 6: Build main-api-service fat JAR ───────────────────────────────────
+echo ""
+echo "▶ [6/6] Packaging main-api-service..."
 cd "$REPO_ROOT/main-api-service"
 mvn clean package -DskipTests -q
 echo "  ✓ main-api-service packaged"

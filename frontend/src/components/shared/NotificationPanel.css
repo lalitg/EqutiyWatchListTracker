@@ -1,0 +1,194 @@
+/* ── Notification panel ─────────────────────────────────────────────────────
+   Anchored under the bell in the navbar rather than drawn as a full-height drawer: the list is
+   short, and a drawer would cover the page the reader is still using. */
+
+.nf-bell-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── The bell ─────────────────────────────────────────────────────────────── */
+.nf-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  color: #475569;
+  transition: background 0.15s ease;
+}
+
+.nf-bell:hover { background: rgba(102, 126, 234, 0.1); }
+.nf-bell:focus-visible { outline: 2px solid #667eea; outline-offset: 2px; }
+.nf-bell--active { background: rgba(102, 126, 234, 0.14); }
+
+/* The count, not a dot: "how many" is the whole question a reader asks of a bell. */
+.nf-badge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #dc2626;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Panel ────────────────────────────────────────────────────────────────── */
+.nf-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 370px;
+  max-width: calc(100vw - 32px);
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 34px rgba(15, 23, 42, 0.16);
+  z-index: 300;
+  overflow: hidden;
+}
+
+.nf-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.nf-panel-title { font-weight: 700; font-size: 13px; color: #1a1a2e; }
+
+.nf-panel-readall {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: #4338ca;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.nf-panel-readall:hover { text-decoration: underline; }
+
+.nf-panel-close {
+  border: none;
+  background: none;
+  color: #94a3b8;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.nf-panel-close:hover { color: #475569; }
+
+/* Caps the drop-down at roughly five rows; beyond that the list scrolls rather than the page. */
+.nf-panel-body { max-height: 400px; overflow-y: auto; }
+
+.nf-panel-empty,
+.nf-panel-error {
+  padding: 26px 18px;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #64748b;
+}
+.nf-panel-error { color: #b91c1c; }
+
+/* ── Rows ─────────────────────────────────────────────────────────────────── */
+.nf-item {
+  display: grid;
+  grid-template-columns: 1fr 22px;
+  gap: 8px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #f8fafc;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.nf-item:last-child { border-bottom: none; }
+.nf-item:hover { background: #f8faff; }
+.nf-item:focus-visible { outline: 2px solid #667eea; outline-offset: -2px; }
+
+/* Unread carries a tint and a left rule — two cues, because colour alone is a weak signal for
+   anyone who does not perceive it. */
+.nf-item--unread {
+  background: #eef2ff;
+  box-shadow: inset 3px 0 0 #4338ca;
+}
+.nf-item--unread:hover { background: #e7ebff; }
+
+.nf-item-top { display: flex; align-items: baseline; gap: 7px; }
+.nf-item-sym { font-size: 12.5px; font-weight: 700; color: #1a1a2e; }
+
+.nf-item-score {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.nf-item-score.up { color: #15803d; }
+.nf-item-score.down { color: #b91c1c; }
+
+.nf-item-headline {
+  margin-top: 3px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #334155;
+  /* Three lines is enough to judge a headline; more would push the next row off the panel. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nf-item-when { margin-top: 4px; font-size: 11px; color: #94a3b8; }
+
+.nf-item-x {
+  align-self: start;
+  border: none;
+  background: none;
+  color: #cbd5e1;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.nf-item-x:hover { color: #b91c1c; background: #fef2f2; }
+.nf-item-x:focus-visible { outline: 2px solid #667eea; outline-offset: 1px; }
+
+.nf-panel-foot {
+  padding: 10px 14px;
+  border-top: 1px solid #f1f5f9;
+  background: #fcfcfd;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #94a3b8;
+}
+
+/* On a phone the panel spans the viewport rather than hanging off the navbar's right edge. */
+@media (max-width: 640px) {
+  .nf-panel {
+    position: fixed;
+    top: 56px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+  }
+  .nf-panel-body { max-height: 60vh; }
+}

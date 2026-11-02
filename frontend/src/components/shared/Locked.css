@@ -1,0 +1,158 @@
+/* The paywall's three shapes. See Locked.js for what each one is for. */
+
+/* ── A locked section: real content behind glass ───────────────────────────── */
+.nf-locked {
+  position: relative;
+  /* One grid cell holding both layers. The cell is as tall as the taller of the two, so the lock
+     card can never be clipped by content that happens to be short - which is now the normal case,
+     because the server refuses the data behind a lock and there is little left to blur. */
+  display: grid;
+  /* Clips the blur. Without it the blurred edge bleeds over whatever sits beside the section. */
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.nf-locked-behind {
+  grid-area: 1 / 1;
+  /* Its own clip, now that the container no longer bounds it by height alone. */
+  overflow: hidden;
+  filter: blur(6px) saturate(0.7);
+  /* Enough to read the shape of a table, not enough to read a number out of it. */
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+  /* Keeps the blurred content from growing taller than the card that covers it; a long table would
+     otherwise leave metres of blur below the lock with nothing to explain it. */
+  max-height: 420px;
+}
+
+.nf-locked--compact .nf-locked-behind {
+  max-height: 220px;
+}
+
+.nf-locked--compact .nf-locked-card {
+  min-height: 190px;
+  padding: 22px 18px;
+}
+
+.nf-locked-card {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 28px 20px;
+  /* Floor, not ceiling: enough room for icon, heading, a two-line note and the button, so the
+     card reads the same whether there is a full table behind it or nothing at all. */
+  min-height: 230px;
+  /* Above the blurred layer explicitly, rather than relying on them being painted in DOM order. */
+  position: relative;
+  z-index: 1;
+  /* A wash rather than a solid panel, so the reader can still see there is something real
+     underneath — the point of a shop window. Heavy enough, though, that the card's own words stay
+     crisp: blurred text showing through the heading is what made this look out of focus. */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.80) 0%, rgba(255, 255, 255, 0.97) 45%);
+}
+
+.nf-locked-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.nf-locked-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.nf-locked-note {
+  margin: 0;
+  max-width: 460px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.nf-locked-cta {
+  margin-top: 4px;
+  padding: 9px 20px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
+}
+
+.nf-locked-cta:hover { opacity: 0.9; }
+
+/* ── A padlock in place of one value ──────────────────────────────────────── */
+.nf-lock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nf-lock-badge:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nf-lock-badge-label { letter-spacing: 0.01em; }
+
+/* ── The line that closes a shortened list ────────────────────────────────── */
+.nf-locked-inline {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #f8fafc;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.nf-locked-inline a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* ── Touch targets on phones ─────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* The call to action of every lock in the app - it measured 37px tall. */
+  .nf-locked-cta {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* The padlock pill stands in for a value inside a table cell, so it cannot grow to 44px without
+     wrecking the row it sits in; it gets a wider hit area instead. */
+  .nf-lock-badge {
+    padding: 8px 12px;
+    min-height: 34px;
+  }
+
+  /* The link that closes a shortened list. Inline by nature, so it gets its height from padding
+     and sits on its own line rather than trailing the sentence. */
+  .nf-locked-inline a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+  }
+}

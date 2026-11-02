@@ -1,7 +1,9 @@
 package com.equity.watchlist.service;
 
+import com.equity.watchlist.client.EntitlementClient;
 import com.equity.watchlist.client.GlobalWatchlistClient;
 import com.equity.watchlist.client.GlobalWatchlistClient.GlobalWatchlistEntry;
+import com.equity.watchlist.exception.EntitlementRequiredException;
 import com.equity.watchlist.dto.UserWatchlistRequest;
 import com.equity.watchlist.dto.UserWatchlistView;
 import com.equity.watchlist.dto.WatchlistRequest;
@@ -35,19 +37,71 @@ public class WatchlistService {
 
     private static final Logger logger = LogManager.getLogger(WatchlistService.class);
 
+    /**
+     * Limit keys, as payment-service names them.
+     *
+     * <p>The numbers behind them are not here on purpose: a plan change must take effect without
+     * touching this service.
+     */
+    private static final String L_WATCHLISTS = "watchlists";
+    private static final String L_COMPANIES  = "companiesPerWatchlist";
+
     private final WatchlistRepository watchlistRepository;
     private final UserWatchlistRepository userWatchlistRepository;
     private final CompanyRepository companyRepository;
     private final GlobalWatchlistClient globalWatchlistClient;
+    private final EntitlementClient entitlementClient;
 
     public WatchlistService(WatchlistRepository watchlistRepository,
                             UserWatchlistRepository userWatchlistRepository,
                             CompanyRepository companyRepository,
-                            GlobalWatchlistClient globalWatchlistClient) {
+                            GlobalWatchlistClient globalWatchlistClient,
+                            EntitlementClient entitlementClient) {
         this.watchlistRepository     = watchlistRepository;
         this.userWatchlistRepository = userWatchlistRepository;
         this.companyRepository       = companyRepository;
         this.globalWatchlistClient   = globalWatchlistClient;
+        this.entitlementClient       = entitlementClient;
+    }
+
+    // -------------------------------------------------------------------------
+    // Plan limits
+    //
+    // Enforced on the way IN only. A reader who drops from Advanced to Free keeps the twenty-five
+    // companies they already had and simply cannot add a twenty-sixth: deleting someone's data
+    // because they stopped paying is not a limit, it is a punishment, and they may well come back.
+    // -------------------------------------------------------------------------
+
+    /** @throws EntitlementRequiredException if this user already has as many watchlists as their plan allows */
+    private void assertCanCreateWatchlist(Long userId) {
+        int allowed = entitlementClient.forUser(userId).limit(L_WATCHLISTS, -1);
+        if (allowed < 0) return;                       // no cap, or billing unreachable
+
+        long existing = userWatchlistRepository.countByUserId(userId);
+        if (existing >= allowed) {
+            throw new EntitlementRequiredException(
+                    "Your plan includes " + allowed + (allowed == 1 ? " watchlist" : " watchlists")
+                    + ". Upgrade to create more.",
+                    "BASIC", L_WATCHLISTS);
+        }
+    }
+
+    /**
+     * @param adding how many companies this operation would add — one for a single add, the whole
+     *               file for a CSV import, so an import cannot step over the line in one go
+     * @throws EntitlementRequiredException if the watchlist would end up over the plan's allowance
+     */
+    private void assertCanAddCompanies(Long userId, Long userWatchlistId, int adding) {
+        int allowed = entitlementClient.forUser(userId).limit(L_COMPANIES, -1);
+        if (allowed < 0) return;
+
+        long existing = watchlistRepository.countByUserWatchlistId(userWatchlistId);
+        if (existing + adding > allowed) {
+            throw new EntitlementRequiredException(
+                    "This watchlist holds the " + allowed + " companies your plan allows. "
+                    + "Remove one, or upgrade for more room.",
+                    "BASIC", L_COMPANIES);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -69,6 +123,7 @@ public class WatchlistService {
         if (userWatchlistRepository.existsByUserIdAndName(userId, name)) {
             throw new IllegalArgumentException("A watchlist named '" + name + "' already exists");
         }
+        assertCanCreateWatchlist(userId);
         UserWatchlist entity = new UserWatchlist();
         entity.setUserId(userId);
         entity.setName(name);
@@ -131,6 +186,7 @@ public class WatchlistService {
         if (watchlistRepository.findByUserWatchlistIdAndCompanyCode(userWatchlistId, code).isPresent()) {
             throw new IllegalArgumentException("Company '" + code + "' is already in this watchlist");
         }
+        assertCanAddCompanies(userId, userWatchlistId, 1);
 
         GlobalWatchlistEntry entry = globalWatchlistClient.getEntry(code);
         if (entry == null) {
@@ -231,6 +287,12 @@ public class WatchlistService {
      */
     public Map<String, Object> importCompanies(Long userId, List<String> codes, String mode, Long userWatchlistId) {
         Long resolvedId = resolveWatchlistId(userId, userWatchlistId);
+
+        // Checked once for the whole file rather than per row. Importing forty companies into a
+        // five-slot plan should be refused outright, not half-applied and then stopped - a partial
+        // import leaves the reader guessing which half arrived.
+        long nonBlank = codes.stream().filter(c -> c != null && !c.isBlank()).count();
+        assertCanAddCompanies(userId, resolvedId, (int) nonBlank);
         boolean byIsin = "ISIN".equalsIgnoreCase(mode);
         int imported = 0, skipped = 0, failed = 0;
         List<String> failedCodes = new ArrayList<>();

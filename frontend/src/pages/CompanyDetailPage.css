@@ -228,7 +228,46 @@
   .cdp-hero { padding: 20px 18px 18px; }
   .cdp-symbol { font-size: 21px; }
   .cdp-ltp { font-size: 32px; }
-  .cdp-fund-tabs { overflow-x: auto; }
+}
+
+/* ── Phones ─────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Five tabs do not fit, so they scroll - from 768 rather than 480, because they already stop
+     fitting on a small tablet. Each keeps its full width and its label on one line; without
+     flex-shrink: 0 they squeeze until "Latest News" breaks across two rows. */
+  .cdp-fund-tabs {
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cdp-fund-tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    scroll-snap-align: start;
+    min-height: 44px;
+  }
+
+  /* The scrollbar is the only hint that there is more to the right, and on a phone it is
+     invisible until you drag. A thin one is always visible instead. */
+  .cdp-fund-tabs::-webkit-scrollbar { height: 3px; }
+  .cdp-fund-tabs::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.35);
+    border-radius: 3px;
+  }
+}
+
+@media (max-width: 600px) {
+  /* "← Back" was 51x16 - a link-sized target for the control people reach for most. */
+  .cdp-back-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .cdp-watchlist-btn { min-height: 44px; }
+
+  .cdp-alert-btn { min-height: 44px; }
 }
 
 .cdp-stat {
@@ -317,6 +356,7 @@
 
 .cdp-fund-table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 4px 0 0;
 }
 
@@ -605,4 +645,14 @@
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #71717a;
+}
+
+/* The fundamentals tables are six columns wide and scroll inside their box on a phone; the thin
+   scrollbar is what tells the reader there is more to the right. */
+@media (max-width: 768px) {
+  .cdp-fund-table-wrap::-webkit-scrollbar { height: 3px; }
+  .cdp-fund-table-wrap::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.35);
+    border-radius: 3px;
+  }
 }

@@ -1,62 +1,66 @@
+import { apiFetch } from './apiClient';
+
 const NSE_CODE_BASE = '/api/nse-code';
 const GLOBAL_BASE   = '/api/global-watchlist';
 const FUND_BASE     = '/api/fundamentals';
 
 export async function fetchGlobalIndices() {
-  const res = await fetch(`${GLOBAL_BASE}/global-indices`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return apiFetch(`${GLOBAL_BASE}/global-indices`);
 }
 
 export async function fetchIndices() {
-  const res = await fetch(`${NSE_CODE_BASE}/indices`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json(); // [{ indexKey, displayName, companyCount }, ...]
+  // [{ indexKey, displayName, companyCount }, ...]
+  return apiFetch(`${NSE_CODE_BASE}/indices`);
 }
 
+/**
+ * The companies inside one index.
+ *
+ * Part of the Basic plan — the index grid itself is free, the drill-down is not — so this call
+ * has to carry the reader's token.
+ */
 export async function fetchIndexCompanies(indexKey) {
-  const res = await fetch(`${NSE_CODE_BASE}/indices/${encodeURIComponent(indexKey)}/companies`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json(); // [{ symbol, companyName, isin, industry }, ...]
+  // [{ symbol, companyName, isin, industry }, ...]
+  return apiFetch(`${NSE_CODE_BASE}/indices/${encodeURIComponent(indexKey)}/companies`);
 }
 
 export async function fetchCompanyIndices(symbol) {
-  const res = await fetch(`${NSE_CODE_BASE}/indices/company/${encodeURIComponent(symbol)}`);
-  if (!res.ok) return [];
-  return res.json(); // [{ indexKey, displayName }, ...]
+  try {
+    // [{ indexKey, displayName }, ...]
+    return await apiFetch(`${NSE_CODE_BASE}/indices/company/${encodeURIComponent(symbol)}`);
+  } catch {
+    // The chips under a company name are decoration; a company page without them is still a
+    // company page.
+    return [];
+  }
 }
 
 export async function fetchCompanyDetail(symbol) {
-  const res = await fetch(`${GLOBAL_BASE}/company/${encodeURIComponent(symbol)}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return apiFetch(`${GLOBAL_BASE}/company/${encodeURIComponent(symbol)}`);
 }
 
 export async function fetchQuarterlyResults(symbol) {
-  const res = await fetch(`${FUND_BASE}/${encodeURIComponent(symbol)}/quarterly-results`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return apiFetch(`${FUND_BASE}/${encodeURIComponent(symbol)}/quarterly-results`);
 }
 
 export async function fetchBalanceSheet(symbol) {
-  const res = await fetch(`${FUND_BASE}/${encodeURIComponent(symbol)}/balance-sheet`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return apiFetch(`${FUND_BASE}/${encodeURIComponent(symbol)}/balance-sheet`);
 }
 
 export async function fetchPeSnapshot(symbol) {
-  const res = await fetch(`${FUND_BASE}/${encodeURIComponent(symbol)}/pe`);
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    return await apiFetch(`${FUND_BASE}/${encodeURIComponent(symbol)}/pe`);
+  } catch {
+    // No P/E on record is the common case, not a fault.
+    return null;
+  }
 }
 
 const NEWS_BASE = '/api/news';
 
 export async function fetchMergedNews(keys, page = 0, size = 20) {
   const keysParam = Array.isArray(keys) ? keys.join(',') : keys;
-  const res = await fetch(
+  return apiFetch(
     `${NEWS_BASE}/merged?keys=${encodeURIComponent(keysParam)}&page=${page}&size=${size}`
   );
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
 }

@@ -144,6 +144,43 @@
   background: rgba(255, 255, 255, 0.25);
 }
 
+/* The tier chip. Free reads "Upgrade", because on the free plan the useful thing to say is not
+   which plan you are on but that there is another one. */
+.navbar-tier {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.navbar-tier:hover { background: rgba(255, 255, 255, 0.24); }
+
+/* Gold for Advanced, so the chip earns its place rather than just repeating a word. */
+.navbar-tier--advanced {
+  border-color: rgba(250, 204, 21, 0.75);
+  background: rgba(250, 204, 21, 0.22);
+}
+
+.navbar-tier--basic {
+  border-color: rgba(125, 211, 252, 0.7);
+  background: rgba(125, 211, 252, 0.2);
+}
+
+/* A padlock after a nav label. Kept here rather than with the rest of the paywall styles because
+   the navbar is its only user, and the navbar always renders - the lock must not depend on some
+   other component having been mounted first to pull in its stylesheet. */
+.nf-nav-lock {
+  margin-left: 5px;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
 /* ── Company Search Bar ──────────────────────────────────────────── */
 .csb-container {
   position: relative;
@@ -285,5 +322,16 @@
 
   .navbar-logo {
     font-size: 16px;
+    /* The way home from anywhere: given a full-height hit area rather than the 21px the text
+       happens to occupy. */
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* The menu button - everything else in the navbar is behind it on a phone. */
+  .navbar-toggle {
+    width: 44px;
+    height: 44px;
   }
 }

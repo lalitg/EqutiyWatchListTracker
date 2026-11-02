@@ -1,0 +1,510 @@
+/* The pricing page. Three cards, then the long comparison for readers who want the detail. */
+
+.sub-page { padding-bottom: 48px; }
+
+.sub-header { margin-bottom: 18px; }
+
+.sub-subtitle {
+  margin: 6px 0 0;
+  max-width: 620px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* The line that remembers which padlock sent the reader here. */
+.sub-wanted {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: #eef2ff;
+  color: var(--color-text);
+  font-size: 13.5px;
+}
+
+.sub-current-line {
+  margin: 0 0 16px;
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+.sub-cards {
+  display: grid;
+  /* auto-fit rather than three fixed columns: the same rule gives three cards on a laptop and one
+     per row on a phone, with no breakpoint to keep in step with the card count. */
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  margin-bottom: 36px;
+}
+
+.sub-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 22px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.sub-card--suggested {
+  border-color: var(--color-primary);
+  box-shadow: 0 12px 36px rgba(102, 126, 234, 0.22);
+}
+
+.sub-card--current { border-color: var(--color-success); }
+
+.sub-card-flag {
+  position: absolute;
+  top: -11px;
+  left: 22px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.sub-card-flag--current {
+  background: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-light) 100%);
+}
+
+.sub-card-name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sub-card-price {
+  margin: 8px 0 2px;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.sub-card-period {
+  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.sub-card-desc {
+  margin: 6px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sub-card-list {
+  margin: 16px 0 20px;
+  padding: 0;
+  list-style: none;
+  /* Pushes the button to the bottom so three cards of different length still line up. */
+  flex: 1;
+}
+
+.sub-card-list li {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--color-text);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.sub-card-list li span { color: var(--color-success); font-weight: 700; }
+
+.sub-card-cta {
+  display: block;
+  width: 100%;
+  padding: 11px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.sub-card-cta:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.sub-card-cta--muted {
+  background: #f1f5f9;
+  color: var(--color-text-secondary);
+  cursor: default;
+}
+
+/* ── Comparison table ────────────────────────────────────────────────────── */
+.sub-compare-title {
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sub-compare-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+}
+
+.sub-compare {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.sub-compare th,
+.sub-compare td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+  color: var(--color-text);
+}
+
+.sub-compare thead th {
+  background: #f8fafc;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-secondary);
+}
+
+.sub-compare-label { text-align: left; }
+
+.sub-compare tbody tr:last-child td { border-bottom: none; }
+
+.sub-col-suggested { background: #f5f7ff; }
+
+.sub-row-wanted { background: #eef2ff; }
+
+.sub-row-wanted .sub-compare-label { font-weight: 700; }
+
+.sub-yes { color: var(--color-success); font-weight: 700; }
+.sub-no  { color: var(--color-text-muted); }
+
+.sub-footnote {
+  margin-top: 20px;
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.sub-footnote a { color: var(--color-primary); font-weight: 600; }
+
+/* ── Phones ─────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .sub-card-cta { min-height: 44px; }
+
+  /* Four columns of prose in 390px: the label column gives way so the ticks stay readable, and
+     the table scrolls inside its own box rather than widening the page. */
+  .sub-compare { font-size: 12.5px; }
+
+  .sub-compare th,
+  .sub-compare td { padding: 10px 8px; }
+
+  .sub-compare-label { min-width: 190px; }
+}
+
+/* ── Payment states ───────────────────────────────────────────────────────── */
+
+/* Said above the cards, where the reader is looking after the window closes. */
+.sub-pay-error {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* What replaces the price list once a payment is confirmed. */
+.sub-done {
+  max-width: 540px;
+  margin: 48px auto;
+  padding: 36px 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.sub-done-tick {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-light) 100%);
+  color: #fff;
+  font-size: 28px;
+  line-height: 56px;
+  font-weight: 700;
+}
+
+.sub-done-note {
+  margin: 10px 0 22px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.sub-done-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  padding: 11px 24px;
+  text-decoration: none;
+}
+
+/* ── The reader's own plan ─────────────────────────────────────────────────────
+   Above the cards on purpose: cancelling and downgrading are the same decision, so the cheaper
+   plan stays in view at the moment somebody is deciding to leave. */
+.sub-plan-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 20px;
+  padding: 16px 20px;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-success);
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-surface, #fff);
+}
+
+/* Amber, never red: a cancelled plan is a choice the reader made, not a fault. */
+.sub-plan-panel--ending {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.sub-plan-main { min-width: 0; }
+
+.sub-plan-heading {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.sub-plan-name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sub-plan-price {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.sub-plan-status {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--color-text-secondary);
+}
+
+.sub-plan-status--ending { color: #92400e; }
+
+.sub-plan-actions { flex-shrink: 0; }
+
+.sub-plan-resume { width: auto; padding: 9px 18px; }
+
+/* Quiet, but a real target: findable in a glance without competing with "Get Advanced". */
+.sub-plan-cancel {
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.sub-plan-cancel:hover {
+  border-color: var(--color-border);
+  background: #fef2f2;
+  color: var(--color-danger, #dc2626);
+  text-decoration: none;
+}
+
+.sub-card-flag--ending {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+/* ── The cancellation dialog ──────────────────────────────────────────────── */
+.sub-cancel-lead {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-text);
+}
+
+.sub-cancel-terms {
+  margin: 0 0 16px;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+}
+
+.sub-cancel-losing {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: #f8fafc;
+}
+
+.sub-cancel-losing h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.sub-cancel-losing ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--color-text);
+}
+
+.sub-cancel-limits {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.sub-cancel-error {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.sub-cancel-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.sub-cancel-buttons button {
+  flex: 1;
+  padding: 11px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sub-cancel-buttons button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Staying is the safer thing to click by accident, so it gets the solid button. */
+.sub-cancel-keep {
+  border: none;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+}
+
+.sub-cancel-go {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-danger, #dc2626);
+}
+
+.sub-cancel-go:hover:not(:disabled) {
+  border-color: var(--color-danger, #dc2626);
+  background: #fef2f2;
+}
+
+/* On a phone the panel stacks, and the action goes full width under the detail. */
+@media (max-width: 600px) {
+  .sub-plan-panel {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .sub-plan-actions { width: 100%; }
+
+  /* 44px, the figure the rest of this stylesheet already uses for anything a finger has to hit.
+     The quiet styling of the cancel link is about visual weight, not about being a smaller
+     target - it was 33px tall here before, which is a miss waiting to happen. */
+  .sub-plan-resume,
+  .sub-plan-cancel {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  /* Reversed, so "Keep my plan" falls under the thumb and the destructive one is the reach. */
+  .sub-cancel-buttons { flex-direction: column-reverse; }
+  .sub-cancel-buttons button { min-height: 44px; }
+}
+
+/* ── Policy consent ───────────────────────────────────────────────────────────
+   Above the cards, because the condition belongs beside the buttons it governs. */
+.sub-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface, #fff);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.sub-consent input {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  margin: 1px 0 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.sub-consent a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .sub-consent {
+    /* A taller target for the row as a whole: the label is clickable, not just the box. */
+    padding: 14px;
+    font-size: 13px;
+  }
+
+  .sub-consent input { width: 20px; height: 20px; }
+}

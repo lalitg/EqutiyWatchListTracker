@@ -68,6 +68,19 @@
 			</exclusions>
 		</dependency>
 
+		<!-- Mail - SES SMTP in production; switched off locally via mail.enabled=false,
+		     which logs the message instead of sending it. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-logging</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
 		<!-- Log4j2 — replaces Logback; configured via log4j2.xml -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
