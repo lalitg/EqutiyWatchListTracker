@@ -88,6 +88,22 @@ public class Payment {
     @Column(name = "failure_reason", length = 255)
     private String failureReason;
 
+    /**
+     * The policy version the buyer accepted at checkout, and when.
+     *
+     * <p>Kept on the payment rather than in a table of its own because this row already is the
+     * transaction record: consent is bound to the money, with no join to keep in step. Null on a
+     * RENEWAL, where the consent given for the first payment governs the whole subscription.
+     *
+     * <p>Recording the version matters as much as recording the fact. Without it we could show
+     * that somebody consented but not to which wording, which is worth very little in a dispute.
+     */
+    @Column(name = "accepted_policy_version", length = 20)
+    private String acceptedPolicyVersion;
+
+    @Column(name = "consented_at")
+    private LocalDateTime consentedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -132,6 +148,10 @@ public class Payment {
     public void setRazorpayPaymentId(String razorpayPaymentId) { this.razorpayPaymentId = razorpayPaymentId; }
     public String getRazorpaySignature() { return razorpaySignature; }
     public void setRazorpaySignature(String razorpaySignature) { this.razorpaySignature = razorpaySignature; }
+    public String getAcceptedPolicyVersion() { return acceptedPolicyVersion; }
+    public void setAcceptedPolicyVersion(String acceptedPolicyVersion) { this.acceptedPolicyVersion = acceptedPolicyVersion; }
+    public LocalDateTime getConsentedAt() { return consentedAt; }
+    public void setConsentedAt(LocalDateTime consentedAt) { this.consentedAt = consentedAt; }
     public String getFailureReason() { return failureReason; }
     public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
     public LocalDateTime getCreatedAt() { return createdAt; }

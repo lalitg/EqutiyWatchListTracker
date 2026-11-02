@@ -73,6 +73,15 @@ public class SubscriptionService {
      */
     private final int expiryGraceDays;
 
+    /**
+     * The policy version the browser is expected to send.
+     *
+     * <p>Deploy coupling is deliberate: when the policy text changes, this and POLICY_VERSION in
+     * the frontend move together. A purchase carrying an unrecognised version is refused rather
+     * than recorded, because a consent record we cannot map back to actual wording proves nothing.
+     */
+    private final String currentPolicyVersion;
+
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentRepository      paymentRepository;
     private final PlanService            planService;
@@ -86,7 +95,8 @@ public class SubscriptionService {
                                RazorpayClientWrapper razorpayClient,
                                @Value("${razorpay.subscription.mandate-years:10}") int mandateYears,
                                @Value("${subscription.attempt.reuse-minutes:15}") int attemptReuseMinutes,
-                               @Value("${subscription.expiry.grace-days:3}") int expiryGraceDays) {
+                               @Value("${subscription.expiry.grace-days:3}") int expiryGraceDays,
+                               @Value("${policy.current-version:}") String currentPolicyVersion) {
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository      = paymentRepository;
         this.planService            = planService;
@@ -95,6 +105,7 @@ public class SubscriptionService {
         this.mandateYears           = mandateYears;
         this.attemptReuseMinutes    = attemptReuseMinutes;
         this.expiryGraceDays        = expiryGraceDays;
+        this.currentPolicyVersion   = currentPolicyVersion;
     }
 
     /**
@@ -126,7 +137,27 @@ public class SubscriptionService {
      * below therefore stands on its own, which is also the order they need to happen in.
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public CreateSubscriptionResponse createSubscription(Long userId, Long planId, String couponCode) {
+    public CreateSubscriptionResponse createSubscription(Long userId, Long planId, String couponCode,
+                                                        String acceptedPolicyVersion) {
+        // Consent is checked before anything else happens, and before Razorpay is contacted: a
+        // purchase nobody agreed to should not reach the payment provider at all.
+        //
+        // The browser disables the button until the box is ticked, but a tick box enforced only
+        // there is decoration - this endpoint can be called directly. Refusing here is what makes
+        // the record on the payment row mean something.
+        if (acceptedPolicyVersion == null || acceptedPolicyVersion.isBlank()) {
+            throw new SubscriptionException(
+                    "Please accept the terms before subscribing.");
+        }
+        if (!currentPolicyVersion.isBlank() && !currentPolicyVersion.equals(acceptedPolicyVersion)) {
+            // Almost always a page left open across a deployment. Saying so is more useful than
+            // naming versions the reader has no way to act on.
+            logger.warn("Rejected a purchase for userId={} carrying policy version {} - current is {}",
+                        userId, acceptedPolicyVersion, currentPolicyVersion);
+            throw new SubscriptionException(
+                    "Our terms have been updated. Please refresh the page and try again.");
+        }
+
         Plan plan = planService.getPlanById(planId);
 
         if (plan.getRazorpayPlanId() == null) {
@@ -205,6 +236,8 @@ public class SubscriptionService {
         payment.setFinalAmountPaise(plan.getPricePaise());
         payment.setStatus(PaymentStatus.CREATED);
         payment.setRazorpaySubscriptionId(rzpSubId);
+        payment.setAcceptedPolicyVersion(acceptedPolicyVersion);
+        payment.setConsentedAt(LocalDateTime.now());
 
         try {
             paymentRepository.saveAndFlush(payment);

@@ -72,10 +72,19 @@ class SubscriptionServiceTest {
 
     private Plan plan;
 
+    /**
+     * The policy version the service is configured with in these tests.
+     *
+     * <p>An arbitrary fixture, deliberately not the live value: these tests cover the mechanism
+     * -- that a matching version is accepted and anything else refused -- so tying them to
+     * whatever is in production today would mean editing them on every policy change for no gain.
+     */
+    private static final String POLICY = "2026-10-31";
+
     @BeforeEach
     void setUp() {
         service = new SubscriptionService(subscriptionRepository, paymentRepository, planService,
-                                          couponService, razorpayClient, 10, 15, 3);
+                                          couponService, razorpayClient, 10, 15, 3, POLICY);
 
         plan = new Plan();
         plan.setName("ADVANCED_MONTHLY");
@@ -144,7 +153,7 @@ class SubscriptionServiceTest {
             Subscription existing = activeSubscription("sub_OLD", end);
             when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.of(existing));
 
-            service.createSubscription(USER, PLAN_ID, null);
+            service.createSubscription(USER, PLAN_ID, null, POLICY);
 
             verify(subscriptionRepository, never()).save(any(Subscription.class));
             assertEquals(SubscriptionStatus.ACTIVE, existing.getStatus());
@@ -157,7 +166,7 @@ class SubscriptionServiceTest {
         void stampsTheAttempt() {
             when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.empty());
 
-            CreateSubscriptionResponse response = service.createSubscription(USER, PLAN_ID, null);
+            CreateSubscriptionResponse response = service.createSubscription(USER, PLAN_ID, null, POLICY);
 
             // saveAndFlush, because the insert has to reach the database before the next statement:
             // see the "one open purchase" index.
@@ -178,7 +187,7 @@ class SubscriptionServiceTest {
                     USER, PaymentStatus.CREATED, PaymentType.FIRST_PAYMENT)).thenReturn(List.of(abandoned));
             when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.empty());
 
-            service.createSubscription(USER, PLAN_ID, null);
+            service.createSubscription(USER, PLAN_ID, null, POLICY);
 
             verify(razorpayClient).cancelSubscription("sub_ABANDONED", true);
             assertEquals(PaymentStatus.FAILED, abandoned.getStatus());
@@ -192,7 +201,7 @@ class SubscriptionServiceTest {
             when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.empty());
 
             assertThrows(SubscriptionException.class,
-                         () -> service.createSubscription(USER, PLAN_ID, "LAUNCH50"));
+                         () -> service.createSubscription(USER, PLAN_ID, "LAUNCH50", POLICY));
             verify(razorpayClient, never()).createSubscription(anyString(), anyInt());
         }
 
@@ -204,7 +213,7 @@ class SubscriptionServiceTest {
             when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.of(existing));
 
             assertThrows(SubscriptionException.class,
-                         () -> service.createSubscription(USER, PLAN_ID, null));
+                         () -> service.createSubscription(USER, PLAN_ID, null, POLICY));
         }
 
         @Test
@@ -216,7 +225,7 @@ class SubscriptionServiceTest {
             stale.setPlanId(PLAN_ID);
             when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.of(stale));
 
-            assertNotNull(service.createSubscription(USER, PLAN_ID, null));
+            assertNotNull(service.createSubscription(USER, PLAN_ID, null, POLICY));
         }
 
         @Test
@@ -224,7 +233,7 @@ class SubscriptionServiceTest {
         void authorisesEnoughCycles() {
             when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.empty());
 
-            service.createSubscription(USER, PLAN_ID, null);
+            service.createSubscription(USER, PLAN_ID, null, POLICY);
 
             // Razorpay refuses total_count = 0; ten years of monthly charges stands in for
             // "until they cancel".
@@ -369,7 +378,7 @@ class SubscriptionServiceTest {
                     USER, PaymentStatus.CREATED, PaymentType.FIRST_PAYMENT)).thenReturn(Optional.of(open));
             when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.empty());
 
-            CreateSubscriptionResponse response = service.createSubscription(USER, PLAN_ID, null);
+            CreateSubscriptionResponse response = service.createSubscription(USER, PLAN_ID, null, POLICY);
 
             assertEquals("sub_OPEN", response.getRazorpaySubscriptionId());
             verify(razorpayClient, never()).createSubscription(anyString(), anyInt());
@@ -387,7 +396,7 @@ class SubscriptionServiceTest {
                     USER, PaymentStatus.CREATED, PaymentType.FIRST_PAYMENT)).thenReturn(List.of(stale));
             when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.empty());
 
-            CreateSubscriptionResponse response = service.createSubscription(USER, PLAN_ID, null);
+            CreateSubscriptionResponse response = service.createSubscription(USER, PLAN_ID, null, POLICY);
 
             assertEquals(RZP_SUB, response.getRazorpaySubscriptionId());
             verify(razorpayClient).cancelSubscription("sub_STALE", true);
@@ -403,7 +412,7 @@ class SubscriptionServiceTest {
                     USER, PaymentStatus.CREATED, PaymentType.FIRST_PAYMENT)).thenReturn(List.of(otherPlan));
             when(subscriptionRepository.findByUserId(USER)).thenReturn(Optional.empty());
 
-            CreateSubscriptionResponse response = service.createSubscription(USER, PLAN_ID, null);
+            CreateSubscriptionResponse response = service.createSubscription(USER, PLAN_ID, null, POLICY);
 
             assertEquals(RZP_SUB, response.getRazorpaySubscriptionId());
             verify(razorpayClient).cancelSubscription("sub_BASIC", true);
@@ -423,7 +432,7 @@ class SubscriptionServiceTest {
             when(paymentRepository.saveAndFlush(any(Payment.class)))
                     .thenThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate key"));
 
-            CreateSubscriptionResponse response = service.createSubscription(USER, PLAN_ID, null);
+            CreateSubscriptionResponse response = service.createSubscription(USER, PLAN_ID, null, POLICY);
 
             assertEquals("sub_WINNER", response.getRazorpaySubscriptionId());
             verify(razorpayClient).cancelSubscription(RZP_SUB, true);
@@ -467,6 +476,60 @@ class SubscriptionServiceTest {
             assertTrue(cutoff.getValue().isBefore(LocalDateTime.now().minusDays(2)),
                        "the cutoff must sit a grace period in the past");
             assertTrue(cutoff.getValue().isAfter(LocalDateTime.now().minusDays(4)));
+        }
+    }
+
+    // ─── consent at checkout ─────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Policy consent")
+    class Consent {
+
+        @Test
+        @DisplayName("refuses a purchase that carries no accepted policy version")
+        void refusesWithoutConsent() {
+            // The browser disables the button until the box is ticked, but this endpoint can be
+            // called directly. If that were accepted, the tick box would be decoration.
+            assertThrows(SubscriptionException.class,
+                         () -> service.createSubscription(USER, PLAN_ID, null, null));
+            assertThrows(SubscriptionException.class,
+                         () -> service.createSubscription(USER, PLAN_ID, null, "   "));
+        }
+
+        @Test
+        @DisplayName("does not reach Razorpay when consent is missing")
+        void noMandateWithoutConsent() {
+            // Checked before the plan is even loaded: a purchase nobody agreed to should not
+            // create a mandate that then has to be cleaned up.
+            assertThrows(SubscriptionException.class,
+                         () -> service.createSubscription(USER, PLAN_ID, null, null));
+            verify(razorpayClient, never()).createSubscription(anyString(), anyInt());
+        }
+
+        @Test
+        @DisplayName("refuses a version the server does not recognise")
+        void refusesAStaleVersion() {
+            // A page left open across a deployment. Recording a version we cannot map back to
+            // actual wording would be worse than refusing.
+            assertThrows(SubscriptionException.class,
+                         () -> service.createSubscription(USER, PLAN_ID, null, "1999-01-01"));
+            verify(razorpayClient, never()).createSubscription(anyString(), anyInt());
+        }
+
+        @Test
+        @DisplayName("records the accepted version and the moment it was given")
+        void recordsConsent() {
+            LocalDateTime before = LocalDateTime.now().minusSeconds(1);
+
+            service.createSubscription(USER, PLAN_ID, null, POLICY);
+
+            ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
+            verify(paymentRepository).saveAndFlush(captor.capture());
+            Payment saved = captor.getValue();
+
+            assertEquals(POLICY, saved.getAcceptedPolicyVersion());
+            assertNotNull(saved.getConsentedAt(), "the moment of consent must be recorded");
+            assertTrue(saved.getConsentedAt().isAfter(before));
         }
     }
 

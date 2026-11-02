@@ -244,6 +244,11 @@ CREATE TABLE IF NOT EXISTS payments (
     razorpay_signature        VARCHAR(255),
     failure_reason            VARCHAR(255),
 
+    -- What the buyer agreed to at checkout, and when. Nullable: renewals carry no consent of
+    -- their own, and rows written before this column existed have none to record.
+    accepted_policy_version   VARCHAR(20),
+    consented_at              TIMESTAMP,
+
     created_at                TIMESTAMP    NOT NULL DEFAULT NOW(),
     updated_at                TIMESTAMP    NOT NULL DEFAULT NOW()
 );
@@ -271,3 +276,13 @@ ALTER TABLE payments ADD COLUMN IF NOT EXISTS razorpay_subscription_id VARCHAR(1
 
 -- How to run the jar
 -- java -DDB_PASSWORD=postgres -jar target\payment-service-0.0.1-SNAPSHOT.jar
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Migration: checkout consent (added 31 Oct 2026)
+--
+-- Safe to run against an existing database; the create statement above already
+-- includes these columns for a fresh one.
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS accepted_policy_version VARCHAR(20);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS consented_at            TIMESTAMP;

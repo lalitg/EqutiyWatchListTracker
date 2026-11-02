@@ -51,7 +51,8 @@ public class SubscriptionController {
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         CreateSubscriptionResponse response = subscriptionService.createSubscription(
-                userId, request.getPlanId(), request.getCouponCode());
+                userId, request.getPlanId(), request.getCouponCode(),
+                request.getAcceptedPolicyVersion());
 
         return ResponseEntity.ok(response);
     }
