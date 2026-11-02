@@ -161,6 +161,13 @@
       </exclusions>
     </dependency>
 
+    <!-- Mail: alert digests. Sent through SES SMTP in production; with
+         app.email.enabled=false the digest is written to the log instead. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
+
   </dependencies>
 
   <build>

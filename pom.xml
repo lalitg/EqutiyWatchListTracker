@@ -22,12 +22,14 @@
     <name>EquityWatchListTracker</name>
 
     <modules>
-        <!-- Build the 6 services first so their regular JARs land in ~/.m2 -->
+        <!-- Build the 6 services first so their regular JARs land in ~/.m2.
+             fast-movers-service was listed here but is not a dependency of
+             unified-scheduler and never reached the jar, so it only cost build
+             time. Its directory and branch are untouched. -->
         <module>global-watchlist-service</module>
         <module>nse-code-service</module>
         <module>nse-events-scheduler</module>
         <module>nse-news-scheduler</module>
-        <module>fast-movers-service</module>
         <module>sebi-data-service</module>
         <module>fundamentals-service</module>
 
