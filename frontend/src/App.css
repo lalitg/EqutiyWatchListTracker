@@ -38,6 +38,9 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* Room for the fixed risk banner, which is taken out of flow and would otherwise sit on top of
+     the end of the footer. Keep in step with .nf-risk-banner in RiskBanner.css. */
+  padding-bottom: 34px;
 }
 
 .app-main {
@@ -428,4 +431,10 @@ body {
     align-items: center;
     justify-content: center;
   }
+}
+
+@media (max-width: 768px) {
+  /* The banner wraps to three lines in a narrow column. Measured at 390px wide, where it comes to
+     54px; the reservation is rounded up so a slightly wider wrap still cannot cover content. */
+  .App { padding-bottom: 60px; }
 }

@@ -42,16 +42,25 @@ export async function fetchPlans() {
  * means rebuilding the frontend. The key secret stays on the server and is never part of this
  * exchange.
  *
- * @param {number} planId     the plan being bought
- * @param {string} couponCode optional
+ * The accepted policy version travels with the purchase and is stored against the payment. A tick
+ * box that only disabled a button would prove nothing afterwards, and could be skipped by calling
+ * this endpoint directly, so the server refuses a purchase that does not carry one.
+ *
+ * @param {number} planId                 the plan being bought
+ * @param {string} couponCode             optional
+ * @param {string} acceptedPolicyVersion  POLICY_VERSION as shown beside the tick box
  * @returns {Promise<{razorpaySubscriptionId: string, razorpayKeyId: string,
  *                    firstPaymentAmountPaise: number, renewalAmountPaise: number,
  *                    discountPaise: number, currency: string}>}
  */
-export async function createSubscription(planId, couponCode) {
+export async function createSubscription(planId, couponCode, acceptedPolicyVersion) {
   return apiClient('/subscriptions/create', {
     method: 'POST',
-    body: JSON.stringify({ planId, couponCode: couponCode || null }),
+    body: JSON.stringify({
+      planId,
+      couponCode: couponCode || null,
+      acceptedPolicyVersion,
+    }),
   });
 }
 

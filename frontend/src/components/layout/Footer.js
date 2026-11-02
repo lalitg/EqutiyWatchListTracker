@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import './Footer.css';
 
 /**
@@ -15,9 +16,23 @@ import './Footer.css';
  *
  * <p>The wording is fixed by compliance, not by us. If it needs to change, change it here and it
  * changes everywhere.
+ *
+ * <p>The policy links sit above the disclaimer for the same reason the disclaimer is here at all:
+ * rendered once in the shell, they cannot be missing from a page somebody adds later. A payment
+ * gateway checks for them during merchant onboarding, and a reader looking for the refund terms
+ * should not have to guess where they live.
  */
 const Footer = () => (
   <footer className="nf-footer" role="contentinfo">
+    <nav className="nf-footer-links" aria-label="Policies">
+      <Link to="/about">About Us</Link>
+      <Link to="/contact">Contact Us</Link>
+      <Link to="/subscribe">Pricing</Link>
+      <Link to="/terms">Terms of Service</Link>
+      <Link to="/refund-policy">Refund &amp; Cancellation</Link>
+      <Link to="/privacy">Privacy Policy</Link>
+      <Link to="/disclaimer">Disclaimer</Link>
+    </nav>
     <p className="nf-footer-text">
       <strong>Disclaimer:</strong> The content, tools, and information provided on NiveshFlow are
       strictly for educational and informational purposes only and do not constitute financial,

@@ -7,6 +7,7 @@ import {
 } from '../services/billingService';
 import { loadRazorpayCheckout } from '../services/razorpayCheckout';
 import Modal from '../components/shared/Modal';
+import { POLICY_VERSION } from './legal/policyMeta';
 import Toast from '../components/shared/Toast';
 import './SubscribePage.css';
 
@@ -96,6 +97,10 @@ const SubscribePage = () => {
 
   // The cancellation: whether the confirmation is open, whether the call is in flight, what went
   // wrong if it did, and the note that confirms it afterwards.
+  // Consent to the policies, unticked by default. Pre-ticking it would not be consent at all:
+  // the DPDP Act requires consent to be free, specific, informed and unconditional.
+  const [accepted, setAccepted] = useState(false);
+
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [cancelling, setCancelling]             = useState(false);
   const [cancelError, setCancelError]           = useState(null);
@@ -198,12 +203,19 @@ const SubscribePage = () => {
       return;
     }
 
+    if (!accepted) {
+      // The button is disabled until the box is ticked, so this is only reachable if something
+      // went round the UI. Refusing here keeps the browser honest; the server refuses too.
+      setPayError('Please accept the terms before subscribing.');
+      return;
+    }
+
     setPayError(null);
     setBuying(plan.id);
 
     try {
       await loadRazorpayCheckout();
-      const order = await createSubscription(plan.id);
+      const order = await createSubscription(plan.id, null, POLICY_VERSION);
 
       const checkout = new window.Razorpay({
         key: order.razorpayKeyId,
@@ -337,7 +349,7 @@ const SubscribePage = () => {
                 className="sub-card-cta sub-plan-resume"
                 type="button"
                 onClick={() => currentPlan && buy(currentPlan)}
-                disabled={buying !== null || !currentPlan}
+                disabled={buying !== null || !accepted || !currentPlan}
               >
                 {buying === currentPlan?.id ? 'Opening payment…' : 'Resubscribe'}
               </button>
@@ -360,6 +372,23 @@ const SubscribePage = () => {
       {payError && (
         <div className="sub-pay-error" role="alert">{payError}</div>
       )}
+
+      {/* Directly above the plan cards: the thing being agreed to belongs beside the buttons it
+          governs, not in small print below them. Shown to signed-out visitors too, so nobody
+          discovers the condition only after creating an account. */}
+      <label className="sub-consent">
+        <input
+          type="checkbox"
+          checked={accepted}
+          onChange={(e) => setAccepted(e.target.checked)}
+        />
+        <span>
+          I agree to the <Link to="/terms">Terms of Service</Link>,{' '}
+          <Link to="/refund-policy">Refund Policy</Link> and{' '}
+          <Link to="/privacy">Privacy Policy</Link>, and acknowledge that NiveshFlow provides
+          educational content only.
+        </span>
+      </label>
 
       {loading && <div className="page-loading"><p>Loading plans…</p></div>}
 
@@ -416,7 +445,7 @@ const SubscribePage = () => {
                     className="sub-card-cta"
                     type="button"
                     onClick={() => buy(plan)}
-                    disabled={buying !== null}
+                    disabled={buying !== null || !accepted}
                   >
                     {buying === plan.id ? 'Opening payment…' : 'Resubscribe'}
                   </button>
@@ -427,7 +456,7 @@ const SubscribePage = () => {
                     className="sub-card-cta"
                     type="button"
                     onClick={() => buy(plan)}
-                    disabled={buying !== null}
+                    disabled={buying !== null || !accepted}
                   >
                     {buying === plan.id
                       ? 'Opening payment…'

@@ -1,0 +1,126 @@
+/* The policy pages. Long-form reading, so the measure is narrower than the app's data screens. */
+
+.legal-page {
+  max-width: 820px;
+}
+
+.legal-header {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.legal-stamp {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+
+.legal-intro {
+  margin: 12px 0 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.legal-section {
+  margin: 26px 0 0;
+}
+
+.legal-section h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.legal-section h3 {
+  margin: 16px 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.legal-body p {
+  margin: 0 0 11px;
+  font-size: 14.5px;
+  line-height: 1.68;
+  color: var(--color-text);
+}
+
+.legal-body ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.legal-body li {
+  margin-bottom: 7px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+/* A quoted clause that must not drift from its source wording. */
+.legal-quote {
+  margin: 0 0 12px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--color-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: #f8fafc;
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+.legal-contact-block {
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface, #fff);
+  font-size: 14.5px;
+  line-height: 1.8;
+}
+
+.legal-contact-block dt {
+  display: inline-block;
+  /* Wide enough for "Registered address", the longest label used, so a value never crowds it. */
+  min-width: 150px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.legal-contact-block dd {
+  display: inline;
+  margin: 0;
+}
+
+.legal-contact-block dd::after {
+  content: '';
+  display: block;
+}
+
+.legal-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 34px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.legal-nav a {
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+  text-decoration: none;
+}
+
+.legal-nav a:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .legal-body p,
+  .legal-body li { font-size: 14px; }
+  .legal-contact-block dt { display: block; min-width: 0; }
+  .legal-nav { gap: 10px 14px; }
+}

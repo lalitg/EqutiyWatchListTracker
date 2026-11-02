@@ -466,3 +466,45 @@
   .sub-cancel-buttons { flex-direction: column-reverse; }
   .sub-cancel-buttons button { min-height: 44px; }
 }
+
+/* ── Policy consent ───────────────────────────────────────────────────────────
+   Above the cards, because the condition belongs beside the buttons it governs. */
+.sub-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface, #fff);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.sub-consent input {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  margin: 1px 0 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.sub-consent a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .sub-consent {
+    /* A taller target for the row as a whole: the label is clickable, not just the box. */
+    padding: 14px;
+    font-size: 13px;
+  }
+
+  .sub-consent input { width: 20px; height: 20px; }
+}

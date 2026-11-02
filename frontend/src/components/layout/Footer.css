@@ -1,4 +1,5 @@
-/* The site-wide disclaimer. One block, no links — it is there to be read, not navigated. */
+/* The site-wide footer: a row of policy links, then the disclaimer that must appear on every
+   page. The links come first because they are navigated; the disclaimer is read once. */
 
 .nf-footer {
   /* The rule is the separation: without it the small grey text reads as a trailing paragraph of
@@ -32,5 +33,39 @@
     font-size: 11.5px;
     /* Justified text breaks badly in a narrow column — rivers of white space between words. */
     text-align: left;
+  }
+}
+
+/* ── Policy links ──────────────────────────────────────────────────────────── */
+.nf-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  max-width: 1400px;
+  margin: 0 auto 14px;
+}
+
+.nf-footer-links a {
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  text-decoration: none;
+}
+
+.nf-footer-links a:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .nf-footer-links {
+    /* Column gap stays generous so neighbouring links are not mis-tapped. */
+    gap: 10px 16px;
+    margin-bottom: 12px;
+  }
+
+  .nf-footer-links a {
+    /* A comfortable target without turning the row into a stack of buttons. */
+    padding: 4px 0;
+    font-size: 13px;
   }
 }

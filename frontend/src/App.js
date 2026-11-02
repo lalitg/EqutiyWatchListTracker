@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
+import RiskBanner from './components/layout/RiskBanner';
 import WatchlistPage from './pages/WatchlistPage';
 import GlobalMarketPage from './pages/GlobalMarketPage';
 import DomesticMarketPage from './pages/DomesticMarketPage';
@@ -17,6 +18,8 @@ import NseCalendarPage from './pages/NseCalendarPage';
 import UpcomingEventsPage from './pages/UpcomingEventsPage';
 import MutualFundsPage from './pages/MutualFundsPage';
 import SubscribePage from './pages/SubscribePage';
+import PolicyPage from './pages/legal/PolicyPage';
+import { DOCUMENTS } from './pages/legal/content';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WatchlistProvider } from './context/WatchlistContext';
 import { MarketProvider } from './context/MarketContext';
@@ -72,12 +75,21 @@ function AppContent() {
           <Route path="/market/calendar" element={<NseCalendarPage />} />
           {/* Public: a visitor has to be able to read the prices before they have an account. */}
           <Route path="/subscribe" element={<SubscribePage />} />
+          {/* The policy pages, all public by necessity. A payment gateway validates these URLs
+              during merchant onboarding with no account and no session, and a policy nobody can
+              read without signing in is not published at all. */}
+          {Object.entries(DOCUMENTS).map(([path, doc]) => (
+            <Route key={path} path={path} element={<PolicyPage doc={doc} />} />
+          ))}
         </Routes>
       </main>
       {/* Outside <Routes> on purpose: one instance, on every page, surviving navigation. A
           disclaimer that each page had to remember to render is a disclaimer that will be missing
           from the next page somebody adds. */}
       <Footer />
+      {/* Outside <Routes> like the footer, and for the same reason: a risk warning each page had
+          to remember to render is one that will be missing from the next page somebody adds. */}
+      <RiskBanner />
     </div>
   );
 }
