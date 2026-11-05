@@ -23,7 +23,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Scheduled component that fetches Google RSS news for all configured keywords.
@@ -97,6 +101,31 @@ public class GoogleRssScheduler {
      * to other threads. {@code volatile} guarantees cross-thread visibility of the write.
      */
     private volatile boolean startupDone = false;
+
+    /**
+     * Guards against two cycles running at once.
+     *
+     * <p>WHY, beyond tidiness: the startup fetch and the cron do collide. On 5 Nov the
+     * 09:14:20 startup fetch and the 09:15:00 cron each submitted all 427 keywords onto the
+     * same two-thread pool. {@code startupDone} stops the startup fetch repeating itself but
+     * says nothing about the cron. Doubling the work on a fixed pool halves throughput and
+     * widens the window in which a stalled task can strand the cycle.
+     *
+     * <p>A skipped cycle is logged at WARN on purpose. The outage this replaces was completely
+     * silent -- Spring drops a trigger for a task still running without a word -- and that
+     * silence is what made it take a day to notice.
+     */
+    private final AtomicBoolean cycleRunning = new AtomicBoolean(false);
+
+    /**
+     * Upper bound on one cycle, after which it is abandoned so the next one can run.
+     *
+     * <p>Ten minutes is deliberately well clear of a healthy cycle (427 keywords takes about
+     * 290s, most of it the 500ms submission delay) while staying inside the 15-minute cron,
+     * so a timeout means something is genuinely wrong rather than merely slow.
+     */
+    @Value("${news.google.cycle-timeout-minutes:10}")
+    private long cycleTimeoutMinutes;
 
     /**
      * Constructs a {@code GoogleRssScheduler} with all required dependencies injected by Spring.
@@ -173,6 +202,19 @@ public class GoogleRssScheduler {
      * complete — equivalent behaviour without touching the pool lifecycle.
      */
     public void runFetch() {
+        if (!cycleRunning.compareAndSet(false, true)) {
+            log.warn("Google RSS fetch still running from an earlier trigger — skipping this cycle");
+            return;
+        }
+        try {
+            runCycle();
+        } finally {
+            cycleRunning.set(false);
+        }
+    }
+
+    /** The cycle itself. Always entered through {@link #runFetch()}, never called directly. */
+    private void runCycle() {
         log.info("Google RSS fetch started — loading keywords");
         long startMs = System.currentTimeMillis();
 
@@ -210,12 +252,51 @@ public class GoogleRssScheduler {
             }
         }
 
-        // Wait for all submitted tasks to finish before returning
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        // Wait for all submitted tasks to finish, but never indefinitely.
+        //
+        // WHY not join(): join() waits forever, and @Scheduled is non-reentrant. So one task
+        // that never completes does not merely delay the next cycle, it ENDS the cycle for the
+        // life of the process -- every later trigger finds this method still running and is
+        // dropped in silence. Abandoning a stuck cycle costs one fetch; waiting forever costs
+        // every fetch until someone restarts the service, which is exactly what happened.
+        CompletableFuture<Void> all = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        long abandoned = 0;
+        try {
+            all.get(cycleTimeoutMinutes, TimeUnit.MINUTES);
+        } catch (TimeoutException e) {
+            // cancel() completes our futures but does NOT interrupt a thread already blocked in
+            // a socket read -- CompletableFuture ignores the interrupt flag. So this frees the
+            // scheduler, not the worker. Keeping every blocking call bounded (HTTP timeouts in
+            // RssFetcher, socketTimeout on the JDBC URL) is what keeps the pool from bleeding
+            // threads; this branch is the safety net for when something slips through anyway.
+            abandoned = futures.stream().filter(f -> !f.isDone()).count();
+            log.error("Google RSS cycle exceeded {} min — abandoning {} unfinished keyword task(s). "
+                      + "Check that spring.datasource.url still carries socketTimeout.",
+                      cycleTimeoutMinutes, abandoned);
+            futures.forEach(f -> f.cancel(true));
+        } catch (ExecutionException e) {
+            // processKeyword catches Exception, so arriving here means an Error escaped a worker,
+            // or its finally block threw (bucketCache.rebuild sits outside that catch). Either
+            // way the next cycle should still run.
+            log.error("Google RSS cycle — a keyword task failed abnormally: {}",
+                      e.getCause() != null ? e.getCause().toString() : e.toString(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Google RSS cycle interrupted while awaiting keyword tasks — shutting down");
+            return;
+        }
 
         long durationSec = (System.currentTimeMillis() - startMs) / 1000;
-        log.info("Google RSS fetch cycle completed — {} keywords processed, duration={}s",
-                 keywords.size(), durationSec);
+
+        // "cycle completed" is reserved for a cycle that actually finished, so a watchdog can
+        // alert on its absence. Saying it after a timeout would report a total failure as health.
+        if (abandoned > 0) {
+            log.error("Google RSS fetch cycle ABANDONED — {} of {} keywords unfinished, duration={}s",
+                      abandoned, keywords.size(), durationSec);
+        } else {
+            log.info("Google RSS fetch cycle completed — {} keywords processed, duration={}s",
+                     keywords.size(), durationSec);
+        }
     }
 
     /**
