@@ -1,0 +1,36 @@
+id,headline,target_entity,other_entities,true_label,category
+1,Reliance Industries Q1 profit beats estimates on strong Jio subscriber growth,RELIANCE,,positive,clear_positive
+2,Infosys raises FY26 revenue guidance after large deal wins,INFY,,positive,clear_positive
+3,Tata Motors shares plunge 8% after weak JLR sales data,TATAMOTORS,,negative,clear_negative
+4,SEBI slaps penalty on Zee Entertainment for disclosure lapses,ZEEL,,negative,clear_negative
+5,HDFC Bank to hold board meeting on July 22 to consider results,HDFCBANK,,neutral,neutral
+6,Wipro announces change in registered office address,WIPRO,,neutral,neutral
+7,TCS gains as Infosys slumps on weak Q1 guidance,TCS,INFY,positive,multi_entity
+8,TCS gains as Infosys slumps on weak Q1 guidance,INFY,TCS,negative,multi_entity
+9,HDFC Bank rallies while Axis Bank drops after RBI penalty,HDFCBANK,AXISBANK,positive,multi_entity
+10,HDFC Bank rallies while Axis Bank drops after RBI penalty,AXISBANK,HDFCBANK,negative,multi_entity
+11,Reliance surges on Jio tariff hike but Bharti Airtel falls on subscriber loss,RELIANCE,BHARTIARTL,positive,multi_entity
+12,Reliance surges on Jio tariff hike but Bharti Airtel falls on subscriber loss,BHARTIARTL,RELIANCE,negative,multi_entity
+13,It was not a good quarter for Bajaj Finance as provisions rose sharply,BAJFINANCE,,negative,negation
+14,ITC does not expect margin pressure to ease in the near term,ITC,,negative,negation
+15,Analysts see no major downside risk for Larsen and Toubro after order book update,LT,,positive,negation
+16,Adani Ports sees profit booking after three-day rally,ADANIPORTS,,negative,idiom
+17,Sun Pharma stock in the green amid broad market weakness,SUNPHARMA,,positive,idiom
+18,Block deal: 2.1% stake in Kotak Mahindra Bank changes hands,KOTAKBANK,,neutral,idiom
+19,Maruti Suzuki beats profit estimates but guides margins lower for H2,MARUTI,,neutral,comparative
+20,Hindalco results less bad than feared as costs stabilise,HINDALCO,,positive,comparative
+21,Asian Paints Q2 profit falls 12% though better than street expectations,ASIANPAINT,,neutral,comparative
+22,Intimation of board meeting under Regulation 29 of SEBI LODR for NTPC,NTPC,,neutral,nse_announcement
+23,Dr Reddys Laboratories announces receipt of USFDA approval for generic drug,DRREDDY,,positive,nse_announcement
+24,Vedanta receives show cause notice from Ministry of Environment,VEDL,,negative,nse_announcement
+25,HDFC Securities Launches MTF T20 Offers 0% Interest for 20 Days on Eligible Margin Trading Facility Transactions,HDFCBANK,,neutral,neutral
+26,ICICI Bank overtakes HDFC Bank as top MF holding in July amid governance concerns,HDFCBANK,ICICI,negative,multi_entity
+27,India's ICICI Bank dollar debt fundraising tops $2 billion in a month bankers say,ICICI,,positive,clear_positive
+28,IT rights body writes to Labour Ministry over Wipro’s onboarding delays,WIPRO,,negative,clear_negative
+29,Tata Communications Limited has informed the Exchange about Transcript,TATACOMM,,neutral,neutral
+30,Maruti Suzuki's FRONX Becomes Fastest SUV From India to Cross 2 Lakh Exports,MARUTI,,positive,clear_positive
+31,TCS vs Infosys: Which Has Better Growth Plans?,TCS,INFY,neutral,multi_entity
+32,TCS vs Infosys: Which Has Better Growth Plans?,INFY,TCS,neutral,multi_entity
+33,TCS & Rolls-Royce achieve milestone in hydrogen propulsion programme,TCS,,positive,positive
+34,Disclosure under Regulation 30 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations 2015 ( SEBI Listing Regulations ) ESG Rating,AADHARHFC,,neutral,nse_announcement
+35,Aadhar Housing Finance Limited has informed the Exchange about the Submission of Business Responsibility & Sustainability Report for FY 2025-26,AADHARHFC,,neutral,nse_announcement

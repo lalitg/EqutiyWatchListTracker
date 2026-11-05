@@ -3,6 +3,8 @@ package com.companynews.newsscheduler.scheduler;
 import com.companynews.newsscheduler.dto.NewsItem;
 import com.companynews.newsscheduler.service.RssFetcher;
 import com.companynews.newsscheduler.service.KeywordLoader;
+import com.companynews.newsscheduler.service.KeywordNewsBucketCache;
+import com.companynews.newsscheduler.service.NewsStore;
 import com.companynews.newsscheduler.service.UrlWindow;
 import com.companynews.newsscheduler.service.NewsWorker;
 import org.apache.logging.log4j.LogManager;
@@ -19,17 +21,26 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Scheduled component that fetches Google RSS news for all configured keywords.
  *
  * <p>Fetch pipeline:
  * <ol>
- *   <li>Load all keywords from {@link KeywordLoader} (company symbols, sectors, macro terms).</li>
+ *   <li>Load all keywords from {@link KeywordLoader} (company symbols, sectors, macro terms),
+ *       plus the keywords.txt-only subset via {@link KeywordLoader#loadFileKeywords()}.</li>
  *   <li>Submit one fetch task per keyword to the managed {@code googleRssExecutor} thread pool.</li>
- *   <li>Each task: fetch from Google RSS → dedup by {@link UrlWindow} → save via {@link NewsWorker}.</li>
+ *   <li>Each task: fetch from Google RSS → dedup by {@link UrlWindow} → save via {@link NewsWorker}.
+ *       For keywords.txt-sourced keywords, also rebuild that keyword's entry in
+ *       {@link KeywordNewsBucketCache} — see {@link #processKeyword} for why this must happen
+ *       unconditionally, on every cycle, not just when new articles are found.</li>
  *   <li>Wait for all tasks to complete before returning (using {@link CompletableFuture#allOf}).</li>
  * </ol>
  *
@@ -37,7 +48,11 @@ import java.util.concurrent.ExecutorService;
  * between keyword submissions to avoid triggering Google's rate limits.
  *
  * <p>An immediate startup fetch is scheduled 5 seconds after {@link ApplicationReadyEvent}
- * to give the NSE scheduler time to complete its own startup fetch first.
+ * to give the NSE scheduler time to complete its own startup fetch first. This is also what
+ * naturally repopulates {@link KeywordNewsBucketCache} after a restart — the cache always
+ * starts empty in a fresh process, and this startup fetch rebuilds every keywords.txt
+ * keyword's entry from {@link NewsStore} (itself seeded from the database), with no
+ * separate "restore" logic needed.
  */
 @Component
 public class GoogleRssScheduler {
@@ -48,6 +63,8 @@ public class GoogleRssScheduler {
     private final NewsWorker newsWorker;
     private final KeywordLoader keywordLoader;
     private final UrlWindow urlWindow;
+    private final KeywordNewsBucketCache bucketCache;
+    private final NewsStore newsStore;
 
     /**
      * Injected singleton {@link ExecutorService} (defined in
@@ -86,12 +103,40 @@ public class GoogleRssScheduler {
     private volatile boolean startupDone = false;
 
     /**
+     * Guards against two cycles running at once.
+     *
+     * <p>WHY, beyond tidiness: the startup fetch and the cron do collide. On 5 Nov the
+     * 09:14:20 startup fetch and the 09:15:00 cron each submitted all 427 keywords onto the
+     * same two-thread pool. {@code startupDone} stops the startup fetch repeating itself but
+     * says nothing about the cron. Doubling the work on a fixed pool halves throughput and
+     * widens the window in which a stalled task can strand the cycle.
+     *
+     * <p>A skipped cycle is logged at WARN on purpose. The outage this replaces was completely
+     * silent -- Spring drops a trigger for a task still running without a word -- and that
+     * silence is what made it take a day to notice.
+     */
+    private final AtomicBoolean cycleRunning = new AtomicBoolean(false);
+
+    /**
+     * Upper bound on one cycle, after which it is abandoned so the next one can run.
+     *
+     * <p>Ten minutes is deliberately well clear of a healthy cycle (427 keywords takes about
+     * 290s, most of it the 500ms submission delay) while staying inside the 15-minute cron,
+     * so a timeout means something is genuinely wrong rather than merely slow.
+     */
+    @Value("${news.google.cycle-timeout-minutes:10}")
+    private long cycleTimeoutMinutes;
+
+    /**
      * Constructs a {@code GoogleRssScheduler} with all required dependencies injected by Spring.
      *
      * @param rssFetcher       fetches news articles from Google RSS feeds
      * @param newsWorker       handles deduplication and persistence of news items
      * @param keywordLoader    loads the merged keyword list from DB and classpath
      * @param urlWindow        in-memory sliding window for URL-based deduplication
+     * @param bucketCache      in-memory 96-slot rolling-24-hour cache for keywords.txt keywords
+     * @param newsStore        in-memory mirror of {@code company_news}, used as the rebuild
+     *                         source for {@code bucketCache}
      * @param executor         named fixed thread pool for parallel keyword processing
      * @param startupScheduler lightweight scheduler for the one-shot startup delay
      */
@@ -99,12 +144,16 @@ public class GoogleRssScheduler {
                                NewsWorker newsWorker,
                                KeywordLoader keywordLoader,
                                UrlWindow urlWindow,
+                               KeywordNewsBucketCache bucketCache,
+                               NewsStore newsStore,
                                @Qualifier("googleRssExecutor") ExecutorService executor,
                                @Qualifier("startupScheduler") TaskScheduler startupScheduler) {
         this.rssFetcher       = rssFetcher;
         this.newsWorker       = newsWorker;
         this.keywordLoader    = keywordLoader;
         this.urlWindow        = urlWindow;
+        this.bucketCache      = bucketCache;
+        this.newsStore        = newsStore;
         this.executor         = executor;
         this.startupScheduler = startupScheduler;
     }
@@ -126,35 +175,22 @@ public class GoogleRssScheduler {
     }
 
     /**
-     * Scheduled entry point for peak hours: weekdays 8 AM–5 PM, every 30 minutes.
+     * Scheduled entry point: every 15 minutes, all day, every day of the week.
      * Delegates to {@link #runFetch()}.
+     *
+     * <p>Previously this was split across 5 separate cron windows (weekday peak/off-peak,
+     * weekend, and two US-market-hours windows reading a separate {@code us-keywords.txt}
+     * file). All keywords — domestic, global, and US — now live together in
+     * {@code keywords.txt} and are fetched on this single unified cadence.
      */
-    @Scheduled(cron = "${news.google.cron.peak}")
-    public void runFetchPeak() {
-        runFetch();
-    }
-
-    /**
-     * Scheduled entry point for off-peak weekday hours: midnight–8 AM and 6 PM–11 PM, every hour.
-     * Delegates to {@link #runFetch()}.
-     */
-    @Scheduled(cron = "${news.google.cron.offpeak.weekday}")
-    public void runFetchOffpeakWeekday() {
-        runFetch();
-    }
-
-    /**
-     * Scheduled entry point for weekends: every hour all day.
-     * Delegates to {@link #runFetch()}.
-     */
-    @Scheduled(cron = "${news.google.cron.offpeak.weekend}")
-    public void runFetchOffpeakWeekend() {
+    @Scheduled(cron = "${news.google.cron}", zone = "${scheduler.timezone}")
+    public void runFetchScheduled() {
         runFetch();
     }
 
     /**
      * Runs the full Google RSS fetch-dedup-save cycle.
-     * Called by the three scheduled entry points and the startup listener.
+     * Called by the scheduled entry point and the startup listener.
      *
      * <p>Submits one {@link CompletableFuture} per keyword to the managed executor pool
      * with a configurable delay between submissions to avoid rate-limiting.
@@ -166,7 +202,21 @@ public class GoogleRssScheduler {
      * complete — equivalent behaviour without touching the pool lifecycle.
      */
     public void runFetch() {
+        if (!cycleRunning.compareAndSet(false, true)) {
+            log.warn("Google RSS fetch still running from an earlier trigger — skipping this cycle");
+            return;
+        }
+        try {
+            runCycle();
+        } finally {
+            cycleRunning.set(false);
+        }
+    }
+
+    /** The cycle itself. Always entered through {@link #runFetch()}, never called directly. */
+    private void runCycle() {
         log.info("Google RSS fetch started — loading keywords");
+        long startMs = System.currentTimeMillis();
 
         List<String> keywords = keywordLoader.load();
         if (keywords.isEmpty()) {
@@ -174,11 +224,23 @@ public class GoogleRssScheduler {
             return;
         }
 
-        log.info("Submitting {} keywords to executor pool", keywords.size());
+        // keywords.txt-sourced subset — only these get a bucket-cache rebuild per keyword,
+        // and this same set defines what's allowed to remain in the cache at all.
+        Set<String> fileKeywords = keywordLoader.loadFileKeywords();
+        bucketCache.pruneRemovedKeywords(fileKeywords);
+
+        // company-symbol subset — only these get importance classification (Important News tab).
+        // Loaded once per cycle so each keyword is a cheap in-memory membership check, not a DB call.
+        Set<String> companySymbols = keywordLoader.loadCompanySymbols();
+
+        log.info("Submitting {} keywords to executor pool ({} keywords.txt-sourced, {} companies)",
+                 keywords.size(), fileKeywords.size(), companySymbols.size());
 
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (String keyword : keywords) {
-            futures.add(CompletableFuture.runAsync(() -> processKeyword(keyword), executor));
+            boolean isFileKeyword = fileKeywords.contains(keyword);
+            boolean isCompany = companySymbols.contains(keyword);
+            futures.add(CompletableFuture.runAsync(() -> processKeyword(keyword, isFileKeyword, isCompany), executor));
 
             // Rate-limiting delay between submissions — controls how fast we send to Google
             try {
@@ -190,10 +252,51 @@ public class GoogleRssScheduler {
             }
         }
 
-        // Wait for all submitted tasks to finish before returning
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        // Wait for all submitted tasks to finish, but never indefinitely.
+        //
+        // WHY not join(): join() waits forever, and @Scheduled is non-reentrant. So one task
+        // that never completes does not merely delay the next cycle, it ENDS the cycle for the
+        // life of the process -- every later trigger finds this method still running and is
+        // dropped in silence. Abandoning a stuck cycle costs one fetch; waiting forever costs
+        // every fetch until someone restarts the service, which is exactly what happened.
+        CompletableFuture<Void> all = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        long abandoned = 0;
+        try {
+            all.get(cycleTimeoutMinutes, TimeUnit.MINUTES);
+        } catch (TimeoutException e) {
+            // cancel() completes our futures but does NOT interrupt a thread already blocked in
+            // a socket read -- CompletableFuture ignores the interrupt flag. So this frees the
+            // scheduler, not the worker. Keeping every blocking call bounded (HTTP timeouts in
+            // RssFetcher, socketTimeout on the JDBC URL) is what keeps the pool from bleeding
+            // threads; this branch is the safety net for when something slips through anyway.
+            abandoned = futures.stream().filter(f -> !f.isDone()).count();
+            log.error("Google RSS cycle exceeded {} min — abandoning {} unfinished keyword task(s). "
+                      + "Check that spring.datasource.url still carries socketTimeout.",
+                      cycleTimeoutMinutes, abandoned);
+            futures.forEach(f -> f.cancel(true));
+        } catch (ExecutionException e) {
+            // processKeyword catches Exception, so arriving here means an Error escaped a worker,
+            // or its finally block threw (bucketCache.rebuild sits outside that catch). Either
+            // way the next cycle should still run.
+            log.error("Google RSS cycle — a keyword task failed abnormally: {}",
+                      e.getCause() != null ? e.getCause().toString() : e.toString(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Google RSS cycle interrupted while awaiting keyword tasks — shutting down");
+            return;
+        }
 
-        log.info("Google RSS fetch cycle completed — {} keywords processed", keywords.size());
+        long durationSec = (System.currentTimeMillis() - startMs) / 1000;
+
+        // "cycle completed" is reserved for a cycle that actually finished, so a watchdog can
+        // alert on its absence. Saying it after a timeout would report a total failure as health.
+        if (abandoned > 0) {
+            log.error("Google RSS fetch cycle ABANDONED — {} of {} keywords unfinished, duration={}s",
+                      abandoned, keywords.size(), durationSec);
+        } else {
+            log.info("Google RSS fetch cycle completed — {} keywords processed, duration={}s",
+                     keywords.size(), durationSec);
+        }
     }
 
     /**
@@ -212,9 +315,22 @@ public class GoogleRssScheduler {
      * escaping (required by Resilience4j's proxy model), so it is caught here as a
      * {@code RuntimeException} whose cause can be inspected if needed.
      *
-     * @param keyword the keyword to fetch news for
+     * <p><b>WHY the bucket-cache rebuild lives in the {@code finally} block, not inside the
+     * "new items saved" branch:</b> {@link KeywordNewsBucketCache} needs to re-filter its
+     * 24-hour window on every single cycle, even when this keyword found nothing new this
+     * time. If the rebuild only ran when {@code saveNews} was called, a quiet keyword's cache
+     * entry would never get re-checked, and articles that have since aged past 24 hours would
+     * keep being served indefinitely instead of aging out on schedule. Running it in
+     * {@code finally} guarantees it fires on every path — empty fetch, all-duplicate, a real
+     * save, or even an exception — for every keywords.txt keyword, every cycle.
+     *
+     * @param keyword       the keyword to fetch news for
+     * @param isFileKeyword whether this keyword came from {@code keywords.txt} — only these
+     *                      get a bucket-cache rebuild; company symbols and sector names never do
+     * @param isCompany     whether this keyword is a company symbol — only then are fetched
+     *                      items classified for the "Important News" tab
      */
-    private void processKeyword(String keyword) {
+    private void processKeyword(String keyword, boolean isFileKeyword, boolean isCompany) {
         ThreadContext.put("keyword", keyword);
         try {
             log.debug("Processing keyword: {}", keyword);
@@ -238,13 +354,16 @@ public class GoogleRssScheduler {
                 return;
             }
 
-            newsWorker.saveNews(keyword, newItems);
+            newsWorker.saveNews(keyword, newItems, isCompany);
 
         } catch (Exception e) {
             // One failed keyword must not stop other keywords from processing.
             // RuntimeException wrapping IOException is caught here — inspect e.getCause() if needed.
             log.error("Error processing keyword [{}]: {}", keyword, e.getMessage(), e);
         } finally {
+            if (isFileKeyword) {
+                bucketCache.rebuild(keyword, newsStore.get(keyword));
+            }
             ThreadContext.remove("keyword");
         }
     }
