@@ -36,11 +36,14 @@ public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final long refreshExpiryDays;
+    private final long idleTimeoutMinutes;
 
     public RefreshTokenService(RefreshTokenRepository refreshTokenRepository,
-                                @Value("${auth.jwt.refresh-expiry-days}") long refreshExpiryDays) {
+                                @Value("${auth.jwt.refresh-expiry-days}") long refreshExpiryDays,
+                                @Value("${auth.refresh-token.idle-timeout-minutes:30}") long idleTimeoutMinutes) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.refreshExpiryDays      = refreshExpiryDays;
+        this.idleTimeoutMinutes     = idleTimeoutMinutes;
     }
 
     /**
@@ -65,6 +68,7 @@ public class RefreshTokenService {
         refreshToken.setTokenHash(tokenHash);
         refreshToken.setExpiresAt(LocalDateTime.now().plusDays(refreshExpiryDays));
         refreshToken.setRevoked(false);
+        refreshToken.setLastUsedAt(LocalDateTime.now());
 
         refreshTokenRepository.save(refreshToken);
         return rawToken;  // return raw — only sent to client once, never stored
@@ -100,6 +104,13 @@ public class RefreshTokenService {
             throw new TokenException("Refresh token has expired");
         }
 
+        if (token.getLastUsedAt() != null) {
+            LocalDateTime idleDeadline = token.getLastUsedAt().plusMinutes(idleTimeoutMinutes);
+            if (idleDeadline.isBefore(LocalDateTime.now())) {
+                throw new TokenException("Session expired due to inactivity");
+            }
+        }
+
         return token;
     }
 
@@ -117,7 +128,7 @@ public class RefreshTokenService {
         oldToken.setRevoked(true);
         refreshTokenRepository.save(oldToken);
 
-        // Create and return a fresh token for the same user
+        // Create a fresh token; lastUsedAt is set inside createRefreshToken, resetting the idle clock
         return createRefreshToken(oldToken.getUserId());
     }
 
