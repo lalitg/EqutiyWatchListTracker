@@ -1,6 +1,5 @@
 package com.watchlist.global.scheduler;
 
-import com.watchlist.global.service.DomesticIndexService;
 import com.watchlist.global.service.GlobalIndexService;
 import com.watchlist.global.service.GlobalWatchlistService;
 import org.apache.logging.log4j.LogManager;
@@ -17,14 +16,11 @@ public class GlobalWatchlistScheduler {
 
     private final GlobalWatchlistService service;
     private final GlobalIndexService     globalIndexService;
-    private final DomesticIndexService   domesticIndexService;
 
     public GlobalWatchlistScheduler(GlobalWatchlistService service,
-                                    GlobalIndexService globalIndexService,
-                                    DomesticIndexService domesticIndexService) {
-        this.service              = service;
-        this.globalIndexService   = globalIndexService;
-        this.domesticIndexService = domesticIndexService;
+                                    GlobalIndexService globalIndexService) {
+        this.service            = service;
+        this.globalIndexService = globalIndexService;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -33,39 +29,18 @@ public class GlobalWatchlistScheduler {
         service.refreshPrices();
         service.persistMarketClose();
         globalIndexService.refreshAll();
-        domesticIndexService.refreshDomesticIndices();
-        domesticIndexService.refreshSectorIndices();
         logger.info("Startup jobs complete");
     }
 
-    /** NSE stock prices — every 5 min during market hours */
     @Scheduled(cron = "0 */5 9-15 * * MON-FRI")
-    public void refreshPrices() {
-        service.refreshPrices();
-    }
+    public void refreshPrices() { service.refreshPrices(); }
 
-    /** Market-close DB persist */
     @Scheduled(cron = "0 30 15 * * MON-FRI")
-    public void persistMarketClose() {
-        service.persistMarketClose();
-    }
+    public void persistMarketClose() { service.persistMarketClose(); }
 
-    /** Global indices (Yahoo) — every 5 min, 24/7 (markets in different timezones) */
-    @Scheduled(cron = "0 */5 * * * *")
-    public void refreshGlobalIndices() {
-        globalIndexService.refreshAll();
-    }
+    @Scheduled(cron = "0 */30 * * * *")
+    public void refreshGlobalIndices() { globalIndexService.refreshAll(); }
 
-    /** Domestic + sector index headers and symbol membership map — every 5 min during market hours */
-    @Scheduled(cron = "0 */5 9-15 * * MON-FRI")
-    public void refreshDomesticIndices() {
-        domesticIndexService.refreshDomesticIndices();
-        domesticIndexService.refreshSectorIndices();
-    }
-
-    /** Nifty 50 composition — bi-weekly */
     @Scheduled(cron = "0 0 2 1,15 * ?")
-    public void refreshNifty50Composition() {
-        service.refreshNifty50Composition();
-    }
+    public void refreshNifty50Composition() { service.refreshNifty50Composition(); }
 }
