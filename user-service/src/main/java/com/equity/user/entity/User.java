@@ -63,6 +63,30 @@ public class User {
     private String phoneNumber;
 
     /**
+     * Whether the email address above has been proved to belong to this user.
+     *
+     * WHY a Boolean and not a primitive boolean: this column is added to a table that already has
+     * rows, so every existing user carries NULL here until they verify. Hibernate cannot read NULL
+     * into a primitive, and adding the column as NOT NULL would fail on those same rows. The getter
+     * normalises NULL to false, which is the correct reading: never verified.
+     */
+    @Column(name = "email_verified")
+    private Boolean emailVerified;
+
+    /**
+     * The single live verification token, or null when there is none outstanding.
+     *
+     * Unique so two users can never hold the same token. Postgres allows any number of NULLs in a
+     * unique index, so users without a pending verification do not collide.
+     */
+    @Column(name = "email_verification_token", unique = true, length = 64)
+    private String emailVerificationToken;
+
+    /** When the token above stops working. Null whenever the token is null. */
+    @Column(name = "email_verification_expires_at")
+    private LocalDateTime emailVerificationExpiresAt;
+
+    /**
      * BCrypt hash of the user's password.
      * BCrypt always produces exactly 60 characters ($2a$ format).
      * Never logged, never returned in API responses.
@@ -149,6 +173,16 @@ public class User {
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    /** @return true only when this address has actually been verified; NULL reads as false */
+    public boolean isEmailVerified() { return Boolean.TRUE.equals(emailVerified); }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
+
+    public String getEmailVerificationToken() { return emailVerificationToken; }
+    public void setEmailVerificationToken(String token) { this.emailVerificationToken = token; }
+
+    public LocalDateTime getEmailVerificationExpiresAt() { return emailVerificationExpiresAt; }
+    public void setEmailVerificationExpiresAt(LocalDateTime at) { this.emailVerificationExpiresAt = at; }
 
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }

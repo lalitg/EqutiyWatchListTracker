@@ -231,22 +231,29 @@ public class UserService {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Looks up a user by username for auth-service to use during login.
+     * Resolves a login identifier (username, email, or phone) and returns
+     * credentials for auth-service to use during login.
+     *
+     * Resolution order:
+     *   1. Try findByUsername (exact match)
+     *   2. Try findByEmail (lowercased)
+     *   3. Try findByPhoneNumber (exact match)
      *
      * Returns passwordHash so auth-service can verify the credential with BCrypt.
-     * Also returns status so auth-service can reject BLOCKED/DELETED accounts.
+     * Returns status so auth-service can reject BLOCKED/DELETED accounts.
+     * Status filtering is intentionally bypassed — auth-service needs the raw
+     * status to produce the correct error message to the client.
      *
-     * This method bypasses status filtering intentionally — auth-service needs
-     * to know the status to reject the login with the right error message.
-     *
-     * @param username the login handle sent by the client
+     * @param identifier the login identifier (username, email, or phone)
      * @return InternalValidateResponse with credentials + role + status
-     * @throws UserNotFoundException if no user with that username exists
+     * @throws UserNotFoundException if no user matches the identifier
      */
     @Transactional(readOnly = true)
-    public InternalValidateResponse validateUserInternal(String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
+    public InternalValidateResponse validateUserInternal(String identifier) {
+        User user = userRepository.findByUsername(identifier)
+                .or(() -> userRepository.findByEmail(identifier.toLowerCase().trim()))
+                .or(() -> userRepository.findByPhoneNumber(identifier))
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         return new InternalValidateResponse(
                 user.getId(),

@@ -69,6 +69,18 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    /**
+     * Handles EmailVerificationException → HTTP 400 Bad Request.
+     *
+     * The message is written to be shown to the person on screen — "this link has expired",
+     * "wait 40 seconds" — so it is passed through rather than replaced with a generic one.
+     */
+    @ExceptionHandler(EmailVerificationException.class)
+    public ResponseEntity<Map<String, Object>> handleEmailVerification(EmailVerificationException ex) {
+        logger.warn("EmailVerificationException: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     // ─── Validation exceptions ────────────────────────────────────────────
 
     /**
