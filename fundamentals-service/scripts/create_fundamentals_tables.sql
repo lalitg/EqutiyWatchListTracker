@@ -73,22 +73,3 @@ CREATE TABLE IF NOT EXISTS balance_sheets (
 
 CREATE INDEX IF NOT EXISTS idx_bs_symbol          ON balance_sheets (symbol);
 CREATE INDEX IF NOT EXISTS idx_bs_period_end_date ON balance_sheets (period_end_date DESC);
-
--- ─── fundamentals_fetch_log ───────────────────────────────────────────────────
--- Audit log — one row per company per fetch attempt.
--- status: SUCCESS, FAILED, SKIPPED
--- fetch_type: QUARTERLY_RESULTS, BALANCE_SHEET
-
-CREATE TABLE IF NOT EXISTS fundamentals_fetch_log (
-    id             BIGSERIAL    PRIMARY KEY,
-    symbol         VARCHAR(20)  NOT NULL,
-    fetch_type     VARCHAR(30)  NOT NULL,
-    status         VARCHAR(10)  NOT NULL,
-    error_message  TEXT,
-    data_source    VARCHAR(20),
-    fetched_at     TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_fetch_log_symbol     ON fundamentals_fetch_log (symbol);
-CREATE INDEX IF NOT EXISTS idx_fetch_log_status     ON fundamentals_fetch_log (status, fetched_at DESC);
-CREATE INDEX IF NOT EXISTS idx_fetch_log_fetch_type ON fundamentals_fetch_log (fetch_type, fetched_at DESC);
