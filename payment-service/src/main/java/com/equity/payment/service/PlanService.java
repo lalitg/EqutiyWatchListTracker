@@ -71,15 +71,33 @@ public class PlanService {
      * Plans without razorpay_plan_id cannot be used for subscriptions
      * until the service restarts with working Razorpay credentials.
      */
+    /**
+     * Whether this plan still needs a Razorpay plan created for it.
+     *
+     * True when it has never been linked, and also when its price has been edited since: a
+     * Razorpay plan's amount is immutable, so a price change means a new plan rather than an
+     * updated one. Without this check the row would advertise the new price while Razorpay went
+     * on charging the old one.
+     */
+    private static boolean needsRazorpayPlan(Plan plan) {
+        return plan.getRazorpayPlanId() == null
+                || plan.getRazorpayPlanPricePaise() == null
+                || plan.getRazorpayPlanPricePaise() != plan.getPricePaise();
+    }
+
     @PostConstruct
     public void seedPlanToRazorpay() {
-        List<Plan> unlinkedPlans = planRepository.findByActiveTrueAndRazorpayPlanIdIsNull();
-        if (unlinkedPlans.isEmpty()) {
-            logger.info("All active plans are already linked to Razorpay.");
+        List<Plan> plans = planRepository.findByActiveTrue().stream()
+                .filter(PlanService::needsRazorpayPlan)
+                .toList();
+
+        if (plans.isEmpty()) {
+            logger.info("All active plans are already linked to Razorpay at their current price.");
             return;
         }
 
-        for (Plan plan : unlinkedPlans) {
+        for (Plan plan : plans) {
+            boolean repricing = plan.getRazorpayPlanId() != null;
             try {
                 String billingInterval = plan.getBillingCycle().name(); // MONTHLY or ANNUAL
                 String rzpPlanId = razorpayClient.createRazorpayPlan(
@@ -88,8 +106,16 @@ public class PlanService {
                         plan.getDisplayName()
                 );
                 plan.setRazorpayPlanId(rzpPlanId);
+                plan.setRazorpayPlanPricePaise(plan.getPricePaise());
                 planRepository.save(plan);
-                logger.info("Plan '{}' linked to Razorpay plan: {}", plan.getName(), rzpPlanId);
+
+                if (repricing) {
+                    logger.info("Plan '{}' re-priced to {} paise: new subscribers bill against {}. "
+                                + "Existing subscribers keep the price they agreed to.",
+                                plan.getName(), plan.getPricePaise(), rzpPlanId);
+                } else {
+                    logger.info("Plan '{}' linked to Razorpay plan: {}", plan.getName(), rzpPlanId);
+                }
             } catch (Exception e) {
                 // Don't fail startup — just log the warning
                 logger.warn("Could not create Razorpay plan for '{}': {}. " +

@@ -20,6 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *   GET  /api/v1/plans         — pricing page
  *   GET  /api/v1/plans/{id}    — single plan
  *   POST /api/v1/webhooks/**   — Razorpay webhooks (secured by signature, not JWT)
+ *   /api/v1/internal/**        — service-to-service (secured by X-Internal-Api-Key header)
  *
  * All other endpoints require a valid JWT (issued by auth-service).
  */
@@ -42,6 +43,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,  "/api/v1/plans").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/v1/plans/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/**").permitAll()
+                // Internal service-to-service lookup. Not open: the controller checks a shared
+                // secret header, exactly as user-service does for /internal/users/validate.
+                // Spring Security lets it past because there is no JWT on these calls.
+                .requestMatchers("/api/v1/internal/**").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

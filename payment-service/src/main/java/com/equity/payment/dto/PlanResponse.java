@@ -1,5 +1,7 @@
 package com.equity.payment.dto;
 
+import com.equity.payment.enums.PlanTier;
+
 /**
  * Response for GET /api/v1/plans.
  * razorpayPlanId is intentionally excluded — internal detail, not for frontend.
@@ -14,9 +16,10 @@ public class PlanResponse {
     private String priceDisplay;
     private String billingCycle;
     private int    durationDays;
+    private String tier;
 
     public PlanResponse(Long id, String name, String displayName, String description,
-                         int pricePaise, String billingCycle, int durationDays) {
+                         int pricePaise, String billingCycle, int durationDays, String tier) {
         this.id           = id;
         this.name         = name;
         this.displayName  = displayName;
@@ -25,6 +28,8 @@ public class PlanResponse {
         this.priceDisplay = "Rs." + (pricePaise / 100);
         this.billingCycle = billingCycle;
         this.durationDays = durationDays;
+        // Normalised, so the pricing page never has to cope with "advanced", " Basic" or a null.
+        this.tier         = PlanTier.fromName(tier).name();
     }
 
     public Long getId() { return id; }
@@ -35,4 +40,5 @@ public class PlanResponse {
     public String getPriceDisplay() { return priceDisplay; }
     public String getBillingCycle() { return billingCycle; }
     public int getDurationDays() { return durationDays; }
+    public String getTier() { return tier; }
 }
